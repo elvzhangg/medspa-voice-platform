@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession, getCurrentTenant } from "@/lib/supabase-server";
+import SignOutButton from "./_components/SignOutButton";
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +19,7 @@ export default async function DashboardLayout({
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Med Spa</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Med Spa</p>
           <h2 className="font-semibold text-gray-900 truncate">{tenant.name}</h2>
         </div>
 
@@ -30,14 +31,7 @@ export default async function DashboardLayout({
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <form action="/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="w-full text-left text-sm text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md hover:bg-gray-100"
-            >
-              Sign out
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </aside>
 
