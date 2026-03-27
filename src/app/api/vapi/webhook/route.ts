@@ -81,15 +81,25 @@ async function handleAssistantRequest(message: Record<string, unknown>) {
  */
 async function handleToolCalls(message: Record<string, unknown>) {
   const call = message.call as Record<string, unknown> | undefined;
-  // Vapi sends toolCallList OR toolCalls depending on version
-  const toolList = (
-    (message.toolCallList as Array<Record<string, unknown>> | undefined) ??
-    (message.toolCalls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined)?.map((tc) => ({
+  // Vapi sends tool calls in multiple formats depending on context:
+  // - toolCallList: [{id, name, parameters}]
+  // - toolCalls: [{id, function: {name, arguments}}]
+  // - toolWithToolCallList: [{toolCall: {id, function: {name, arguments}}}]
+  const rawToolCallList = message.toolCallList as Array<Record<string, unknown>> | undefined;
+  const rawToolCalls = message.toolCalls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined;
+  const rawToolWithToolCallList = message.toolWithToolCallList as Array<{ toolCall: { id: string; function: { name: string; arguments: string } } }> | undefined;
+
+  const toolList = rawToolCallList ??
+    rawToolCalls?.map((tc) => ({
       id: tc.id,
       name: tc.function.name,
       parameters: (() => { try { return JSON.parse(tc.function.arguments); } catch { return {}; } })(),
-    }))
-  );
+    })) ??
+    rawToolWithToolCallList?.map((tc) => ({
+      id: tc.toolCall.id,
+      name: tc.toolCall.function.name,
+      parameters: (() => { try { return JSON.parse(tc.toolCall.function.arguments); } catch { return {}; } })(),
+    }));
 
   console.log("tool-calls | raw message keys:", Object.keys(message));
   console.log("tool-calls | toolCallList:", JSON.stringify(message.toolCallList));
