@@ -13,7 +13,9 @@ export async function buildAssistantConfig(
 ): Promise<TransientAssistantConfig> {
   const systemPrompt = buildSystemPrompt(tenant, "");
 
-  // Tools use the phone number's server URL (no per-tool server.url needed)
+  // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
+  const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
+
   const tools: VapiTool[] = [
     {
       type: "function",
@@ -32,6 +34,7 @@ export async function buildAssistantConfig(
           required: ["query"],
         },
       },
+      server: { url: serverUrl },
     },
     {
       type: "function",
@@ -56,6 +59,7 @@ export async function buildAssistantConfig(
           required: ["service", "customer_name", "customer_phone"],
         },
       },
+      server: { url: serverUrl },
     },
   ];
 
