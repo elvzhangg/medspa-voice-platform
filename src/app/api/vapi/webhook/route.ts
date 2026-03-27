@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     case "assistant-request":
       return handleAssistantRequest(message);
     case "tool-calls":
+    case "function-call": // legacy support
       return handleToolCalls(message);
     case "end-of-call-report":
       await handleEndOfCall(message);
@@ -80,7 +81,15 @@ async function handleAssistantRequest(message: Record<string, unknown>) {
  */
 async function handleToolCalls(message: Record<string, unknown>) {
   const call = message.call as Record<string, unknown> | undefined;
-  const toolList = message.toolCallList as Array<Record<string, unknown>> | undefined;
+  // Vapi sends toolCallList OR toolCalls depending on version
+  const toolList = (
+    (message.toolCallList as Array<Record<string, unknown>> | undefined) ??
+    (message.toolCalls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined)?.map((tc) => ({
+      id: tc.id,
+      name: tc.function.name,
+      parameters: (() => { try { return JSON.parse(tc.function.arguments); } catch { return {}; } })(),
+    }))
+  );
 
   if (!toolList || toolList.length === 0) {
     return NextResponse.json({ results: [] });
