@@ -91,9 +91,16 @@ async function handleToolCalls(message: Record<string, unknown>) {
     }))
   );
 
+  console.log("tool-calls | raw message keys:", Object.keys(message));
+  console.log("tool-calls | toolCallList:", JSON.stringify(message.toolCallList));
+  console.log("tool-calls | toolCalls:", JSON.stringify(message.toolCalls));
+
   if (!toolList || toolList.length === 0) {
+    console.error("tool-calls | no tool list found in payload");
     return NextResponse.json({ results: [] });
   }
+
+  console.log("tool-calls | resolved toolList:", JSON.stringify(toolList));
 
   // Look up tenant once for all tool calls
   const phoneNumberId = call?.phoneNumberId as string | undefined;
