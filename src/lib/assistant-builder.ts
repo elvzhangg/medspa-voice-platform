@@ -14,7 +14,7 @@ export async function buildAssistantConfig(
   const systemPrompt = buildSystemPrompt(tenant, "");
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
-  const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/log";
+  const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
 
   const tools: VapiTool[] = [
     {

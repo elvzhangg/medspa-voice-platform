@@ -68,8 +68,19 @@ interface ParsedToolCall {
  * 
  * Can appear at message level OR at top body level.
  */
+/**
+ * Safely parse arguments which can be either a JSON string OR already an object
+ */
+function parseArgs(args: unknown): Record<string, unknown> {
+  if (!args) return {};
+  if (typeof args === "object") return args as Record<string, unknown>;
+  if (typeof args === "string") {
+    try { return JSON.parse(args); } catch { return {}; }
+  }
+  return {};
+}
+
 function parseToolCalls(body: Record<string, unknown>, message: Record<string, unknown>): ParsedToolCall[] {
-  // Check both body and message level
   const sources = [body, message];
 
   for (const src of sources) {
@@ -78,13 +89,11 @@ function parseToolCalls(body: Record<string, unknown>, message: Record<string, u
       const raw = src.toolWithToolCallList as Array<Record<string, unknown>>;
       const parsed = raw.map((item) => {
         const tc = (item.toolCall || item) as Record<string, unknown>;
-        const fn = tc.function as { name: string; arguments: string } | undefined;
+        const fn = tc.function as { name: string; arguments: unknown } | undefined;
         return {
           id: (tc.id as string) || "",
           name: fn?.name || (tc.name as string) || "",
-          parameters: fn?.arguments
-            ? (() => { try { return JSON.parse(fn.arguments); } catch { return {}; } })()
-            : (tc.parameters as Record<string, unknown>) || {},
+          parameters: parseArgs(fn?.arguments) || (tc.parameters as Record<string, unknown>) || {},
         };
       });
       if (parsed.length > 0 && parsed[0].name) {
@@ -97,13 +106,11 @@ function parseToolCalls(body: Record<string, unknown>, message: Record<string, u
     if (src.toolCalls && Array.isArray(src.toolCalls)) {
       const raw = src.toolCalls as Array<Record<string, unknown>>;
       const parsed = raw.map((tc) => {
-        const fn = tc.function as { name: string; arguments: string } | undefined;
+        const fn = tc.function as { name: string; arguments: unknown } | undefined;
         return {
           id: (tc.id as string) || "",
           name: fn?.name || (tc.name as string) || "",
-          parameters: fn?.arguments
-            ? (() => { try { return JSON.parse(fn.arguments); } catch { return {}; } })()
-            : (tc.parameters as Record<string, unknown>) || {},
+          parameters: parseArgs(fn?.arguments) || (tc.parameters as Record<string, unknown>) || {},
         };
       });
       if (parsed.length > 0 && parsed[0].name) {
@@ -116,13 +123,11 @@ function parseToolCalls(body: Record<string, unknown>, message: Record<string, u
     if (src.toolCallList && Array.isArray(src.toolCallList)) {
       const raw = src.toolCallList as Array<Record<string, unknown>>;
       const parsed = raw.map((tc) => {
-        const fn = tc.function as { name: string; arguments: string } | undefined;
+        const fn = tc.function as { name: string; arguments: unknown } | undefined;
         return {
           id: (tc.id as string) || "",
           name: fn?.name || (tc.name as string) || "",
-          parameters: fn?.arguments
-            ? (() => { try { return JSON.parse(fn.arguments); } catch { return {}; } })()
-            : (tc.parameters as Record<string, unknown>) || {},
+          parameters: parseArgs(fn?.arguments) || (tc.parameters as Record<string, unknown>) || {},
         };
       });
       if (parsed.length > 0 && parsed[0].name) {
