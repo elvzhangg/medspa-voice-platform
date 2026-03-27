@@ -159,7 +159,7 @@ async function handleToolCalls(message: Record<string, unknown>) {
 
         default:
           console.error("UNKNOWN_TOOL:", toolCall.name);
-          result = "I'm not sure how to handle that request.";
+          result = "UNKNOWN_TOOL_NAME:" + toolCall.name;
       }
 
       return { toolCallId: toolCall.id, result };
