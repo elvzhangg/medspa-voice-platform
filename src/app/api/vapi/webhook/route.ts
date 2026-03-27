@@ -66,10 +66,6 @@ async function handleAssistantRequest(message: Record<string, unknown>) {
   if (!tenant) {
     console.error(`No tenant found for phoneNumberId: ${phoneNumberId}, number: ${dialedNumber}`);
     return fallbackAssistant(`No tenant found`);
-
-  if (!tenant) {
-    console.error(`No tenant found for number: ${dialedNumber}`);
-    return fallbackAssistant(`No tenant found for ${dialedNumber}`);
   }
 
   const callerNumber = (call?.customer as Record<string, unknown> | undefined)?.number as string | undefined;
