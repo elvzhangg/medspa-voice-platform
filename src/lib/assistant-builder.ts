@@ -4,21 +4,14 @@ import { searchKnowledgeBase, formatKBContext } from "./knowledge-base";
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 /**
- * Build a transient Vapi assistant config for a specific tenant call
+ * Build a transient Vapi assistant config for a specific tenant call.
+ * Kept fast — no KB search at startup. KB is fetched on-demand via tool calls.
  */
 export async function buildAssistantConfig(
   tenant: Tenant,
   callerNumber?: string
 ): Promise<TransientAssistantConfig> {
-  // Fetch relevant KB docs as initial context (top general docs)
-  const kbDocs = await searchKnowledgeBase(
-    tenant.id,
-    "services pricing appointments policies",
-    8
-  );
-  const kbContext = formatKBContext(kbDocs);
-
-  const systemPrompt = buildSystemPrompt(tenant, kbContext);
+  const systemPrompt = buildSystemPrompt(tenant, "");
 
   const tools: VapiTool[] = [
     {
