@@ -1,32 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { VapiCallPayload } from "@/types";
 import { getTenantByPhoneNumber } from "@/lib/tenants";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
 
 /**
- * Main Vapi webhook handler
+ * Vapi server webhook handler
  *
  * Handles:
  * - assistant-request: Return tenant-specific assistant config when a call comes in
- * - function-call: Handle tool calls from the assistant during a call
+ * - tool-calls: Handle tool calls from the assistant during a call
  * - end-of-call-report: Log call summaries
+ * - status-update: Track call lifecycle
  */
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as VapiCallPayload;
-  const { message } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  switch (message.type) {
+  const message = body.message as Record<string, unknown> | undefined;
+  if (!message) {
+    return NextResponse.json({ error: "No message" }, { status: 400 });
+  }
+
+  const type = message.type as string;
+
+  switch (type) {
     case "assistant-request":
       return handleAssistantRequest(message);
-
-    case "function-call":
-      return handleFunctionCall(message);
-
+    case "tool-calls":
+      return handleToolCalls(message);
     case "end-of-call-report":
       await handleEndOfCall(message);
       return NextResponse.json({ received: true });
-
     default:
       return NextResponse.json({ received: true });
   }
@@ -34,113 +42,124 @@ export async function POST(req: NextRequest) {
 
 /**
  * When a call comes in, look up the tenant by the dialed number
- * and return their personalized assistant config
+ * and return their personalized assistant config.
+ * Must respond within 7.5 seconds.
  */
-async function handleAssistantRequest(message: VapiCallPayload["message"]) {
-  const dialedNumber = message.call.phoneNumber?.number;
-  const callerNumber = message.call.customer?.number;
+async function handleAssistantRequest(message: Record<string, unknown>) {
+  const call = message.call as Record<string, unknown> | undefined;
+
+  // Vapi sends the dialed Vapi phone number object under call.phoneNumber
+  const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
+  const dialedNumber = phoneNumberObj?.number as string | undefined;
+
+  console.log("assistant-request | dialed:", dialedNumber, "| call:", JSON.stringify(call?.id));
 
   if (!dialedNumber) {
-    return NextResponse.json(
-      { error: "No phone number in request" },
-      { status: 400 }
-    );
+    console.error("No phone number found in payload:", JSON.stringify(message));
+    return fallbackAssistant("No phone number found in request");
   }
 
-  // Find which med spa this number belongs to
   const tenant = await getTenantByPhoneNumber(dialedNumber);
 
   if (!tenant) {
     console.error(`No tenant found for number: ${dialedNumber}`);
-    // Fall back to a generic assistant
-    return NextResponse.json({
-      assistant: {
-        name: "AI Receptionist",
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          systemPrompt:
-            "You are a friendly receptionist. The business you're representing could not be identified. Apologize and ask the caller to try again later.",
-        },
-        voice: { provider: "11labs", voiceId: "rachel" },
-        firstMessage:
-          "Hello! I'm sorry, but I'm having trouble identifying this business. Please try calling back later.",
-      },
-    });
+    return fallbackAssistant(`No tenant found for ${dialedNumber}`);
   }
 
-  // Build personalized assistant config for this tenant
-  const assistant = await buildAssistantConfig(tenant, callerNumber ?? undefined);
+  const callerNumber = (call?.customer as Record<string, unknown> | undefined)?.number as string | undefined;
+  const assistant = await buildAssistantConfig(tenant, callerNumber);
 
   return NextResponse.json({ assistant });
 }
 
 /**
- * Handle tool/function calls from the assistant during a live call
+ * Handle tool/function calls from the assistant during a live call.
+ * Vapi sends tool-calls (not function-call) with toolWithToolCallList.
  */
-async function handleFunctionCall(message: VapiCallPayload["message"]) {
-  const { functionCall, call } = message;
+async function handleToolCalls(message: Record<string, unknown>) {
+  const call = message.call as Record<string, unknown> | undefined;
+  const toolList = message.toolCallList as Array<Record<string, unknown>> | undefined;
 
-  if (!functionCall) {
-    return NextResponse.json({ result: "No function call provided" });
+  if (!toolList || toolList.length === 0) {
+    return NextResponse.json({ results: [] });
   }
 
-  const { name, parameters } = functionCall;
+  // Look up tenant once for all tool calls
+  const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
+  const dialedNumber = phoneNumberObj?.number as string | undefined;
+  const tenant = dialedNumber ? await getTenantByPhoneNumber(dialedNumber) : null;
 
-  switch (name) {
-    case "search_knowledge_base": {
-      // We need the tenant ID — look it up from the phone number stored in call metadata
-      const dialedNumber = call.phoneNumber?.number;
-      if (!dialedNumber) {
-        return NextResponse.json({ result: "Could not identify the business." });
+  const results = await Promise.all(
+    toolList.map(async (toolCall) => {
+      const name = toolCall.name as string;
+      const toolCallId = toolCall.id as string;
+      const parameters = toolCall.parameters as Record<string, unknown> | undefined ?? {};
+
+      let result = "";
+
+      switch (name) {
+        case "search_knowledge_base": {
+          if (!tenant) {
+            result = "Sorry, I couldn't access our information system right now.";
+            break;
+          }
+          const query = parameters.query as string;
+          const docs = await searchKnowledgeBase(tenant.id, query, 4);
+          result = formatKBContext(docs) || "I couldn't find specific information about that. Let me connect you with our team.";
+          break;
+        }
+
+        case "book_appointment": {
+          const { service, preferred_date, preferred_time, customer_name, customer_phone } =
+            parameters as Record<string, string>;
+
+          console.log("Appointment request:", { service, preferred_date, preferred_time, customer_name, customer_phone });
+
+          result = `I've noted your request for ${service}${preferred_date ? ` on ${preferred_date}` : ""}${preferred_time ? ` at ${preferred_time}` : ""}. Our team will call ${customer_phone} to confirm your appointment within 24 hours.`;
+          break;
+        }
+
+        default:
+          result = "I'm not sure how to handle that request.";
       }
 
-      const tenant = await getTenantByPhoneNumber(dialedNumber);
-      if (!tenant) {
-        return NextResponse.json({ result: "Business information not available." });
-      }
+      return { toolCallId, result };
+    })
+  );
 
-      const query = parameters.query as string;
-      const docs = await searchKnowledgeBase(tenant.id, query, 4);
-      const context = formatKBContext(docs);
-
-      return NextResponse.json({
-        result: context || "I couldn't find specific information about that. Let me connect you with our team.",
-      });
-    }
-
-    case "book_appointment": {
-      // TODO: Integrate with booking system (e.g. Acuity, Mindbody, etc.)
-      const { service, preferred_date, preferred_time, customer_name, customer_phone } =
-        parameters as Record<string, string>;
-
-      console.log("Appointment request:", {
-        service,
-        preferred_date,
-        preferred_time,
-        customer_name,
-        customer_phone,
-        call_id: call.id,
-      });
-
-      // For now, acknowledge and log — integrate booking API here
-      return NextResponse.json({
-        result: `I've noted your request for ${service} on ${preferred_date || "a date to be confirmed"} at ${preferred_time || "a time to be confirmed"}. Our team will call ${customer_phone} to confirm your appointment.`,
-      });
-    }
-
-    default:
-      return NextResponse.json({ result: "Function not recognized." });
-  }
+  return NextResponse.json({ results });
 }
 
 /**
- * Log end-of-call summaries for analytics
+ * Log end-of-call summaries
  */
-async function handleEndOfCall(message: VapiCallPayload["message"]) {
+async function handleEndOfCall(message: Record<string, unknown>) {
+  const call = message.call as Record<string, unknown> | undefined;
   console.log("Call ended:", {
-    call_id: message.call.id,
+    call_id: call?.id,
+    ended_reason: message.endedReason,
+    duration: (call as Record<string, unknown> | undefined)?.duration,
     timestamp: new Date().toISOString(),
   });
-  // TODO: Store call logs in Supabase for analytics dashboard
+}
+
+function fallbackAssistant(reason: string) {
+  console.error("Using fallback assistant:", reason);
+  return NextResponse.json({
+    assistant: {
+      name: "AI Receptionist",
+      model: {
+        provider: "openai",
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are a receptionist. Apologize and let the caller know there's a technical issue. Ask them to call back shortly or leave their name and number.",
+          },
+        ],
+      },
+      voice: { provider: "11labs", voiceId: "rachel" },
+      firstMessage: "Thank you for calling. I'm sorry, we're experiencing a brief technical issue. Could I take your name and number so we can call you right back?",
+    },
+  });
 }
