@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantByPhoneNumber } from "@/lib/tenants";
+import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tenants";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
 
@@ -48,18 +48,24 @@ export async function POST(req: NextRequest) {
 async function handleAssistantRequest(message: Record<string, unknown>) {
   const call = message.call as Record<string, unknown> | undefined;
 
-  // Vapi sends the dialed Vapi phone number object under call.phoneNumber
+  // Vapi inbound calls: look up by phoneNumberId (UUID) first, fall back to number string
+  const phoneNumberId = call?.phoneNumberId as string | undefined;
   const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
   const dialedNumber = phoneNumberObj?.number as string | undefined;
 
-  console.log("assistant-request | dialed:", dialedNumber, "| call:", JSON.stringify(call?.id));
+  console.log("assistant-request | phoneNumberId:", phoneNumberId, "| dialedNumber:", dialedNumber, "| callId:", call?.id);
 
-  if (!dialedNumber) {
-    console.error("No phone number found in payload:", JSON.stringify(message));
-    return fallbackAssistant("No phone number found in request");
+  // Try phoneNumberId first (most reliable for inbound calls)
+  let tenant = phoneNumberId ? await getTenantByVapiPhoneNumberId(phoneNumberId) : null;
+
+  // Fall back to phone number string
+  if (!tenant && dialedNumber) {
+    tenant = await getTenantByPhoneNumber(dialedNumber);
   }
 
-  const tenant = await getTenantByPhoneNumber(dialedNumber);
+  if (!tenant) {
+    console.error(`No tenant found for phoneNumberId: ${phoneNumberId}, number: ${dialedNumber}`);
+    return fallbackAssistant(`No tenant found`);
 
   if (!tenant) {
     console.error(`No tenant found for number: ${dialedNumber}`);
@@ -85,9 +91,11 @@ async function handleToolCalls(message: Record<string, unknown>) {
   }
 
   // Look up tenant once for all tool calls
+  const phoneNumberId = call?.phoneNumberId as string | undefined;
   const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
   const dialedNumber = phoneNumberObj?.number as string | undefined;
-  const tenant = dialedNumber ? await getTenantByPhoneNumber(dialedNumber) : null;
+  let tenant = phoneNumberId ? await getTenantByVapiPhoneNumberId(phoneNumberId) : null;
+  if (!tenant && dialedNumber) tenant = await getTenantByPhoneNumber(dialedNumber);
 
   const results = await Promise.all(
     toolList.map(async (toolCall) => {

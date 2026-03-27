@@ -2,7 +2,7 @@ import { supabaseAdmin } from "./supabase";
 import { Tenant } from "@/types";
 
 /**
- * Look up a tenant by their Vapi phone number
+ * Look up a tenant by their Vapi phone number string e.g. "+14155551234"
  */
 export async function getTenantByPhoneNumber(
   phoneNumber: string
@@ -11,6 +11,22 @@ export async function getTenantByPhoneNumber(
     .from("tenants")
     .select("*")
     .eq("phone_number", phoneNumber)
+    .single();
+
+  if (error || !data) return null;
+  return data as Tenant;
+}
+
+/**
+ * Look up a tenant by their Vapi phone number ID (UUID from Vapi's API)
+ */
+export async function getTenantByVapiPhoneNumberId(
+  vapiPhoneNumberId: string
+): Promise<Tenant | null> {
+  const { data, error } = await supabaseAdmin
+    .from("tenants")
+    .select("*")
+    .eq("vapi_phone_number_id", vapiPhoneNumberId)
     .single();
 
   if (error || !data) return null;
