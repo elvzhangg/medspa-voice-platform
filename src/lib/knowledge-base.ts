@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { supabaseAdmin } from "./supabase";
 import { KnowledgeBaseDocument } from "@/types";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "placeholder" });
 
 /**
  * Generate an embedding for a text string
