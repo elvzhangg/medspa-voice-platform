@@ -3,22 +3,11 @@ import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tena
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
 
-/**
- * Vapi server webhook handler
- *
- * Handles:
- * - assistant-request: Return tenant-specific assistant config when a call comes in
- * - tool-calls: Handle tool calls from the assistant during a call
- * - end-of-call-report: Log call summaries
- * - status-update: Track call lifecycle
- */
 export async function POST(req: NextRequest) {
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const body = await req.json();
+
+  // Log the FULL raw payload for debugging
+  console.log("VAPI_WEBHOOK_RAW:", JSON.stringify(body));
 
   const message = body.message as Record<string, unknown> | undefined;
   if (!message) {
@@ -26,171 +15,156 @@ export async function POST(req: NextRequest) {
   }
 
   const type = message.type as string;
+  console.log("VAPI_WEBHOOK_TYPE:", type);
 
   switch (type) {
     case "assistant-request":
       return handleAssistantRequest(message);
     case "tool-calls":
-    case "function-call": // legacy support
+    case "function-call":
       return handleToolCalls(message);
     case "end-of-call-report":
-      await handleEndOfCall(message);
       return NextResponse.json({ received: true });
     default:
+      console.log("VAPI_WEBHOOK_UNHANDLED:", type);
       return NextResponse.json({ received: true });
   }
 }
 
-/**
- * When a call comes in, look up the tenant by the dialed number
- * and return their personalized assistant config.
- * Must respond within 7.5 seconds.
- */
 async function handleAssistantRequest(message: Record<string, unknown>) {
   const call = message.call as Record<string, unknown> | undefined;
-
-  // Vapi inbound calls: look up by phoneNumberId (UUID) first, fall back to number string
   const phoneNumberId = call?.phoneNumberId as string | undefined;
   const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
   const dialedNumber = phoneNumberObj?.number as string | undefined;
 
-  console.log("assistant-request | phoneNumberId:", phoneNumberId, "| dialedNumber:", dialedNumber, "| callId:", call?.id);
-
-  // Try phoneNumberId first (most reliable for inbound calls)
   let tenant = phoneNumberId ? await getTenantByVapiPhoneNumberId(phoneNumberId) : null;
-
-  // Fall back to phone number string
   if (!tenant && dialedNumber) {
     tenant = await getTenantByPhoneNumber(dialedNumber);
   }
 
   if (!tenant) {
-    console.error(`No tenant found for phoneNumberId: ${phoneNumberId}, number: ${dialedNumber}`);
-    return fallbackAssistant(`No tenant found`);
+    return NextResponse.json({
+      assistant: {
+        name: "AI Receptionist",
+        model: {
+          provider: "openai",
+          model: "gpt-4o-mini",
+          messages: [{ role: "system", content: "You are a receptionist. There's a technical issue. Ask the caller to try again." }],
+        },
+        voice: { provider: "11labs", voiceId: "EXAVITQu4vr4xnSDxMaL" },
+        firstMessage: "Thank you for calling. We're having a brief issue. Could I take your name and number?",
+      },
+    });
   }
 
   const callerNumber = (call?.customer as Record<string, unknown> | undefined)?.number as string | undefined;
   const assistant = await buildAssistantConfig(tenant, callerNumber);
-
   return NextResponse.json({ assistant });
 }
 
-/**
- * Handle tool/function calls from the assistant during a live call.
- * Vapi sends tool-calls (not function-call) with toolWithToolCallList.
- */
 async function handleToolCalls(message: Record<string, unknown>) {
   const call = message.call as Record<string, unknown> | undefined;
-  // Vapi sends tool calls in multiple formats depending on context:
-  // - toolCallList: [{id, name, parameters}]
-  // - toolCalls: [{id, function: {name, arguments}}]
-  // - toolWithToolCallList: [{toolCall: {id, function: {name, arguments}}}]
-  const rawToolCallList = message.toolCallList as Array<Record<string, unknown>> | undefined;
-  const rawToolCalls = message.toolCalls as Array<{ id: string; function: { name: string; arguments: string } }> | undefined;
-  const rawToolWithToolCallList = message.toolWithToolCallList as Array<{ toolCall: { id: string; function: { name: string; arguments: string } } }> | undefined;
 
-  const toolList = rawToolCallList ??
-    rawToolCalls?.map((tc) => ({
-      id: tc.id,
-      name: tc.function.name,
-      parameters: (() => { try { return JSON.parse(tc.function.arguments); } catch { return {}; } })(),
-    })) ??
-    rawToolWithToolCallList?.map((tc) => ({
-      id: tc.toolCall.id,
-      name: tc.toolCall.function.name,
-      parameters: (() => { try { return JSON.parse(tc.toolCall.function.arguments); } catch { return {}; } })(),
+  // Log all possible tool call fields
+  console.log("TOOL_CALLS_KEYS:", Object.keys(message));
+  console.log("TOOL_CALLS_toolCallList:", JSON.stringify(message.toolCallList)?.slice(0, 500));
+  console.log("TOOL_CALLS_toolCalls:", JSON.stringify(message.toolCalls)?.slice(0, 500));
+  console.log("TOOL_CALLS_toolWithToolCallList:", JSON.stringify(message.toolWithToolCallList)?.slice(0, 500));
+  console.log("TOOL_CALLS_functionCall:", JSON.stringify(message.functionCall)?.slice(0, 500));
+
+  // Parse tool calls from any of the possible formats
+  interface ParsedToolCall {
+    id: string;
+    name: string;
+    parameters: Record<string, unknown>;
+  }
+
+  let toolList: ParsedToolCall[] = [];
+
+  if (message.toolCallList) {
+    const raw = message.toolCallList as Array<Record<string, unknown>>;
+    toolList = raw.map((tc) => ({
+      id: (tc.id as string) || "",
+      name: (tc.name as string) || "",
+      parameters: (tc.parameters as Record<string, unknown>) || {},
     }));
+  } else if (message.toolCalls) {
+    const raw = message.toolCalls as Array<Record<string, unknown>>;
+    toolList = raw.map((tc) => {
+      const fn = tc.function as { name: string; arguments: string } | undefined;
+      return {
+        id: (tc.id as string) || "",
+        name: fn?.name || "",
+        parameters: (() => { try { return JSON.parse(fn?.arguments || "{}"); } catch { return {}; } })(),
+      };
+    });
+  } else if (message.toolWithToolCallList) {
+    const raw = message.toolWithToolCallList as Array<Record<string, unknown>>;
+    toolList = raw.map((item) => {
+      const tc = item.toolCall as { id: string; function: { name: string; arguments: string } };
+      return {
+        id: tc.id || "",
+        name: tc.function?.name || "",
+        parameters: (() => { try { return JSON.parse(tc.function?.arguments || "{}"); } catch { return {}; } })(),
+      };
+    });
+  } else if (message.functionCall) {
+    // Legacy single function call format
+    const fc = message.functionCall as { name: string; parameters: Record<string, unknown> };
+    toolList = [{ id: "fc", name: fc.name, parameters: fc.parameters || {} }];
+  }
 
-  console.log("tool-calls | raw message keys:", Object.keys(message));
-  console.log("tool-calls | toolCallList:", JSON.stringify(message.toolCallList));
-  console.log("tool-calls | toolCalls:", JSON.stringify(message.toolCalls));
+  console.log("TOOL_CALLS_PARSED:", JSON.stringify(toolList));
 
-  if (!toolList || toolList.length === 0) {
-    console.error("tool-calls | no tool list found in payload");
+  if (toolList.length === 0) {
+    console.error("TOOL_CALLS_EMPTY: no tool calls found");
     return NextResponse.json({ results: [] });
   }
 
-  console.log("tool-calls | resolved toolList:", JSON.stringify(toolList));
-
-  // Look up tenant once for all tool calls
+  // Tenant lookup
   const phoneNumberId = call?.phoneNumberId as string | undefined;
   const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
   const dialedNumber = phoneNumberObj?.number as string | undefined;
   let tenant = phoneNumberId ? await getTenantByVapiPhoneNumberId(phoneNumberId) : null;
   if (!tenant && dialedNumber) tenant = await getTenantByPhoneNumber(dialedNumber);
 
+  console.log("TOOL_CALLS_TENANT:", tenant?.id, tenant?.name);
+
   const results = await Promise.all(
     toolList.map(async (toolCall) => {
-      const name = toolCall.name as string;
-      const toolCallId = toolCall.id as string;
-      const parameters = toolCall.parameters as Record<string, unknown> | undefined ?? {};
+      console.log("TOOL_CALL_EXEC:", toolCall.name, JSON.stringify(toolCall.parameters));
 
       let result = "";
 
-      switch (name) {
+      switch (toolCall.name) {
         case "search_knowledge_base": {
           if (!tenant) {
             result = "Sorry, I couldn't access our information system right now.";
             break;
           }
-          const query = parameters.query as string;
+          const query = toolCall.parameters.query as string;
+          console.log("KB_SEARCH:", tenant.id, query);
           const docs = await searchKnowledgeBase(tenant.id, query, 4);
+          console.log("KB_RESULTS:", docs.length, "docs found");
           result = formatKBContext(docs) || "I couldn't find specific information about that. Let me connect you with our team.";
           break;
         }
 
         case "book_appointment": {
           const { service, preferred_date, preferred_time, customer_name, customer_phone } =
-            parameters as Record<string, string>;
-
-          console.log("Appointment request:", { service, preferred_date, preferred_time, customer_name, customer_phone });
-
-          result = `I've noted your request for ${service}${preferred_date ? ` on ${preferred_date}` : ""}${preferred_time ? ` at ${preferred_time}` : ""}. Our team will call ${customer_phone} to confirm your appointment within 24 hours.`;
+            toolCall.parameters as Record<string, string>;
+          result = `I've noted your request for ${service}${preferred_date ? ` on ${preferred_date}` : ""}${preferred_time ? ` at ${preferred_time}` : ""}. Our team will call ${customer_phone} to confirm within 24 hours.`;
           break;
         }
 
         default:
+          console.error("UNKNOWN_TOOL:", toolCall.name);
           result = "I'm not sure how to handle that request.";
       }
 
-      return { toolCallId, result };
+      return { toolCallId: toolCall.id, result };
     })
   );
 
   return NextResponse.json({ results });
 }
-
-/**
- * Log end-of-call summaries
- */
-async function handleEndOfCall(message: Record<string, unknown>) {
-  const call = message.call as Record<string, unknown> | undefined;
-  console.log("Call ended:", {
-    call_id: call?.id,
-    ended_reason: message.endedReason,
-    duration: (call as Record<string, unknown> | undefined)?.duration,
-    timestamp: new Date().toISOString(),
-  });
-}
-
-function fallbackAssistant(reason: string) {
-  console.error("Using fallback assistant:", reason);
-  return NextResponse.json({
-    assistant: {
-      name: "AI Receptionist",
-      model: {
-        provider: "openai",
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a receptionist. Apologize and let the caller know there's a technical issue. Ask them to call back shortly or leave their name and number.",
-          },
-        ],
-      },
-      voice: { provider: "11labs", voiceId: "rachel" },
-      firstMessage: "Thank you for calling. I'm sorry, we're experiencing a brief technical issue. Could I take your name and number so we can call you right back?",
-    },
-  });
-}
-// force deploy 1774585407
