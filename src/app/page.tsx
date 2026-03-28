@@ -150,14 +150,14 @@ function Hero() {
 /* ── Social proof logos ──────────────────────────────────────────── */
 function Logos() {
   return (
-    <section className="py-12 border-y border-gray-100 bg-white">
+    <section className="py-12 border-y border-gray-200 bg-white">
       <div className="max-w-5xl mx-auto px-6">
-        <p className="text-center text-sm text-gray-400 uppercase tracking-widest mb-8">
+        <p className="text-center text-sm font-medium text-gray-500 uppercase tracking-widest mb-8">
           Trusted by leading med spas nationwide
         </p>
-        <div className="flex items-center justify-center gap-12 md:gap-16 opacity-50 flex-wrap">
+        <div className="flex items-center justify-center gap-12 md:gap-16 flex-wrap">
           {["Glow Aesthetics", "Radiance MD", "BeautyFix", "Skin Studio", "AuraClinic"].map((name) => (
-            <span key={name} className="text-lg font-semibold text-gray-500 whitespace-nowrap">{name}</span>
+            <span key={name} className="text-base font-semibold text-gray-400 whitespace-nowrap">{name}</span>
           ))}
         </div>
       </div>
@@ -174,14 +174,14 @@ function Stats() {
     { value: "24/7", label: "Availability" },
   ];
   return (
-    <section className="py-16">
+    <section className="py-16 bg-white">
       <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
         {stats.map((s) => (
           <div key={s.label} className="text-center">
-            <p className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+            <p className="text-4xl font-bold text-gray-900">
               {s.value}
             </p>
-            <p className="text-sm text-gray-500 mt-1">{s.label}</p>
+            <p className="text-sm font-medium text-gray-500 mt-1">{s.label}</p>
           </div>
         ))}
       </div>
