@@ -150,14 +150,14 @@ function Hero() {
 /* ── Social proof logos ──────────────────────────────────────────── */
 function Logos() {
   return (
-    <section className="py-12 border-y border-gray-200 bg-white">
+    <section className="py-14 bg-white border-b border-gray-100">
       <div className="max-w-5xl mx-auto px-6">
-        <p className="text-center text-sm font-medium text-gray-500 uppercase tracking-widest mb-8">
+        <p className="text-center text-xs font-semibold text-gray-400 uppercase tracking-widest mb-10">
           Trusted by leading med spas nationwide
         </p>
-        <div className="flex items-center justify-center gap-12 md:gap-16 flex-wrap">
+        <div className="flex items-center justify-center gap-10 md:gap-16 flex-wrap">
           {["Glow Aesthetics", "Radiance MD", "BeautyFix", "Skin Studio", "AuraClinic"].map((name) => (
-            <span key={name} className="text-base font-semibold text-gray-400 whitespace-nowrap">{name}</span>
+            <span key={name} className="text-sm font-semibold text-gray-300 whitespace-nowrap tracking-wide">{name}</span>
           ))}
         </div>
       </div>
@@ -174,14 +174,12 @@ function Stats() {
     { value: "24/7", label: "Availability" },
   ];
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section className="py-20 bg-white">
+      <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
         {stats.map((s) => (
           <div key={s.label} className="text-center">
-            <p className="text-4xl font-bold text-gray-900">
-              {s.value}
-            </p>
-            <p className="text-sm font-medium text-gray-500 mt-1">{s.label}</p>
+            <p className="text-5xl font-bold text-violet-600 tracking-tight">{s.value}</p>
+            <p className="text-sm text-gray-500 mt-2 font-medium">{s.label}</p>
           </div>
         ))}
       </div>
@@ -209,18 +207,18 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how-it-works" className="py-20 bg-gray-50">
+    <section id="how-it-works" className="py-24 bg-[#faf8ff]">
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">How It Works</p>
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-3">How It Works</p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Live in three simple steps</h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-6">
           {steps.map((s) => (
-            <div key={s.num} className="bg-white rounded-2xl p-8 border border-gray-100">
-              <span className="text-sm font-mono text-violet-500 font-bold">{s.num}</span>
-              <h3 className="text-xl font-semibold mt-3 mb-2 text-gray-900">{s.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{s.desc}</p>
+            <div key={s.num} className="bg-white rounded-2xl p-8 border border-violet-100 shadow-sm">
+              <span className="inline-block text-xs font-bold text-violet-500 bg-violet-50 px-2.5 py-1 rounded-full mb-4">{s.num}</span>
+              <h3 className="text-lg font-semibold mb-2 text-gray-900">{s.title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
@@ -313,20 +311,20 @@ function Features() {
     },
   ];
   return (
-    <section id="features" className="py-20" style={{ background: "linear-gradient(180deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)" }}>
+    <section id="features" className="py-24 bg-white">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Features</p>
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-3">Features</p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Everything your front desk does.<br />Without the front desk.</h2>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f) => (
-            <div key={f.title} className="p-6 rounded-2xl bg-white/80 border border-violet-100/60 hover:border-violet-200 hover:shadow-md hover:shadow-violet-100/50 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 flex items-center justify-center mb-4 group-hover:from-violet-100 group-hover:to-indigo-100 transition-colors">
+            <div key={f.title} className="p-6 rounded-2xl bg-[#faf8ff] border border-violet-100 hover:shadow-md hover:shadow-violet-50 transition-all group">
+              <div className="w-10 h-10 rounded-xl bg-white border border-violet-100 flex items-center justify-center mb-4 shadow-sm">
                 <f.Icon />
               </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">{f.title}</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
+              <h3 className="font-semibold text-base mb-1.5 text-gray-900">{f.title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -355,20 +353,22 @@ function Testimonials() {
     },
   ];
   return (
-    <section className="py-20" style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #f5f3ff 100%)" }}>
+    <section className="py-24 bg-[#faf8ff]">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Testimonials</p>
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-3">Testimonials</p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Loved by med spa owners</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {quotes.map((q) => (
-            <div key={q.name} className="bg-white/90 rounded-2xl p-8 border border-violet-100 shadow-sm">
-              <div className="text-violet-400 text-3xl mb-4">&ldquo;</div>
-              <p className="text-gray-700 leading-relaxed mb-6">{q.text}</p>
-              <div>
+            <div key={q.name} className="bg-white rounded-2xl p-8 border border-violet-100 shadow-sm">
+              <svg width="24" height="18" viewBox="0 0 24 18" fill="none" className="mb-4">
+                <path d="M0 18V10.8C0 4.8 3.6 1.2 10.8 0l1.2 2.4C8.4 3.6 6.6 5.4 6 8.4H10.8V18H0ZM13.2 18V10.8C13.2 4.8 16.8 1.2 24 0l1.2 2.4c-3.6 1.2-5.4 3-6 6H24V18H13.2Z" fill="#7c3aed" fillOpacity="0.2"/>
+              </svg>
+              <p className="text-gray-600 text-sm leading-relaxed mb-6">{q.text}</p>
+              <div className="pt-4 border-t border-gray-100">
                 <p className="font-semibold text-sm text-gray-900">{q.name}</p>
-                <p className="text-gray-500 text-sm">{q.role}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{q.role}</p>
               </div>
             </div>
           ))}
@@ -381,12 +381,12 @@ function Testimonials() {
 /* ── Pricing ─────────────────────────────────────────────────────── */
 function Pricing() {
   return (
-    <section id="pricing" className="py-20" style={{ background: "transparent" }}>
+    <section id="pricing" className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Pricing</p>
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-3">Pricing</p>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Simple, transparent pricing</h2>
-          <p className="text-gray-600 mt-3 max-w-xl mx-auto">
+          <p className="text-gray-500 mt-3 max-w-xl mx-auto text-sm">
             Less than the cost of a part-time receptionist. Cancel anytime.
           </p>
         </div>
@@ -442,27 +442,27 @@ function PricingCard({
   name: string; price: string; desc: string; features: string[]; featured?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl p-8 border ${featured ? "border-violet-400 bg-gradient-to-b from-violet-50 to-white ring-2 ring-violet-200 shadow-lg shadow-violet-100" : "bg-white/80 border-violet-100/60"}`}>
-      <p className="font-semibold text-lg">{name}</p>
-      <div className="mt-2 mb-1">
-        <span className="text-4xl font-bold">{price}</span>
-        {price !== "Custom" && <span className="text-gray-500 text-sm">/month</span>}
+    <div className={`rounded-2xl p-8 border ${featured ? "border-violet-300 bg-[#faf8ff] ring-1 ring-violet-200 shadow-lg shadow-violet-100/60" : "bg-white border-gray-100"}`}>
+      <p className="font-semibold text-gray-900">{name}</p>
+      <div className="mt-3 mb-1 flex items-end gap-1">
+        <span className="text-4xl font-bold text-gray-900">{price}</span>
+        {price !== "Custom" && <span className="text-gray-400 text-sm mb-1">/month</span>}
       </div>
-      <p className="text-gray-500 text-sm mb-6">{desc}</p>
+      <p className="text-gray-400 text-sm mb-6">{desc}</p>
       <Link
         href="/book-a-demo"
-        className={`block text-center py-2.5 rounded-lg font-medium text-sm transition-colors mb-6 ${
+        className={`block text-center py-2.5 rounded-xl font-medium text-sm transition-colors mb-6 ${
           featured
-            ? "bg-gray-900 text-white hover:bg-gray-800"
-            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            ? "bg-violet-600 text-white hover:bg-violet-700"
+            : "bg-gray-900 text-white hover:bg-gray-800"
         }`}
       >
         {price === "Custom" ? "Contact Sales" : "Start Free Trial"}
       </Link>
-      <ul className="space-y-3">
+      <ul className="space-y-2.5">
         {features.map((f) => (
-          <li key={f} className="text-sm text-gray-600 flex items-start gap-2">
-            <span className="text-violet-500 mt-0.5">✓</span>
+          <li key={f} className="text-sm text-gray-500 flex items-start gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mt-0.5 shrink-0"><circle cx="7" cy="7" r="7" fill="#7c3aed" fillOpacity="0.1"/><path d="M4 7l2 2 4-4" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {f}
           </li>
         ))}
@@ -474,13 +474,13 @@ function PricingCard({
 /* ── Demo CTA ────────────────────────────────────────────────────── */
 function DemoSection() {
   return (
-    <section id="demo" className="py-20 bg-gray-900">
+    <section id="demo" className="py-24" style={{ background: "linear-gradient(135deg, #3b0764 0%, #4c1d95 50%, #312e81 100%)" }}>
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-10">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to never miss a call again?
           </h2>
-          <p className="text-gray-400 text-lg">
+          <p className="text-violet-200 text-lg">
             Get a personalized demo for your med spa. We&apos;ll have your AI receptionist ready in 48 hours.
           </p>
         </div>
@@ -581,7 +581,7 @@ function DemoForm() {
 /* ── Footer ──────────────────────────────────────────────────────── */
 function Footer() {
   return (
-    <footer className="border-t border-violet-100 py-12 bg-white/60">
+    <footer className="border-t border-gray-100 py-12 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
