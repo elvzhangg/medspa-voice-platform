@@ -1,18 +1,15 @@
-<svg viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 168 36" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="vv-grad-light" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="100%" stop-color="#c4b5fd"/>
     </linearGradient>
   </defs>
-  <!-- Icon: 4 bars scaled to ~28px tall, centered in 40px height -->
-  <g transform="translate(0, 4) scale(0.875)">
-    <rect x="2" y="10" width="5" height="12" rx="2.5" fill="url(#vv-grad-light)"/>
-    <rect x="9" y="5" width="5" height="22" rx="2.5" fill="url(#vv-grad-light)"/>
-    <rect x="16" y="7" width="5" height="18" rx="2.5" fill="url(#vv-grad-light)"/>
-    <rect x="23" y="11" width="5" height="10" rx="2.5" fill="url(#vv-grad-light)"/>
-  </g>
-  <!-- Wordmark: "Vaux" white bold, "Voice" lavender -->
-  <text x="38" y="27" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="19" font-weight="700" fill="#ffffff" letter-spacing="-0.3">Vaux</text>
-  <text x="98" y="27" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="19" font-weight="400" fill="#c4b5fd" letter-spacing="-0.3">Voice</text>
+  <rect x="1" y="12" width="5" height="12" rx="2.5" fill="url(#vv-grad-light)"/>
+  <rect x="8" y="7"  width="5" height="22" rx="2.5" fill="url(#vv-grad-light)"/>
+  <rect x="15" y="9" width="5" height="18" rx="2.5" fill="url(#vv-grad-light)"/>
+  <rect x="22" y="13" width="5" height="10" rx="2.5" fill="url(#vv-grad-light)"/>
+  <text x="33" y="25" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="18" letter-spacing="-0.5">
+    <tspan font-weight="700" fill="#ffffff">Vaux</tspan><tspan font-weight="400" fill="#c4b5fd">Voice</tspan>
+  </text>
 </svg>

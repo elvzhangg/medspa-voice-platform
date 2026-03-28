@@ -96,17 +96,18 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative pt-32 pb-20 px-6 overflow-hidden min-h-[600px] flex items-center">
-      {/* Background video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        src="https://videos.pexels.com/video-files/3373520/3373520-uhd_2560_1440_25fps.mp4"
-      />
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gray-900/70" />
+      {/* Animated gradient background — video can be swapped in at /public/hero-video.mp4 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-950 via-gray-900 to-indigo-950" />
+      {/* Animated orbs for depth */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s" }} />
+      </div>
+      {/* Subtle grid overlay */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-gray-900/20" />
       {/* Content on top */}
       <div className="relative z-10 max-w-4xl mx-auto text-center w-full">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-sm text-white mb-8">
