@@ -43,11 +43,8 @@ export default function BookADemoPage() {
       {/* Nav */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">V</span>
-            </div>
-            <span className="font-semibold text-lg tracking-tight">VauxVoice</span>
+          <Link href="/" className="flex items-center">
+            <img src="/logo.svg" alt="VauxVoice" width={160} height={40} className="h-8 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm">
             <Link href="/#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">
@@ -84,11 +81,8 @@ export default function BookADemoPage() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">V</span>
-            </div>
-            <span className="font-semibold text-gray-700 tracking-tight">VauxVoice</span>
+          <div className="flex items-center">
+            <img src="/logo.svg" alt="VauxVoice" width={140} height={35} className="h-7 w-auto" />
           </div>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
