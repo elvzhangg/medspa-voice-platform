@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -22,20 +22,68 @@ export default function HomePage() {
 
 /* ── Navigation ─────────────────────────────────────────────────── */
 function Nav() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
+    <nav
+      className={`fixed top-0 w-full border-b z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-white/90 backdrop-blur-lg border-gray-100"
+          : "bg-transparent border-transparent"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">M</span>
-          </div>
-          <span className="font-semibold text-lg tracking-tight">MedSpa Voice</span>
+        <Link href="/" className="flex items-center">
+          {/* Dark logo (shown when scrolled — white bg) */}
+          <img
+            src="/logo.svg"
+            alt="VauxVoice"
+            width={160}
+            height={40}
+            className={`h-8 w-auto transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0 absolute"}`}
+          />
+          {/* Light logo (shown when not scrolled — dark/transparent bg) */}
+          <img
+            src="/logo-light.svg"
+            alt="VauxVoice"
+            width={160}
+            height={40}
+            className={`h-8 w-auto transition-opacity duration-300 ${scrolled ? "opacity-0 absolute" : "opacity-100"}`}
+          />
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm">
-          <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">How It Works</a>
-          <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
-          <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
-          <Link href="/book-a-demo" className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
+          <a
+            href="#how-it-works"
+            className={`transition-colors duration-300 ${scrolled ? "text-gray-600 hover:text-gray-900" : "text-white hover:text-gray-200"}`}
+          >
+            How It Works
+          </a>
+          <a
+            href="#features"
+            className={`transition-colors duration-300 ${scrolled ? "text-gray-600 hover:text-gray-900" : "text-white hover:text-gray-200"}`}
+          >
+            Features
+          </a>
+          <a
+            href="#pricing"
+            className={`transition-colors duration-300 ${scrolled ? "text-gray-600 hover:text-gray-900" : "text-white hover:text-gray-200"}`}
+          >
+            Pricing
+          </a>
+          <Link
+            href="/book-a-demo"
+            className={`px-4 py-2 rounded-lg transition-colors duration-300 font-medium ${
+              scrolled
+                ? "bg-gray-900 text-white hover:bg-gray-800"
+                : "bg-white text-gray-900 hover:bg-gray-100"
+            }`}
+          >
             Request Demo
           </Link>
         </div>
@@ -47,20 +95,32 @@ function Nav() {
 /* ── Hero ────────────────────────────────────────────────────────── */
 function Hero() {
   return (
-    <section className="pt-32 pb-20 px-6">
-      <div className="max-w-4xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-50 border border-violet-200 rounded-full text-sm text-violet-700 mb-8">
-          <span className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
+    <section className="relative pt-32 pb-20 px-6 overflow-hidden min-h-[600px] flex items-center">
+      {/* Background video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        src="https://videos.pexels.com/video-files/3373520/3373520-uhd_2560_1440_25fps.mp4"
+      />
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 bg-gray-900/70" />
+      {/* Content on top */}
+      <div className="relative z-10 max-w-4xl mx-auto text-center w-full">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-sm text-white mb-8">
+          <span className="w-2 h-2 bg-violet-400 rounded-full animate-pulse" />
           Now handling 50,000+ calls per month
         </div>
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight mb-6">
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight mb-6 text-white">
           Your med spa&apos;s AI
           <br />
-          <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
             receptionist
           </span>
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="text-xl text-gray-200 max-w-2xl mx-auto mb-10 leading-relaxed">
           Never miss a call, never lose a lead. Our AI answers 24/7, knows your
           services and pricing, and books appointments — so your team can focus
           on what matters.
@@ -68,13 +128,13 @@ function Hero() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/book-a-demo"
-            className="px-8 py-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-medium text-base"
+            className="px-8 py-3.5 bg-white text-gray-900 rounded-xl hover:bg-gray-100 transition-colors font-medium text-base"
           >
             Get Started Free →
           </Link>
           <a
             href="tel:+14783752044"
-            className="px-8 py-3.5 bg-white text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium text-base"
+            className="px-8 py-3.5 bg-white/10 text-white border border-white/20 rounded-xl hover:bg-white/20 transition-colors font-medium text-base"
           >
             📞 Try a Live Demo Call
           </a>
@@ -471,18 +531,15 @@ function Footer() {
     <footer className="border-t border-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">M</span>
-            </div>
-            <span className="font-semibold tracking-tight">MedSpa Voice</span>
+          <div className="flex items-center">
+            <img src="/logo.svg" alt="VauxVoice" width={140} height={35} className="h-7 w-auto" />
           </div>
           <div className="flex items-center gap-8 text-sm text-gray-500">
             <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
             <a href="mailto:hello@medspavoice.com" className="hover:text-gray-700 transition-colors">Contact</a>
           </div>
-          <p className="text-sm text-gray-400">© 2026 MedSpa Voice. All rights reserved.</p>
+          <p className="text-sm text-gray-400">© 2026 VauxVoice. All rights reserved.</p>
         </div>
       </div>
     </footer>
