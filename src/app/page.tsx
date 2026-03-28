@@ -138,7 +138,7 @@ function Hero() {
             href="tel:+14783752044"
             className="px-8 py-3.5 bg-white/10 text-white border border-white/20 rounded-xl hover:bg-white/20 transition-colors font-medium text-base"
           >
-            📞 Try a Live Demo Call
+            Try a Live Demo Call
           </a>
         </div>
         <p className="text-sm text-gray-400 mt-4">No credit card required · Live in under 48 hours</p>
@@ -229,36 +229,85 @@ function HowItWorks() {
   );
 }
 
+/* ── Feature SVG icons ───────────────────────────────────────────── */
+function IconKnowledge() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <defs><linearGradient id="feat-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7c3aed"/><stop offset="100%" stopColor="#4f46e5"/></linearGradient></defs>
+      <path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 6.5-6 7.4V18h-2v-1.6C7.5 15.5 5 12.5 5 9a7 7 0 0 1 7-7z"/>
+      <path d="M9 21h6"/><path d="M10 17v4"/><path d="M14 17v4"/>
+    </svg>
+  );
+}
+function IconCalendar() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>
+      <path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>
+      <path d="M8 18h.01"/><path d="M12 18h.01"/>
+    </svg>
+  );
+}
+function IconWave() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12c1.5-3 3-4.5 4.5-4.5S9 9 10.5 12s3 4.5 4.5 4.5S18 15 19.5 12 21 7.5 22 7.5"/>
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/>
+    </svg>
+  );
+}
+function IconShield() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+  );
+}
+function IconBolt() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+    </svg>
+  );
+}
+
 /* ── Features ────────────────────────────────────────────────────── */
 function Features() {
   const features = [
     {
-      icon: "🧠",
+      Icon: IconKnowledge,
       title: "Deep Business Knowledge",
       desc: "Trained on your exact services, pricing, packages, and policies. Answers questions like your best employee would.",
     },
     {
-      icon: "📅",
+      Icon: IconCalendar,
       title: "Appointment Booking",
       desc: "Collects patient info and schedules appointments directly. Integrates with your existing booking system.",
     },
     {
-      icon: "🎙️",
+      Icon: IconWave,
       title: "Natural Human Voice",
       desc: "Powered by ElevenLabs — callers can't tell it's AI. Choose from multiple voice profiles that match your brand.",
     },
     {
-      icon: "📊",
+      Icon: IconChart,
       title: "Real-Time Dashboard",
       desc: "See every call, transcript, and outcome. Track missed calls, peak hours, and conversion rates.",
     },
     {
-      icon: "🔒",
+      Icon: IconShield,
       title: "HIPAA Considerations",
       desc: "Built with healthcare privacy in mind. No sensitive patient data stored. SOC 2 compliance roadmap.",
     },
     {
-      icon: "⚡",
+      Icon: IconBolt,
       title: "Instant Scalability",
       desc: "Handle 1 call or 1,000 simultaneous calls. No hold times, no voicemail — every caller gets answered.",
     },
@@ -272,8 +321,10 @@ function Features() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f) => (
-            <div key={f.title} className="p-6 rounded-2xl bg-white/80 border border-violet-100/60 hover:border-violet-200 hover:shadow-md hover:shadow-violet-100/50 transition-all">
-              <div className="text-3xl mb-4">{f.icon}</div>
+            <div key={f.title} className="p-6 rounded-2xl bg-white/80 border border-violet-100/60 hover:border-violet-200 hover:shadow-md hover:shadow-violet-100/50 transition-all group">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 flex items-center justify-center mb-4 group-hover:from-violet-100 group-hover:to-indigo-100 transition-colors">
+                <f.Icon />
+              </div>
               <h3 className="font-semibold text-lg mb-2 text-gray-900">{f.title}</h3>
               <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
             </div>
