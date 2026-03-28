@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen text-gray-900" style={{ background: "linear-gradient(180deg, #0f0a1e 0%, #1a0f2e 8%, #ffffff 28%, #faf9ff 60%, #f3f0ff 80%, #ede9fe 100%)" }}>
+    <div className="min-h-screen bg-white text-gray-900">
       <Nav />
       <Hero />
       <Logos />
@@ -150,9 +150,9 @@ function Hero() {
 /* ── Social proof logos ──────────────────────────────────────────── */
 function Logos() {
   return (
-    <section className="py-12 border-y border-violet-100/50 bg-white/60 backdrop-blur-sm">
+    <section className="py-12 border-y border-gray-100 bg-white">
       <div className="max-w-5xl mx-auto px-6">
-        <p className="text-center text-sm text-violet-400 uppercase tracking-widest mb-8">
+        <p className="text-center text-sm text-gray-400 uppercase tracking-widest mb-8">
           Trusted by leading med spas nationwide
         </p>
         <div className="flex items-center justify-center gap-12 md:gap-16 opacity-50 flex-wrap">
@@ -209,7 +209,7 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how-it-works" className="py-20" style={{ background: "transparent" }}>
+    <section id="how-it-works" className="py-20 bg-gray-50">
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
           <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">How It Works</p>
@@ -217,7 +217,7 @@ function HowItWorks() {
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {steps.map((s) => (
-            <div key={s.num} className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-violet-100 shadow-sm shadow-violet-100/50">
+            <div key={s.num} className="bg-white rounded-2xl p-8 border border-gray-100">
               <span className="text-sm font-mono text-violet-500 font-bold">{s.num}</span>
               <h3 className="text-xl font-semibold mt-3 mb-2 text-gray-900">{s.title}</h3>
               <p className="text-gray-600 leading-relaxed">{s.desc}</p>
