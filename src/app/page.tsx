@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen text-gray-900" style={{ background: "linear-gradient(180deg, #0f0a1e 0%, #1a0f2e 8%, #ffffff 28%, #faf9ff 60%, #f3f0ff 80%, #ede9fe 100%)" }}>
       <Nav />
       <Hero />
       <Logos />
@@ -150,14 +150,14 @@ function Hero() {
 /* ── Social proof logos ──────────────────────────────────────────── */
 function Logos() {
   return (
-    <section className="py-12 border-y border-gray-100 bg-gray-50/50">
+    <section className="py-12 border-y border-violet-100/50 bg-white/60 backdrop-blur-sm">
       <div className="max-w-5xl mx-auto px-6">
-        <p className="text-center text-sm text-gray-400 uppercase tracking-widest mb-8">
+        <p className="text-center text-sm text-violet-400 uppercase tracking-widest mb-8">
           Trusted by leading med spas nationwide
         </p>
-        <div className="flex items-center justify-center gap-12 md:gap-16 opacity-40 flex-wrap">
+        <div className="flex items-center justify-center gap-12 md:gap-16 opacity-50 flex-wrap">
           {["Glow Aesthetics", "Radiance MD", "BeautyFix", "Skin Studio", "AuraClinic"].map((name) => (
-            <span key={name} className="text-lg font-semibold text-gray-600 whitespace-nowrap">{name}</span>
+            <span key={name} className="text-lg font-semibold text-gray-500 whitespace-nowrap">{name}</span>
           ))}
         </div>
       </div>
@@ -209,17 +209,17 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how-it-works" className="py-20 bg-gray-50">
+    <section id="how-it-works" className="py-20" style={{ background: "transparent" }}>
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-600 uppercase tracking-widest mb-3">How It Works</p>
-          <h2 className="text-3xl md:text-4xl font-bold">Live in three simple steps</h2>
+          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">How It Works</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Live in three simple steps</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {steps.map((s) => (
-            <div key={s.num} className="bg-white rounded-2xl p-8 border border-gray-100">
-              <span className="text-sm font-mono text-violet-600 font-bold">{s.num}</span>
-              <h3 className="text-xl font-semibold mt-3 mb-2">{s.title}</h3>
+            <div key={s.num} className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-violet-100 shadow-sm shadow-violet-100/50">
+              <span className="text-sm font-mono text-violet-500 font-bold">{s.num}</span>
+              <h3 className="text-xl font-semibold mt-3 mb-2 text-gray-900">{s.title}</h3>
               <p className="text-gray-600 leading-relaxed">{s.desc}</p>
             </div>
           ))}
@@ -264,17 +264,17 @@ function Features() {
     },
   ];
   return (
-    <section id="features" className="py-20">
+    <section id="features" className="py-20" style={{ background: "linear-gradient(180deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)" }}>
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-600 uppercase tracking-widest mb-3">Features</p>
-          <h2 className="text-3xl md:text-4xl font-bold">Everything your front desk does.<br />Without the front desk.</h2>
+          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Features</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Everything your front desk does.<br />Without the front desk.</h2>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f) => (
-            <div key={f.title} className="p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
+            <div key={f.title} className="p-6 rounded-2xl bg-white/80 border border-violet-100/60 hover:border-violet-200 hover:shadow-md hover:shadow-violet-100/50 transition-all">
               <div className="text-3xl mb-4">{f.icon}</div>
-              <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900">{f.title}</h3>
               <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
             </div>
           ))}
@@ -304,19 +304,19 @@ function Testimonials() {
     },
   ];
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-20" style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #f5f3ff 100%)" }}>
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-600 uppercase tracking-widest mb-3">Testimonials</p>
-          <h2 className="text-3xl md:text-4xl font-bold">Loved by med spa owners</h2>
+          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Testimonials</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Loved by med spa owners</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {quotes.map((q) => (
-            <div key={q.name} className="bg-white rounded-2xl p-8 border border-gray-100">
-              <div className="text-violet-500 text-3xl mb-4">&ldquo;</div>
+            <div key={q.name} className="bg-white/90 rounded-2xl p-8 border border-violet-100 shadow-sm">
+              <div className="text-violet-400 text-3xl mb-4">&ldquo;</div>
               <p className="text-gray-700 leading-relaxed mb-6">{q.text}</p>
               <div>
-                <p className="font-semibold text-sm">{q.name}</p>
+                <p className="font-semibold text-sm text-gray-900">{q.name}</p>
                 <p className="text-gray-500 text-sm">{q.role}</p>
               </div>
             </div>
@@ -330,11 +330,11 @@ function Testimonials() {
 /* ── Pricing ─────────────────────────────────────────────────────── */
 function Pricing() {
   return (
-    <section id="pricing" className="py-20">
+    <section id="pricing" className="py-20" style={{ background: "transparent" }}>
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-medium text-violet-600 uppercase tracking-widest mb-3">Pricing</p>
-          <h2 className="text-3xl md:text-4xl font-bold">Simple, transparent pricing</h2>
+          <p className="text-sm font-medium text-violet-500 uppercase tracking-widest mb-3">Pricing</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Simple, transparent pricing</h2>
           <p className="text-gray-600 mt-3 max-w-xl mx-auto">
             Less than the cost of a part-time receptionist. Cancel anytime.
           </p>
@@ -391,7 +391,7 @@ function PricingCard({
   name: string; price: string; desc: string; features: string[]; featured?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl p-8 border ${featured ? "border-violet-300 bg-violet-50/50 ring-1 ring-violet-200" : "border-gray-100"}`}>
+    <div className={`rounded-2xl p-8 border ${featured ? "border-violet-400 bg-gradient-to-b from-violet-50 to-white ring-2 ring-violet-200 shadow-lg shadow-violet-100" : "bg-white/80 border-violet-100/60"}`}>
       <p className="font-semibold text-lg">{name}</p>
       <div className="mt-2 mb-1">
         <span className="text-4xl font-bold">{price}</span>
@@ -530,7 +530,7 @@ function DemoForm() {
 /* ── Footer ──────────────────────────────────────────────────────── */
 function Footer() {
   return (
-    <footer className="border-t border-gray-100 py-12">
+    <footer className="border-t border-violet-100 py-12 bg-white/60">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
