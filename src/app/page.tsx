@@ -35,9 +35,9 @@ function Nav() {
           <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">How It Works</a>
           <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
           <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
-          <a href="#demo" className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
+          <Link href="/book-a-demo" className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
             Request Demo
-          </a>
+          </Link>
         </div>
       </div>
     </nav>
@@ -66,12 +66,12 @@ function Hero() {
           on what matters.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a
-            href="#demo"
+          <Link
+            href="/book-a-demo"
             className="px-8 py-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-medium text-base"
           >
             Get Started Free →
-          </a>
+          </Link>
           <a
             href="tel:+14783752044"
             className="px-8 py-3.5 bg-white text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium text-base"
@@ -336,8 +336,8 @@ function PricingCard({
         {price !== "Custom" && <span className="text-gray-500 text-sm">/month</span>}
       </div>
       <p className="text-gray-500 text-sm mb-6">{desc}</p>
-      <a
-        href="#demo"
+      <Link
+        href="/book-a-demo"
         className={`block text-center py-2.5 rounded-lg font-medium text-sm transition-colors mb-6 ${
           featured
             ? "bg-gray-900 text-white hover:bg-gray-800"
@@ -345,7 +345,7 @@ function PricingCard({
         }`}
       >
         {price === "Custom" ? "Contact Sales" : "Start Free Trial"}
-      </a>
+      </Link>
       <ul className="space-y-3">
         {features.map((f) => (
           <li key={f} className="text-sm text-gray-600 flex items-start gap-2">
