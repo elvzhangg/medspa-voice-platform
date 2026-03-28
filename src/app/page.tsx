@@ -39,23 +39,25 @@ function Nav() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center">
-          {/* Dark logo (shown when scrolled — white bg) */}
-          <img
-            src="/logo.svg"
-            alt="VauxVoice"
-            width={160}
-            height={40}
-            className={`h-8 w-auto transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0 absolute"}`}
-          />
-          {/* Light logo (shown when not scrolled — dark/transparent bg) */}
-          <img
-            src="/logo-light.svg"
-            alt="VauxVoice"
-            width={160}
-            height={40}
-            className={`h-8 w-auto transition-opacity duration-300 ${scrolled ? "opacity-0 absolute" : "opacity-100"}`}
-          />
+        <Link href="/" className="flex items-center gap-2.5">
+          {/* Icon: sound wave bars */}
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="nav-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#7c3aed"/>
+                <stop offset="100%" stopColor="#4f46e5"/>
+              </linearGradient>
+            </defs>
+            <rect x="1" y="10" width="5" height="12" rx="2.5" fill="url(#nav-grad)"/>
+            <rect x="8" y="5"  width="5" height="22" rx="2.5" fill="url(#nav-grad)"/>
+            <rect x="15" y="7" width="5" height="18" rx="2.5" fill="url(#nav-grad)"/>
+            <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-grad)"/>
+          </svg>
+          {/* Wordmark */}
+          <span className="text-lg font-semibold tracking-tight">
+            <span className={`font-bold transition-colors duration-300 ${scrolled ? "text-gray-900" : "text-white"}`}>Vaux</span>
+            <span className="text-violet-500">Voice</span>
+          </span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a
@@ -532,8 +534,22 @@ function Footer() {
     <footer className="border-t border-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center">
-            <img src="/logo.svg" alt="VauxVoice" width={140} height={35} className="h-7 w-auto" />
+          <div className="flex items-center gap-2">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="footer-grad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#7c3aed"/>
+                  <stop offset="100%" stopColor="#4f46e5"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="10" width="5" height="12" rx="2.5" fill="url(#footer-grad)"/>
+              <rect x="8" y="5"  width="5" height="22" rx="2.5" fill="url(#footer-grad)"/>
+              <rect x="15" y="7" width="5" height="18" rx="2.5" fill="url(#footer-grad)"/>
+              <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#footer-grad)"/>
+            </svg>
+            <span className="font-semibold tracking-tight text-base">
+              <span className="font-bold text-gray-900">Vaux</span><span className="text-violet-500">Voice</span>
+            </span>
           </div>
           <div className="flex items-center gap-8 text-sm text-gray-500">
             <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
