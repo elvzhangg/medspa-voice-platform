@@ -4,6 +4,32 @@ import { useState } from "react";
 import Link from "next/link";
 
 /* ─────────────────────────────────────────────────────────────── */
+/*  Shared logo component                                           */
+/* ─────────────────────────────────────────────────────────────── */
+function VauxLogo({ light = false }: { light?: boolean }) {
+  return (
+    <>
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#7c3aed"/>
+            <stop offset="100%" stopColor="#4f46e5"/>
+          </linearGradient>
+        </defs>
+        <rect x="1" y="10" width="5" height="12" rx="2.5" fill="url(#logo-grad)"/>
+        <rect x="8" y="5"  width="5" height="22" rx="2.5" fill="url(#logo-grad)"/>
+        <rect x="15" y="7" width="5" height="18" rx="2.5" fill="url(#logo-grad)"/>
+        <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#logo-grad)"/>
+      </svg>
+      <span className="text-lg font-semibold tracking-tight">
+        <span className={`font-bold ${light ? "text-white" : "text-gray-900"}`}>Vaux</span>
+        <span className="text-violet-500">Voice</span>
+      </span>
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 /*  Types                                                           */
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -43,8 +69,8 @@ export default function BookADemoPage() {
       {/* Nav */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <img src="/logo.svg" alt="VauxVoice" width={160} height={40} className="h-8 w-auto" />
+          <Link href="/" className="flex items-center gap-2.5">
+            <VauxLogo />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm">
             <Link href="/#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">
@@ -81,8 +107,8 @@ export default function BookADemoPage() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-          <div className="flex items-center">
-            <img src="/logo.svg" alt="VauxVoice" width={140} height={35} className="h-7 w-auto" />
+          <div className="flex items-center gap-2">
+            <VauxLogo />
           </div>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>

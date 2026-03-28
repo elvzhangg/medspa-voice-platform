@@ -55,8 +55,8 @@ function Nav() {
           </svg>
           {/* Wordmark */}
           <span className="text-lg font-semibold tracking-tight">
-            <span className={`font-bold transition-colors duration-300 ${scrolled ? "text-gray-900" : "text-white"}`}>Vaux</span>
-            <span className="text-violet-500">Voice</span>
+            <span className={`font-bold transition-colors duration-300 ${scrolled ? "text-gray-900" : "text-white drop-shadow-sm"}`}>Vaux</span>
+            <span className={`transition-colors duration-300 ${scrolled ? "text-violet-500" : "text-violet-300"}`}>Voice</span>
           </span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm">
