@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tenants";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -178,9 +179,44 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
         }
 
         case "book_appointment": {
-          const { service, preferred_date, preferred_time, customer_name, customer_phone } =
+          const { service, preferred_date, preferred_time, customer_name, customer_phone, referred_by } =
             toolCall.parameters as Record<string, string>;
           result = `I've noted your request for ${service}${preferred_date ? ` on ${preferred_date}` : ""}${preferred_time ? ` at ${preferred_time}` : ""}. Our team will call ${customer_phone} to confirm within 24 hours.`;
+          // Auto-log referral if referred_by is present
+          if (tenant && referred_by) {
+            await supabaseAdmin.from("referrals").insert({
+              tenant_id: tenant.id,
+              referred_by_name: referred_by,
+              new_patient_name: customer_name || null,
+              new_patient_phone: customer_phone || null,
+              source: "phone",
+              status: "pending",
+            });
+          }
+          break;
+        }
+
+        case "get_payment_link": {
+          const { amount, patient_name } = toolCall.parameters as Record<string, string>;
+          result = `I can help with that. For ${patient_name || "you"}, I can share that we accept CareCredit, Cherry financing, and all major credit cards. For amounts over $500, we offer 0% interest payment plans. Would you like me to have our billing team call you back with a personalized payment link?`;
+          break;
+        }
+
+        case "log_referral": {
+          if (tenant) {
+            const { referred_by_name, new_patient_name, new_patient_phone } = toolCall.parameters as Record<string, string>;
+            await supabaseAdmin.from("referrals").insert({
+              tenant_id: tenant.id,
+              referred_by_name,
+              new_patient_name: new_patient_name || null,
+              new_patient_phone: new_patient_phone || null,
+              source: "phone",
+              status: "pending",
+            });
+            result = `I've noted that ${new_patient_name || "you"} were referred by ${referred_by_name}. We'll make sure they receive their referral credit. Thank you!`;
+          } else {
+            result = "Thank you for letting us know about your referral!";
+          }
           break;
         }
 

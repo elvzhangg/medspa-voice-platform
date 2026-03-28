@@ -61,6 +61,39 @@ export async function buildAssistantConfig(
       },
       server: { url: serverUrl },
     },
+    {
+      type: "function",
+      function: {
+        name: "get_payment_link",
+        description: "Help a patient with billing, payment options, or payment plans",
+        parameters: {
+          type: "object",
+          properties: {
+            amount: { type: "string", description: "The amount they're asking about" },
+            patient_name: { type: "string", description: "Patient name if known" },
+          },
+          required: [],
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
+        name: "log_referral",
+        description: "Log when a new patient mentions they were referred by someone",
+        parameters: {
+          type: "object",
+          properties: {
+            referred_by_name: { type: "string", description: "Name of person who referred them" },
+            new_patient_name: { type: "string" },
+            new_patient_phone: { type: "string" },
+          },
+          required: ["referred_by_name"],
+        },
+      },
+      server: { url: serverUrl },
+    },
   ];
 
   return {
@@ -107,6 +140,8 @@ ${timeStr} (Pacific Time)
 - Never make up prices or services - always verify with the knowledge base
 - For booking requests, collect name, phone, service, and preferred time
 - Keep responses under 3 sentences unless more detail is truly needed
+- If a caller mentions they were referred by someone, use the log_referral tool to record it
+- If a caller asks about billing or payment plans, use the get_payment_link tool
 
 ${tenant.system_prompt_override ? `## Special Instructions\n${tenant.system_prompt_override}\n` : ""}
 
