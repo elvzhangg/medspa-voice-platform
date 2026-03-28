@@ -277,6 +277,37 @@ function IconBolt() {
     </svg>
   );
 }
+function IconMegaphone() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <defs><linearGradient id="feat-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7c3aed"/><stop offset="100%" stopColor="#4f46e5"/></linearGradient></defs>
+      <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V7L6 11H4a1 1 0 0 0-1 1z"/>
+      <path d="M19 9c1.5 1 1.5 5 0 6"/>
+      <path d="M17 7c2.5 1.5 2.5 8.5 0 10"/>
+    </svg>
+  );
+}
+function IconCreditCard() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <path d="M2 10h20"/>
+      <path d="M6 15h2"/><path d="M10 15h4"/>
+    </svg>
+  );
+}
+function IconNetwork() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#feat-grad)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="2.5"/>
+      <circle cx="16" cy="8" r="2.5"/>
+      <circle cx="12" cy="18" r="2.5"/>
+      <path d="M10.5 8h3"/>
+      <path d="M9.5 10l2 6"/>
+      <path d="M14.5 10l-2 6"/>
+    </svg>
+  );
+}
 
 /* ── Features ────────────────────────────────────────────────────── */
 function Features() {
@@ -310,6 +341,21 @@ function Features() {
       Icon: IconBolt,
       title: "Instant Scalability",
       desc: "Handle 1 call or 1,000 simultaneous calls. No hold times, no voicemail — every caller gets answered.",
+    },
+    {
+      Icon: IconMegaphone,
+      title: "Proactive Outbound Campaigns",
+      desc: "Automatically reach out to patients for appointment reminders, reactivation campaigns, and promotions via AI-powered phone calls and SMS.",
+    },
+    {
+      Icon: IconCreditCard,
+      title: "Billing & Payment Support",
+      desc: "AI handles billing questions, shares payment options, and sends payment links — so no revenue slips through the cracks.",
+    },
+    {
+      Icon: IconNetwork,
+      title: "Referral Management",
+      desc: "Track referral sources, reward loyal patients automatically, and grow your practice through word-of-mouth — all logged and managed for you.",
     },
   ];
   return (
@@ -401,6 +447,7 @@ function Pricing() {
               "Custom knowledge base",
               "Call dashboard",
               "Email support",
+              "Billing FAQ support",
             ]}
           />
           <PricingCard
@@ -414,6 +461,8 @@ function Pricing() {
               "Call transcripts & analytics",
               "Priority support",
               "SMS follow-up",
+              "Outbound reminder campaigns",
+              "Referral tracking",
             ]}
             featured
           />
@@ -428,6 +477,8 @@ function Pricing() {
               "Dedicated account manager",
               "White-label options",
               "SLA guarantee",
+              "Custom outbound campaigns",
+              "Advanced referral analytics",
             ]}
           />
         </div>

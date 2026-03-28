@@ -188,6 +188,8 @@ function LeftColumn() {
             "Pricing tailored to your call volume",
             "Q&A with our team",
             "Go live in 48 hours if you're ready",
+            "See outbound campaign demos",
+            "Learn about billing & referral tools",
           ].map((item) => (
             <li key={item} className="flex items-start gap-3 text-sm">
               <span className="mt-0.5 flex-shrink-0 w-5 h-5 bg-violet-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -614,6 +616,10 @@ const FAQS = [
   {
     q: "Is there a contract?",
     a: "No contracts. You can cancel anytime, no questions asked. We earn your business month to month.",
+  },
+  {
+    q: "Can VauxVoice make outbound calls too?",
+    a: "Yes — VauxVoice can proactively call patients for appointment reminders, reactivation (patients you haven't seen in a while), and promotional campaigns. You control the audience, message, and schedule from your dashboard.",
   },
 ];
 
