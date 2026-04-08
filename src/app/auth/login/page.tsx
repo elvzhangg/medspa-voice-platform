@@ -17,13 +17,26 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
+    const supabase = getSupabaseBrowser();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
+      return;
+    }
+
+    // Check if user has completed onboarding (has a tenant)
+    const { data: tenantUser } = await supabase
+      .from("tenant_users")
+      .select("tenant_id")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+
+    if (tenantUser) {
       router.push("/dashboard");
+    } else {
+      router.push("/onboarding");
     }
   }
 

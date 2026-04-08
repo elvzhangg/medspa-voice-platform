@@ -17,14 +17,17 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await getSupabaseBrowser().auth.signUp({ email, password });
+    const supabase = getSupabaseBrowser();
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
-      router.push("/onboarding");
+      return;
     }
+
+    // Always go to onboarding after signup (user won't have a tenant yet)
+    router.push("/onboarding");
   }
 
   return (
