@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
       name: displayName,
       slug,
       phone_number: placeholderPhone,
-      owner_user_id: session.user.id,
     })
     .select()
     .single();
