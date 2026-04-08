@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from "next/link";
+import { CopyButton } from "./copy-button";
 
 export default async function AdminInvitesPage() {
   const { data: tenants } = await supabaseAdmin
@@ -53,12 +54,7 @@ export default async function AdminInvitesPage() {
                         readOnly
                         className="text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1 w-96 font-mono"
                       />
-                      <button
-                        onClick={() => navigator.clipboard.writeText(inviteLink)}
-                        className="text-xs px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                      >
-                        Copy
-                      </button>
+                      <CopyButton text={inviteLink} />
                     </div>
                   </td>
                 </tr>
