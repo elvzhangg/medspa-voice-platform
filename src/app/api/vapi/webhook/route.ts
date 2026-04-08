@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tenants";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
+import { bookAppointment } from "@/lib/booking";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
@@ -179,11 +180,29 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
         }
 
         case "book_appointment": {
+          if (!tenant) {
+            result = "I'm sorry, I'm having trouble accessing our booking system right now. Could you please call back in a few minutes?";
+            break;
+          }
+
           const { service, preferred_date, preferred_time, customer_name, customer_phone, referred_by } =
             toolCall.parameters as Record<string, string>;
-          result = `I've noted your request for ${service}${preferred_date ? ` on ${preferred_date}` : ""}${preferred_time ? ` at ${preferred_time}` : ""}. Our team will call ${customer_phone} to confirm within 24 hours.`;
+
+          // Book via the booking integration layer
+          const bookingResult = await bookAppointment({
+            tenantId: tenant.id,
+            service,
+            preferredDate: preferred_date,
+            preferredTime: preferred_time,
+            customerName: customer_name,
+            customerPhone: customer_phone,
+            referredBy: referred_by,
+          });
+
+          result = bookingResult.message;
+
           // Auto-log referral if referred_by is present
-          if (tenant && referred_by) {
+          if (referred_by) {
             await supabaseAdmin.from("referrals").insert({
               tenant_id: tenant.id,
               referred_by_name: referred_by,
@@ -191,7 +210,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
               new_patient_phone: customer_phone || null,
               source: "phone",
               status: "pending",
-            });
+            }).catch(err => console.error("REFERRAL_LOG_ERROR:", err));
           }
           break;
         }
