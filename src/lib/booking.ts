@@ -261,7 +261,7 @@ async function bookViaLink(request: BookingRequest, config: any): Promise<Bookin
   }
 
   // Log the request internally too (so staff can follow up if needed)
-  await supabaseAdmin.from("booking_requests").insert({
+  const { error: logErr } = await supabaseAdmin.from("booking_requests").insert({
     tenant_id: request.tenantId,
     service: request.service,
     preferred_date: request.preferredDate || null,
@@ -271,7 +271,8 @@ async function bookViaLink(request: BookingRequest, config: any): Promise<Bookin
     referred_by: request.referredBy || null,
     notes: "Booking link sent",
     status: "pending",
-  }).catch(err => console.error("LINK_MODE_LOG_ERROR:", err));
+  });
+  if (logErr) console.error("LINK_MODE_LOG_ERROR:", logErr);
 
   return {
     success: true,
