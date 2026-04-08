@@ -203,14 +203,15 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 
           // Auto-log referral if referred_by is present
           if (referred_by) {
-            await supabaseAdmin.from("referrals").insert({
+            const { error: refErr } = await supabaseAdmin.from("referrals").insert({
               tenant_id: tenant.id,
               referred_by_name: referred_by,
               new_patient_name: customer_name || null,
               new_patient_phone: customer_phone || null,
               source: "phone",
               status: "pending",
-            }).catch(err => console.error("REFERRAL_LOG_ERROR:", err));
+            });
+            if (refErr) console.error("REFERRAL_LOG_ERROR:", refErr);
           }
           break;
         }
