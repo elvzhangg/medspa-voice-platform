@@ -235,26 +235,28 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 async function handleEndOfCallReport(message: Record<string, unknown>) {
   try {
     const call = message.call as Record<string, unknown> | undefined;
-    const vapiCallId = call?.id as string || "";
+    const vapiCallId = (call?.id as string) || "";
     const phoneNumberId = call?.phoneNumberId as string | undefined;
     const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
     const dialedNumber = phoneNumberObj?.number as string | undefined;
     const callerObj = call?.customer as Record<string, unknown> | undefined;
     const callerNumber = callerObj?.number as string | undefined;
 
-    // Extract call data from the report
-    const durationSeconds = (message.durationSeconds ?? message.duration ?? call?.duration) as number | undefined;
-    const summary = (message.summary ?? message.analysis?.summary) as string | undefined;
-    const transcript = (message.transcript ?? message.artifact?.transcript) as string | undefined;
+    // Extract call data from the report (cast to any for dynamic property access)
+    const msg = message as any;
+    const callAny = call as any;
+    const durationSeconds = msg.durationSeconds ?? msg.duration ?? callAny?.duration;
+    const summary = msg.summary ?? msg.analysis?.summary;
+    const transcript = msg.transcript ?? msg.artifact?.transcript;
 
     // Also try to get transcript as a string from messages array
     let transcriptText = transcript;
-    if (!transcriptText && message.artifact) {
-      const artifact = message.artifact as Record<string, unknown>;
-      const messages = artifact.messages as Array<Record<string, unknown>> | undefined;
-      if (messages && messages.length > 0) {
+    if (!transcriptText && msg.artifact) {
+      const artifact = msg.artifact as any;
+      const messages = artifact.messages;
+      if (messages && Array.isArray(messages) && messages.length > 0) {
         transcriptText = messages
-          .map((m) => `${m.role}: ${m.content || m.message || ""}`)
+          .map((m: any) => `${m.role}: ${m.content || m.message || ""}`)
           .join("\n");
       }
     }
