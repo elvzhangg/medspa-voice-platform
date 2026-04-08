@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     case "function-call":
       return handleToolCalls(body, message);
     case "end-of-call-report":
-      return NextResponse.json({ received: true });
+      return handleEndOfCallReport(message);
     default:
       return NextResponse.json({ received: true });
   }
@@ -230,4 +230,61 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
   );
 
   return NextResponse.json({ results });
+}
+
+async function handleEndOfCallReport(message: Record<string, unknown>) {
+  try {
+    const call = message.call as Record<string, unknown> | undefined;
+    const vapiCallId = call?.id as string || "";
+    const phoneNumberId = call?.phoneNumberId as string | undefined;
+    const phoneNumberObj = call?.phoneNumber as Record<string, unknown> | undefined;
+    const dialedNumber = phoneNumberObj?.number as string | undefined;
+    const callerObj = call?.customer as Record<string, unknown> | undefined;
+    const callerNumber = callerObj?.number as string | undefined;
+
+    // Extract call data from the report
+    const durationSeconds = (message.durationSeconds ?? message.duration ?? call?.duration) as number | undefined;
+    const summary = (message.summary ?? message.analysis?.summary) as string | undefined;
+    const transcript = (message.transcript ?? message.artifact?.transcript) as string | undefined;
+
+    // Also try to get transcript as a string from messages array
+    let transcriptText = transcript;
+    if (!transcriptText && message.artifact) {
+      const artifact = message.artifact as Record<string, unknown>;
+      const messages = artifact.messages as Array<Record<string, unknown>> | undefined;
+      if (messages && messages.length > 0) {
+        transcriptText = messages
+          .map((m) => `${m.role}: ${m.content || m.message || ""}`)
+          .join("\n");
+      }
+    }
+
+    // Look up tenant
+    let tenant = phoneNumberId
+      ? await getTenantByVapiPhoneNumberId(phoneNumberId)
+      : null;
+    if (!tenant && dialedNumber) {
+      tenant = await getTenantByPhoneNumber(dialedNumber);
+    }
+
+    // Insert into call_logs
+    const { error } = await supabaseAdmin.from("call_logs").insert({
+      tenant_id: tenant?.id || null,
+      vapi_call_id: vapiCallId,
+      caller_number: callerNumber || null,
+      duration_seconds: durationSeconds ? Math.round(durationSeconds) : null,
+      summary: summary || null,
+      transcript: transcriptText || null,
+    });
+
+    if (error) {
+      console.error("CALL_LOG_INSERT_ERROR:", error);
+    } else {
+      console.log("CALL_LOGGED:", vapiCallId, "tenant:", tenant?.name || "unknown");
+    }
+  } catch (err) {
+    console.error("END_OF_CALL_ERROR:", err);
+  }
+
+  return NextResponse.json({ received: true });
 }

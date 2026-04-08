@@ -33,6 +33,8 @@ export interface KnowledgeBaseDocument {
   title: string;
   content: string;
   category: "services" | "pricing" | "policies" | "faq" | "general";
+  is_universal?: boolean;
+  sources?: string;
   embedding?: number[];
   created_at: string;
   updated_at: string;
