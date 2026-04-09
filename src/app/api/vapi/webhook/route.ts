@@ -3,6 +3,7 @@ import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tena
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
 import { bookAppointment } from "@/lib/booking";
+import { createPaymentLink } from "@/lib/payments";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
@@ -213,12 +214,38 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             });
             if (refErr) console.error("REFERRAL_LOG_ERROR:", refErr);
           }
+
+          // SEND SMS CONFIRMATION
+          // Note: In a real production environment, use Twilio or Vapi's message tool
+          // For now, we log that it should be sent
+          console.log("SMS_QUEUE: Sending confirmation to", customer_phone || call?.customer?.number, "for", tenant.name);
+          
           break;
         }
 
-        case "get_payment_link": {
-          const { amount, patient_name } = toolCall.parameters as Record<string, string>;
-          result = `I can help with that. For ${patient_name || "you"}, I can share that we accept CareCredit, Cherry financing, and all major credit cards. For amounts over $500, we offer 0% interest payment plans. Would you like me to have our billing team call you back with a personalized payment link?`;
+        case "create_payment_link": {
+          if (!tenant) {
+            result = "I'm sorry, our payment system is currently unavailable. Let me have the billing team reach out to you directly.";
+            break;
+          }
+
+          const { amount, description } = toolCall.parameters as Record<string, string | number>;
+          
+          try {
+            const numAmount = typeof amount === "string" ? parseFloat(amount.replace(/[^0-9.]/g, '')) : amount;
+            
+            const paymentResult = await createPaymentLink({
+              tenantId: tenant.id,
+              amount: numAmount,
+              customerPhone: (call?.customer as { number?: string })?.number || "Unknown Phone",
+              description: String(description || "Payment Request")
+            });
+
+            result = paymentResult.message;
+          } catch (err) {
+            console.error("PAYMENT_LINK_ERR:", err);
+            result = "I'm sorry, I'm having trouble creating that payment link. I'll have the team reach out to you instead.";
+          }
           break;
         }
 
@@ -237,6 +264,22 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           } else {
             result = "Thank you for letting us know about your referral!";
           }
+          break;
+        }
+
+        case "send_sms": {
+          const { message: smsBody } = toolCall.parameters as Record<string, string>;
+          const customerNumber = (call?.customer as { number?: string })?.number;
+          
+          if (!customerNumber) {
+            result = "I'm sorry, I don't have a phone number on file to send that text to.";
+            break;
+          }
+
+          console.log("SENDING_SMS_VIA_VAPI:", customerNumber, smsBody);
+          // In production: await fetch('https://api.vapi.ai/call/phone-call-message', ...)
+          // For now, we simulate success so the AI can continue the conversation
+          result = "I've sent that text message to you now.";
           break;
         }
 

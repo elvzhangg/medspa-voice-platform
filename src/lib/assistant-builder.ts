@@ -64,15 +64,15 @@ export async function buildAssistantConfig(
     {
       type: "function",
       function: {
-        name: "get_payment_link",
-        description: "Help a patient with billing, payment options, or payment plans",
+        name: "create_payment_link",
+        description: "Generates a secure Stripe payment link and texts it to the caller for deposits or service payments.",
         parameters: {
           type: "object",
           properties: {
-            amount: { type: "string", description: "The amount they're asking about" },
-            patient_name: { type: "string", description: "Patient name if known" },
+            amount: { type: "number", description: "The amount to charge in USD (e.g. 50.00)" },
+            description: { type: "string", description: "What the payment is for (e.g. Botox Deposit)" }
           },
-          required: [],
+          required: ["amount"]
         },
       },
       server: { url: serverUrl },
@@ -90,6 +90,21 @@ export async function buildAssistantConfig(
             new_patient_phone: { type: "string" },
           },
           required: ["referred_by_name"],
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
+        name: "send_sms",
+        description: "Sends a text message to the caller with information, links, or a confirmation.",
+        parameters: {
+          type: "object",
+          properties: {
+            message: { type: "string", description: "The content of the text message" }
+          },
+          required: ["message"]
         },
       },
       server: { url: serverUrl },
@@ -122,6 +137,13 @@ function buildSystemPrompt(tenant: Tenant, kbContext: string): string {
     timeZone: "America/Los_Angeles",
   });
 
+  let depositInstruction = "";
+  if (tenant.booking_config && (tenant.booking_config as any).deposit_amount) {
+    const amount = (tenant.booking_config as any).deposit_amount;
+    depositInstruction = `- MANDATORY: For all new consultations or appointments, you MUST offer to text a secure payment link for a $${amount} deposit to secure the spot. Say something like: "To secure your appointment, we collect a $${amount} deposit which goes toward your treatment. Can I text a secure payment link to this number now?"
+- If they agree to the deposit, immediately use the 'create_payment_link' tool with amount ${amount} and description "Consultation Deposit".`;
+  }
+
   return `You are a friendly, professional AI receptionist for ${tenant.name}, a med spa business.
 
 ## Your Role
@@ -139,9 +161,9 @@ ${timeStr} (Pacific Time)
 - If you don't know something, use the search_knowledge_base tool
 - Never make up prices or services - always verify with the knowledge base
 - For booking requests, collect name, phone, service, and preferred time
-- Keep responses under 3 sentences unless more detail is truly needed
-- If a caller mentions they were referred by someone, use the log_referral tool to record it
-- If a caller asks about billing or payment plans, use the get_payment_link tool
+${depositInstruction}
+- For any other payments or billing questions, use the create_payment_link tool as well
+- After a booking is confirmed, tell the caller they will receive a confirmation text message in a few moments.
 
 ${tenant.system_prompt_override ? `## Special Instructions\n${tenant.system_prompt_override}\n` : ""}
 

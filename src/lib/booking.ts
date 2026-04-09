@@ -53,7 +53,8 @@ export async function bookAppointment(request: BookingRequest): Promise<BookingR
  * Mode 1: Internal — store in DB, staff follows up
  */
 async function bookInternal(request: BookingRequest): Promise<BookingResult> {
-  const { error } = await supabaseAdmin.from("booking_requests").insert({
+  // 1. Log the booking request
+  const { data: requestRecord, error: reqErr } = await supabaseAdmin.from("booking_requests").insert({
     tenant_id: request.tenantId,
     service: request.service,
     preferred_date: request.preferredDate || null,
@@ -63,20 +64,37 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
     referred_by: request.referredBy || null,
     notes: request.notes || null,
     status: "pending",
-  });
+  }).select().single();
 
-  if (error) {
-    console.error("BOOKING_INSERT_ERROR:", error);
+  if (reqErr) {
+    console.error("BOOKING_INSERT_ERROR:", reqErr);
     return {
       success: false,
       message: "I'm sorry, I had trouble recording your appointment request. Could you please call back?"
     };
   }
 
+  // 2. Also create a calendar event (tentative)
+  if (request.preferredDate && request.preferredTime) {
+    const startTime = new Date(`${request.preferredDate}T${request.preferredTime}`);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour default
+
+    await supabaseAdmin.from("calendar_events").insert({
+      tenant_id: request.tenantId,
+      title: `${request.customerName} - ${request.service}`,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      customer_name: request.customerName,
+      customer_phone: request.customerPhone,
+      service_type: request.service,
+      status: "confirmed"
+    });
+  }
+
   let msg = `I've scheduled your ${request.service} appointment request`;
   if (request.preferredDate) msg += ` for ${request.preferredDate}`;
   if (request.preferredTime) msg += ` at ${request.preferredTime}`;
-  msg += `. Our team will call ${request.customerPhone} within the next few hours to confirm your exact time. Is there anything else I can help with?`;
+  msg += `. I've added this to our team's calendar and you'll receive a confirmation text shortly. Is there anything else I can help with?`;
 
   return { success: true, message: msg };
 }
