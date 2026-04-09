@@ -232,12 +232,12 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           const { amount, description } = toolCall.parameters as Record<string, string | number>;
           
           try {
-            const numAmount = typeof amount === "string" ? parseFloat(amount.replace(/[^0-9.]/g, '')) : amount;
+            const numAmount = typeof amount === "string" ? parseFloat(amount.replace(/[^0-9.]/g, '')) : (amount as number);
             
             const paymentResult = await createPaymentLink({
               tenantId: tenant.id,
               amount: numAmount,
-              customerPhone: (call?.customer as { number?: string })?.number || "Unknown Phone",
+              customerPhone: (call?.customer as any)?.number || "Unknown Phone",
               description: String(description || "Payment Request")
             });
 

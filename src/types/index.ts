@@ -8,6 +8,8 @@ export interface Tenant {
   greeting_message: string;
   system_prompt_override?: string;
   business_hours?: BusinessHours;
+  booking_provider?: string;
+  booking_config?: any;
   created_at: string;
   updated_at: string;
 }
