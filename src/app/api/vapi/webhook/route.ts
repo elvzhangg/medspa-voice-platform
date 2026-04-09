@@ -218,7 +218,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           // SEND SMS CONFIRMATION
           // Note: In a real production environment, use Twilio or Vapi's message tool
           // For now, we log that it should be sent
-          console.log("SMS_QUEUE: Sending confirmation to", customer_phone || call?.customer?.number, "for", tenant.name);
+          console.log("SMS_QUEUE: Sending confirmation to", customer_phone || (call?.customer as any)?.number, "for", tenant.name);
           
           break;
         }
@@ -269,7 +269,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 
         case "send_sms": {
           const { message: smsBody } = toolCall.parameters as Record<string, string>;
-          const customerNumber = (call?.customer as { number?: string })?.number;
+          const customerNumber = (call?.customer as any)?.number;
           
           if (!customerNumber) {
             result = "I'm sorry, I don't have a phone number on file to send that text to.";
