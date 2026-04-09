@@ -1,6 +1,6 @@
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   const tenant = await getCurrentTenant() as { id: string } | null;
