@@ -3,13 +3,13 @@ import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function DELETE(
-  req: Request,
-  context: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const tenant = await getCurrentTenant();
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = await context.params;
+  const { id } = await params;
 
   const { error } = await supabaseAdmin
     .from("staff")
