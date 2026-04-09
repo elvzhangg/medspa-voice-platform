@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -32,11 +32,28 @@ export async function getCurrentTenant() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
+  const headerList = await headers();
+  const fullUrl = headerList.get("x-url") || "";
+  
+  // Robust slug extraction from URL path
+  let slugFromUrl = null;
+  const parts = new URL(fullUrl || "http://localhost").pathname.split("/").filter(Boolean);
+  if (parts.length >= 2 && parts[1] === "dashboard") {
+    slugFromUrl = parts[0];
+  }
+
   const { data } = await supabase
     .from("tenant_users")
     .select("tenant_id, role, tenants(*)")
-    .eq("user_id", session.user.id)
-    .single();
+    .eq("user_id", session.user.id);
 
-  return data ? { ...data.tenants as object, role: data.role } : null;
+  if (!data || data.length === 0) return null;
+
+  if (slugFromUrl) {
+    const matched = data.find(tu => (tu.tenants as any).slug === slugFromUrl);
+    if (matched) return { ...(matched.tenants as object), role: matched.role };
+  }
+
+  // FALLBACK: If no slug matches or no slug provided, return the first tenant they have access to
+  return { ...(data[0].tenants as object), role: data[0].role };
 }

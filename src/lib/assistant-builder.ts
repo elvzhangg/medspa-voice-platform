@@ -39,6 +39,22 @@ export async function buildAssistantConfig(
     {
       type: "function",
       function: {
+        name: "get_available_slots",
+        description: "Checks the clinic's calendar for available appointment times for a specific service on a specific date.",
+        parameters: {
+          type: "object",
+          properties: {
+            date: { type: "string", description: "The date to check (YYYY-MM-DD)" },
+            service: { type: "string", description: "The service they want (e.g. Botox)" }
+          },
+          required: ["date"]
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
         name: "book_appointment",
         description: "Help a customer book an appointment at the med spa",
         parameters: {

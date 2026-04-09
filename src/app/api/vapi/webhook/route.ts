@@ -4,6 +4,7 @@ import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
 import { bookAppointment } from "@/lib/booking";
 import { createPaymentLink } from "@/lib/payments";
+import { getAvailableSlots } from "@/lib/availability";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
@@ -177,6 +178,22 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           const docs = await searchKnowledgeBase(tenant.id, query, 4);
           console.log("KB_RESULTS:", docs.length);
           result = formatKBContext(docs) || "I couldn't find that information. Let me connect you with our team.";
+          break;
+        }
+
+        case "get_available_slots": {
+          if (!tenant) {
+            result = "I'm sorry, I can't access the calendar right now.";
+            break;
+          }
+          const { date, service } = toolCall.parameters as { date: string, service?: string };
+          const slots = await getAvailableSlots(tenant.id, date, service);
+          
+          if (slots.length === 0) {
+            result = `I'm sorry, we don't have any openings for ${service || 'that service'} on ${date}. Is there another day that works for you?`;
+          } else {
+            result = `On ${date}, we have the following times available: ${slots.join(", ")}. Which one should I grab for you?`;
+          }
           break;
         }
 

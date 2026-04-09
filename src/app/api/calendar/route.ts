@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from("calendar_events")
-    .select("*")
+    .select("*, staff(name)")
     .eq("tenant_id", tenant.id)
     .order("start_time", { ascending: true });
 

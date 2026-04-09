@@ -7,13 +7,13 @@ export async function GET() {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabaseAdmin
-    .from("campaigns")
+    .from("staff")
     .select("*")
     .eq("tenant_id", (tenant as any).id)
-    .order("created_at", { ascending: false });
+    .order("name", { ascending: true });
 
   if (error) return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
-  return NextResponse.json({ campaigns: data ?? [] });
+  return NextResponse.json({ staff: data ?? [] });
 }
 
 export async function POST(req: Request) {
@@ -21,18 +21,19 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name } = body;
+  const { name, title, services } = body;
 
   const { data, error } = await supabaseAdmin
-    .from("campaigns")
+    .from("staff")
     .insert({
       tenant_id: (tenant as any).id,
       name,
-      status: "draft"
+      title,
+      services
     })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: "Failed to create" }, { status: 500 });
-  return NextResponse.json({ campaign: data });
+  return NextResponse.json({ staff: data });
 }

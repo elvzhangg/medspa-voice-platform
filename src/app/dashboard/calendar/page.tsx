@@ -10,6 +10,7 @@ interface CalendarEvent {
   end_time: string;
   customer_name: string;
   service_type: string;
+  staff: { name: string } | null;
 }
 
 export default function CalendarPage() {
@@ -83,6 +84,11 @@ export default function CalendarPage() {
                       >
                         <p className="font-bold truncate">{event.customer_name}</p>
                         <p className="opacity-90">{event.service_type}</p>
+                        {event.staff && (
+                          <p className="mt-1 text-[9px] font-medium bg-white/20 px-1 rounded inline-block">
+                            with {event.staff.name}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
