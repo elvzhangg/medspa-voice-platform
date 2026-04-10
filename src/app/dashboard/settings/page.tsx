@@ -103,6 +103,7 @@ export default function SettingsPage() {
                   { id: "internal", name: "Vaux Calendar", desc: "Use our built-in calendar" },
                   { id: "vagaro", name: "Vagaro", desc: "Direct API integration" },
                   { id: "acuity", name: "Acuity", desc: "Direct API integration" },
+                  { id: "mindbody", name: "Mindbody", desc: "For large wellness clinics" },
                   { id: "link", name: "External Link", desc: "Calendly, etc. (Text only)" },
                 ].map((p) => (
                   <button
@@ -148,6 +149,24 @@ export default function SettingsPage() {
                   className="px-4 py-2 border rounded-lg"
                   value={settings.booking_config.userId || ""}
                   onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, userId: e.target.value}})}
+                />
+                <input 
+                  placeholder="API Key" 
+                  type="password"
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.apiKey || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, apiKey: e.target.value}})}
+                />
+              </div>
+            )}
+
+            {settings.booking_provider === "mindbody" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <input 
+                  placeholder="Site ID" 
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.siteId || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, siteId: e.target.value}})}
                 />
                 <input 
                   placeholder="API Key" 
