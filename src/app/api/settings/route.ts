@@ -11,6 +11,8 @@ export async function GET() {
     greeting_message: tenant.greeting_message,
     system_prompt_override: tenant.system_prompt_override,
     deposit_amount: tenant.booking_config?.deposit_amount || 0,
+    booking_provider: tenant.booking_provider || "internal",
+    booking_config: tenant.booking_config || {},
   });
 }
 
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, greeting_message, system_prompt_override, deposit_amount } = body;
+  const { name, greeting_message, system_prompt_override, deposit_amount, booking_provider, booking_config } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
@@ -27,8 +29,10 @@ export async function POST(req: Request) {
       name,
       greeting_message,
       system_prompt_override,
+      booking_provider,
       booking_config: { 
         ...tenant.booking_config,
+        ...booking_config,
         deposit_amount 
       }
     })

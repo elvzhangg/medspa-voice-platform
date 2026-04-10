@@ -7,6 +7,8 @@ interface TenantSettings {
   greeting_message: string;
   system_prompt_override: string;
   deposit_amount: number;
+  booking_provider: "internal" | "vagaro" | "acuity" | "mindbody" | "link";
+  booking_config: any;
 }
 
 export default function SettingsPage() {
@@ -15,6 +17,8 @@ export default function SettingsPage() {
     greeting_message: "",
     system_prompt_override: "",
     deposit_amount: 0,
+    booking_provider: "internal",
+    booking_config: {},
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,9 +47,9 @@ export default function SettingsPage() {
     });
 
     if (res.ok) {
-      setMessage("Settings saved successfully! The AI will use these changes on the next call.");
+      setMessage("Settings saved successfully!");
     } else {
-      setMessage("Failed to save settings. Please try again.");
+      setMessage("Failed to save settings.");
     }
     setSaving(false);
   }
@@ -53,77 +57,138 @@ export default function SettingsPage() {
   if (loading) return <div className="p-10 text-center text-gray-400">Loading settings...</div>;
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl pb-20">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Clinic Settings</h1>
-        <p className="text-sm text-gray-500 text-sm">Configure how your AI receptionist represents your business.</p>
+        <p className="text-sm text-gray-500">Configure your clinic identity, AI behavior, and booking system.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* Core Identity */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-gray-100 bg-gray-50">
+            <h2 className="font-bold text-gray-900">Clinic Identity</h2>
+          </div>
           <div className="p-6 space-y-4">
-            {/* Clinic Name */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Clinic Display Name</label>
               <input
                 type="text"
                 value={settings.name}
                 onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                placeholder="e.g. Glow Med Spa"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
-
-            {/* Greeting */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">AI Greeting Message</label>
               <textarea
                 value={settings.greeting_message}
                 onChange={(e) => setSettings({ ...settings, greeting_message: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all h-24"
-                placeholder="How the AI answers the phone..."
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none h-24"
               />
-              <p className="mt-1 text-xs text-gray-400">The first thing the customer hears when the AI picks up.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking System Configuration */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm border-indigo-100">
+          <div className="p-6 border-b border-gray-100 bg-indigo-50">
+            <h2 className="font-bold text-gray-900 text-indigo-900">Booking & Calendar Setup</h2>
+          </div>
+          <div className="p-6 space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Which booking system do you use?</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { id: "internal", name: "Vaux Calendar", desc: "Use our built-in calendar" },
+                  { id: "vagaro", name: "Vagaro", desc: "Direct API integration" },
+                  { id: "acuity", name: "Acuity", desc: "Direct API integration" },
+                  { id: "link", name: "External Link", desc: "Calendly, etc. (Text only)" },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSettings({ ...settings, booking_provider: p.id as any })}
+                    className={`p-4 text-left border rounded-xl transition-all ${
+                      settings.booking_provider === p.id 
+                      ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20" 
+                      : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className={`font-bold ${settings.booking_provider === p.id ? "text-indigo-700" : "text-gray-900"}`}>{p.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{p.desc}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Prompt Override */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Custom AI Instructions</label>
-              <textarea
-                value={settings.system_prompt_override || ""}
-                onChange={(e) => setSettings({ ...settings, system_prompt_override: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all h-32"
-                placeholder="e.g. Always mention our current special on HydraFacials..."
-              />
-              <p className="mt-1 text-xs text-gray-400">Give the AI specific personality or strategy instructions unique to your clinic.</p>
-            </div>
-
-            {/* Deposit */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Default Booking Deposit ($)</label>
-              <div className="relative max-w-[200px]">
-                <span className="absolute left-3 top-2 text-gray-400">$</span>
-                <input
-                  type="number"
-                  value={settings.deposit_amount || 0}
-                  onChange={(e) => setSettings({ ...settings, deposit_amount: parseInt(e.target.value) })}
-                  className="w-full pl-7 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            {/* Provider-Specific Config */}
+            {settings.booking_provider === "vagaro" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <input 
+                  placeholder="Merchant ID" 
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.merchantId || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, merchantId: e.target.value}})}
+                />
+                <input 
+                  placeholder="API Key" 
+                  type="password"
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.apiKey || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, apiKey: e.target.value}})}
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-400">If set to more than 0, the AI will offer to text a payment link for this amount to secure the booking.</p>
-            </div>
-          </div>
+            )}
 
-          <div className="p-6 bg-gray-50 flex justify-between items-center border-t border-gray-100">
-            {message && <p className={`text-sm font-medium ${message.includes("failed") ? "text-red-600" : "text-emerald-600"}`}>{message}</p>}
-            <button
-              type="submit"
-              disabled={saving}
-              className="ml-auto px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md shadow-indigo-100"
-            >
-              {saving ? "Saving Changes..." : "Update AI Receptionist"}
-            </button>
+            {settings.booking_provider === "acuity" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <input 
+                  placeholder="User ID" 
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.userId || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, userId: e.target.value}})}
+                />
+                <input 
+                  placeholder="API Key" 
+                  type="password"
+                  className="px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.apiKey || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, apiKey: e.target.value}})}
+                />
+              </div>
+            )}
+
+            {settings.booking_provider === "link" && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <input 
+                  placeholder="Paste your booking URL (e.g. calendly.com/...)" 
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={settings.booking_config.bookingUrl || ""}
+                  onChange={e => setSettings({...settings, booking_config: {...settings.booking_config, bookingUrl: e.target.value}})}
+                />
+                <p className="text-[10px] text-gray-400 mt-2">The AI will text this link to the caller to finish their booking.</p>
+              </div>
+            )}
+
+            {settings.booking_provider === "internal" && (
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
+                <p className="text-sm text-emerald-800 font-medium">All appointments will be managed through your built-in Vaux Calendar.</p>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex justify-end gap-4 items-center">
+           {message && <p className="text-sm font-bold text-emerald-600 font-medium">{message}</p>}
+           <button
+            type="submit"
+            disabled={saving}
+            className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save All Configuration"}
+          </button>
         </div>
       </form>
     </div>
