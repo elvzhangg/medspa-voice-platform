@@ -4,14 +4,12 @@ import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays, startOfDay, addHours } from "date-fns";
 import StaffPage from "../staff/page";
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  customer_name: string;
-  service_type: string;
-  staff: { name: string } | null;
+  greeting_message: string;
+  system_prompt_override: string;
+  deposit_amount: number;
+  booking_provider: "internal" | "vagaro" | "acuity" | "mindbody" | "link";
+  booking_config: any;
+  directions_parking_info: string;
 }
 
 export default function CalendarPage() {
@@ -21,6 +19,7 @@ export default function CalendarPage() {
   const [view, setView] = useState<"calendar" | "staff" | "setup">("calendar");
   const [provider, setProvider] = useState("internal");
   const [config, setConfig] = useState<any>({});
+  const [directions, setDirections] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -32,12 +31,13 @@ export default function CalendarPage() {
         setEvents(data.events || []);
       }
       
-      // Fetch current provider setting
+      // Fetch current settings
       const settingsRes = await fetch("/api/settings");
       if (settingsRes.ok) {
         const settings = await settingsRes.json();
         setProvider(settings.booking_provider);
         setConfig(settings.booking_config || {});
+        setDirections(settings.directions_parking_info || "");
       }
       
       setLoading(false);
@@ -50,7 +50,11 @@ export default function CalendarPage() {
     await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ booking_provider: provider, booking_config: config }),
+      body: JSON.stringify({ 
+        booking_provider: provider, 
+        booking_config: config,
+        directions_parking_info: directions 
+      }),
     });
     setSaving(false);
     setView("calendar");
@@ -145,6 +149,19 @@ export default function CalendarPage() {
               </div>
             </div>
           )}
+
+          <div className="space-y-4 p-6 border-t border-gray-100 mb-8">
+            <label className="block text-sm font-black text-gray-700 uppercase tracking-widest">
+              Automatic Confirmation SMS (Directions & Parking)
+            </label>
+            <textarea 
+              placeholder="e.g. Street parking is available on Wilshire Blvd. Please enter gate code #1234..."
+              className="w-full px-4 py-3 border rounded-xl h-24 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              value={directions}
+              onChange={e => setDirections(e.target.value)}
+            />
+            <p className="text-[10px] text-gray-400">This text will be appended automatically to every appointment confirmation SMS.</p>
+          </div>
 
           <div className="flex justify-end pt-4 border-t border-gray-100">
              <button 

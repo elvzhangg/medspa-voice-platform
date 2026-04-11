@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, getCurrentTenant } from "@/lib/supabase-server";
 import { upsertDocument } from "@/lib/knowledge-base";
 import { supabaseAdmin } from "@/lib/supabase";
+import OpenAI from "openai";
 
 export async function GET() {
   const supabase = await createSupabaseServerClient();
@@ -25,13 +26,34 @@ export async function POST(req: NextRequest) {
   const tenant = await getCurrentTenant() as { id: string } | null;
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { title, content, category } = await req.json();
+  const { title, content } = await req.json();
   if (!title || !content) {
     return NextResponse.json({ error: "title and content required" }, { status: 400 });
   }
 
-  await upsertDocument(tenant.id, { title, content, category: category || "general" });
-  return NextResponse.json({ success: true }, { status: 201 });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const classification = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a med-spa knowledge manager. Classify this document into ONE of these core categories based on the text:
+Choices: "billing", "pricing", "policies", "faq", "services", "general".
+- "billing": If it is strictly about payment methods, Cherry financing, CareCredit, deposit rules, or payment plans.
+- "pricing": If it contains dollar amounts ($) for specific treatments like Botox, fillers, etc.
+- "policies": Late, cancellation, or appointment prep policies.
+- "services": Information about the actual procedures (what they are, how they work).
+Keep billing and pricing strictly separate. Return ONLY the one-word lowercase category.`
+      },
+      { role: "user", content: `Title: ${title}\n\nContent Snippet: ${content.substring(0, 800)}` }
+    ],
+    temperature: 0,
+  });
+
+  const aiCategory = (classification.choices[0].message.content || "general").trim().toLowerCase().replace(/[^a-z]/g, '');
+
+  await upsertDocument(tenant.id, { title, content, category: aiCategory as any });
+  return NextResponse.json({ success: true, ai_category: aiCategory }, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {

@@ -19,7 +19,7 @@ export default function BillingPage() {
       .then((r) => r.json())
       .then((data) => {
         const docs: KBDocument[] = data.documents || [];
-        setBillingDocs(docs.filter((d) => d.category === "billing"));
+        setBillingDocs(docs.filter((d) => d.category === "billing" || d.category === "policies" || d.title.toLowerCase().includes("billing") || d.title.toLowerCase().includes("financ")));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -45,9 +45,9 @@ export default function BillingPage() {
             <h3 className="font-semibold text-indigo-900 mb-1">How Billing Support Works</h3>
             <p className="text-sm text-indigo-700">
               Billing support is powered by your Knowledge Base. Add billing-related documents — pricing,
-              payment plans, CareCredit, Cherry financing — to the <strong>billing</strong> category to teach
+              payment plans, CareCredit, Cherry financing — to the <strong>policies or FAQ</strong> category to teach
               your AI how to handle payment questions. When callers ask about billing, the AI will
-              automatically use the <code className="bg-indigo-100 px-1 rounded">get_payment_link</code> tool
+              automatically use the <code className="bg-indigo-100 px-1 rounded">create_payment_link</code> tool
               to provide helpful payment information.
             </p>
           </div>
@@ -66,7 +66,7 @@ export default function BillingPage() {
           <p className="text-sm text-gray-500 mb-1">AI Tool</p>
           <p className="text-sm font-semibold text-green-600 flex items-center gap-1.5 mt-2">
             <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-            get_payment_link active
+            create_payment_link active
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col justify-between">

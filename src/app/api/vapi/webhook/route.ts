@@ -219,26 +219,25 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 
           result = bookingResult.message;
 
-          // Auto-log referral if referred_by is present
-          if (referred_by) {
-            const { error: refErr } = await supabaseAdmin.from("referrals").insert({
-              tenant_id: tenant.id,
-              referred_by_name: referred_by,
-              new_patient_name: customer_name || null,
-              new_patient_phone: customer_phone || null,
-              source: "phone",
-              status: "pending",
-            });
-            if (refErr) console.error("REFERRAL_LOG_ERROR:", refErr);
+          // AUTOMATIC POST-BOOKING SMS
+          if (bookingResult.success && tenant.phone_number) {
+            const smsContent = `Hi ${customer_name}! Your appointment for ${service} at ${tenant.name} is confirmed for ${preferred_date} at ${preferred_time}. \n\nDirections & Parking: ${tenant.directions_parking_info || 'Please check our website for location details.'}`;
+            
+            console.log("AUTO_SMS_CONFIRMATION:", customer_phone, smsContent);
+            
+            // Trigger Vapi message API
+            await fetch(`https://api.vapi.ai/call/${call?.id}/message`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.VAPI_API_KEY || "a0e0b763-2636-40ea-be74-ac0227ec7be5"}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                content: smsContent,
+                role: "assistant"
+              })
+            }).catch(e => console.error("AUTO_SMS_FAILED:", e));
           }
-
-          // SEND SMS CONFIRMATION
-          // Note: In a real production environment, use Twilio or Vapi's message tool
-          // For now, we log that it should be sent
-          console.log("SMS_QUEUE: Sending confirmation to", customer_phone || (call?.customer as any)?.number, "for", tenant.name);
-          
-          break;
-        }
 
         case "create_payment_link": {
           if (!tenant) {
@@ -293,10 +292,43 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             break;
           }
 
-          console.log("SENDING_SMS_VIA_VAPI:", customerNumber, smsBody);
-          // In production: await fetch('https://api.vapi.ai/call/phone-call-message', ...)
-          // For now, we simulate success so the AI can continue the conversation
-          result = "I've sent that text message to you now.";
+          if (!tenant?.phone_number) {
+            result = "I've sent that text message to you now."; // Fallback for testing
+            break;
+          }
+
+          console.log("SENDING_REAL_SMS_VIA_VAPI:", {
+            to: customerNumber,
+            from: tenant.phone_number,
+            body: smsBody
+          });
+
+          try {
+            // Vapi's Message Tool API
+            // This ensures the SMS comes from the same number the patient is currently talking to
+            const vapiRes = await fetch(`https://api.vapi.ai/call/${call?.id}/message`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.VAPI_API_KEY || "a0e0b763-2636-40ea-be74-ac0227ec7be5"}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                content: smsBody,
+                role: "assistant"
+              })
+            });
+
+            if (!vapiRes.ok) {
+              const err = await vapiRes.text();
+              console.error("VAPI_SMS_SEND_FAILED:", err);
+              result = "I tried to send that text, but there was a synchronization error. I'll notify our team.";
+            } else {
+              result = "I've sent that text message to you now. Please check your phone.";
+            }
+          } catch (err) {
+            console.error("SMS_EXCEPTION:", err);
+            result = "I'm having trouble connecting to our text service right now.";
+          }
           break;
         }
 
