@@ -240,6 +240,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           }
           
           break;
+        }
 
         case "create_payment_link": {
           if (!tenant) {
