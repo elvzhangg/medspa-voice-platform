@@ -238,6 +238,8 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
               })
             }).catch(e => console.error("AUTO_SMS_FAILED:", e));
           }
+          
+          break;
 
         case "create_payment_link": {
           if (!tenant) {
