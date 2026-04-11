@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays, startOfDay, addHours } from "date-fns";
 import StaffPage from "../staff/page";
 
-  greeting_message: string;
-  system_prompt_override: string;
-  deposit_amount: number;
-  booking_provider: "internal" | "vagaro" | "acuity" | "mindbody" | "link";
-  booking_config: any;
-  directions_parking_info: string;
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  customer_name: string;
+  service_type: string;
+  staff: { name: string } | null;
 }
 
 export default function CalendarPage() {
