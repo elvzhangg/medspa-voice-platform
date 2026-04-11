@@ -6,6 +6,7 @@ interface SMSSettings {
   sms_reminders_enabled: boolean;
   sms_reminder_hours: number;
   sms_reminder_template: string;
+  sms_confirmation_enabled: boolean;
 }
 
 export default function MessagingPage() {
@@ -13,6 +14,7 @@ export default function MessagingPage() {
     sms_reminders_enabled: false,
     sms_reminder_hours: 24,
     sms_reminder_template: "",
+    sms_confirmation_enabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,25 +49,33 @@ export default function MessagingPage() {
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Messaging \u0026 SMS</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Messaging & SMS</h1>
         <p className="text-sm text-gray-500">Configure automated appointment reminders and customer communication.</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+        {/* Instant Booking Confirmations */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <div>
-              <h2 className="font-bold text-gray-900">Automated Appointment Reminders</h2>
-              <p className="text-xs text-gray-500">Send texts to patients before their scheduled time.</p>
+              <h2 className="font-bold text-gray-900">Instant Booking Confirmations</h2>
+              <p className="text-xs text-gray-500">Send a text immediately after an appointment is booked.</p>
             </div>
             <button
               type="button"
-              onClick={() => setSettings({...settings, sms_reminders_enabled: !settings.sms_reminders_enabled})}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${settings.sms_reminders_enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+              onClick={() => setSettings({...settings, sms_confirmation_enabled: !settings.sms_confirmation_enabled})}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${settings.sms_confirmation_enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
             >
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.sms_reminders_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.sms_confirmation_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
+          <div className="p-6 bg-gray-50/50">
+            <p className="text-xs text-gray-600 italic">"Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."</p>
+          </div>
+        </div>
+
+        {/* Automated Appointment Reminders */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
 
           {settings.sms_reminders_enabled && (
             <div className="p-6 space-y-6 animate-in fade-in duration-300">

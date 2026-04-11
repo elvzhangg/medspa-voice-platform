@@ -10,6 +10,7 @@ export async function GET() {
     sms_reminders_enabled: tenant.sms_reminders_enabled || false,
     sms_reminder_hours: tenant.sms_reminder_hours || 24,
     sms_reminder_template: tenant.sms_reminder_template || "",
+    sms_confirmation_enabled: tenant.sms_confirmation_enabled ?? true,
   });
 }
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { sms_reminders_enabled, sms_reminder_hours, sms_reminder_template } = body;
+  const { sms_reminders_enabled, sms_reminder_hours, sms_reminder_template, sms_confirmation_enabled } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       sms_reminders_enabled,
       sms_reminder_hours,
       sms_reminder_template,
+      sms_confirmation_enabled,
     })
     .eq("id", tenant.id);
 

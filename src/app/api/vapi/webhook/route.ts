@@ -220,7 +220,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           result = bookingResult.message;
 
           // AUTOMATIC POST-BOOKING SMS
-          if (bookingResult.success && tenant.phone_number) {
+          if (bookingResult.success && tenant.phone_number && tenant.sms_confirmation_enabled !== false) {
             const smsContent = `Hi ${customer_name}! Your appointment for ${service} at ${tenant.name} is confirmed for ${preferred_date} at ${preferred_time}. \n\nDirections & Parking: ${tenant.directions_parking_info || 'Please check our website for location details.'}`;
             
             console.log("AUTO_SMS_CONFIRMATION:", customer_phone, smsContent);

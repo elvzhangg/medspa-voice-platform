@@ -61,7 +61,7 @@ export default function CallSettingsPage() {
           <div className="p-6 border-b border-gray-100 bg-gray-50/50">
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-              AI Personality \u0026 Voice
+              AI Personality & Voice
             </h2>
           </div>
           <div className="p-6 space-y-6">
@@ -104,12 +104,12 @@ export default function CallSettingsPage() {
           </div>
         </div>
 
-        {/* Safety \u0026 Transfers */}
+        {/* Safety & Transfers */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm border-amber-100">
           <div className="p-6 border-b border-gray-100 bg-amber-50/50">
             <h2 className="font-bold text-amber-900 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              Fail-safes \u0026 Transfers
+              Fail-safes & Transfers
             </h2>
           </div>
           <div className="p-6">

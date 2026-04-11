@@ -62,7 +62,7 @@ export default function StaffPage() {
     <div className="max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Providers \u0026 Staff</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Providers & Staff</h1>
           <p className="text-sm text-gray-500">Manage your injectors, estheticians, and their schedules.</p>
         </div>
         <button 
