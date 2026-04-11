@@ -10,6 +10,7 @@ export interface Tenant {
   business_hours?: BusinessHours;
   booking_provider?: string;
   booking_config?: any;
+  directions_parking_info?: string;
   created_at: string;
   updated_at: string;
 }
