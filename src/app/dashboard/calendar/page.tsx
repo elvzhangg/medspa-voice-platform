@@ -161,7 +161,7 @@ export default function CalendarPage() {
             <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm mb-4">
               <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">SMS Preview (Fixed Part):</p>
               <p className="text-xs text-gray-600 italic leading-relaxed">
-                "Hi [Customer Name]! Your appointment for [Service] at {settings?.name || 'Clinic'} is confirmed for [Date] at [Time]."
+                "Hi [Customer Name]! Your appointment for [Service] is confirmed for [Date] at [Time]."
               </p>
             </div>
 
