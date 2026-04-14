@@ -14,23 +14,32 @@ export default async function DashboardLayout({
   const tenant = await getCurrentTenant() as { name: string; slug: string } | null;
   if (!tenant) redirect("/onboarding");
 
+  // Force redirect to branded URL if accessed via naked /dashboard
+  // Since we rely on middleware rewrites, the physical URL matching this file starts with /dashboard
+  const headerList = await headers();
+  const currentUrl = headerList.get("x-url") || "";
+  
+  if (!currentUrl.includes(`/${tenant.slug}/dashboard`)) {
+    redirect(`/${tenant.slug}/dashboard`);
+  }
+
   // Branded prefix for all links
   const brandPrefix = `/${tenant.slug}`;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col font-sans">
-        <div className="p-6 border-b border-gray-200 bg-indigo-900 text-white">
-          <p className="text-[10px] text-indigo-300 uppercase tracking-[0.2em] mb-1 font-bold">Med Spa Portal</p>
-          <h2 className="font-bold text-lg truncate">{tenant.name}</h2>
+        <div className="p-6 border-b border-gray-200 bg-white text-indigo-900">
+          <p className="text-[10px] text-indigo-400 uppercase tracking-[0.2em] mb-1 font-bold italic">Private Label</p>
+          <h2 className="font-serif text-2xl tracking-tighter uppercase">{tenant.name}</h2>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
           <NavLink href={`${brandPrefix}/dashboard`} label="Overview" icon={
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
           } />
-          <NavLink href={`${brandPrefix}/dashboard/schedule`} label="Scheduling System" icon={
+          <NavLink href={`${brandPrefix}/dashboard/schedule`} label="Schedule" icon={
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           } />
           <NavLink href={`${brandPrefix}/dashboard/knowledge-base`} label="Knowledge Base" icon={

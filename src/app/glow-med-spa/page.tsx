@@ -103,11 +103,11 @@ export default function GlowMedSpaLanding() {
       {/* Footer */}
       <footer className="py-12 px-8 border-t border-gray-100">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="text-xl font-serif tracking-tighter text-indigo-900">
+          <div className="text-2xl font-serif tracking-tighter text-indigo-900">
             GLOW<span className="font-light italic text-indigo-400">MedSpa</span>
           </div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-            © 2026 Glow Med Spa. Powered by VauxVoice AI.
+            © 2026 Glow Med Spa.
           </div>
           <div className="flex gap-6">
             {/* Social Icons Placeholder */}
