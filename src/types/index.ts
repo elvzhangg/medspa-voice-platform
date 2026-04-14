@@ -11,6 +11,13 @@ export interface Tenant {
   booking_provider?: string;
   booking_config?: any;
   directions_parking_info?: string;
+  sms_reminders_enabled?: boolean;
+  sms_reminder_hours?: number;
+  sms_reminder_template?: string;
+  sms_confirmation_enabled?: boolean;
+  ai_voice_id?: string;
+  call_recording_enabled?: boolean;
+  voicemail_forwarding_number?: string;
   created_at: string;
   updated_at: string;
 }
