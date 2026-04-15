@@ -104,23 +104,26 @@ export default function CallSettingsPage() {
           </div>
         </div>
 
-        {/* Safety & Transfers */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm border-amber-100">
-          <div className="p-6 border-b border-gray-100 bg-amber-50/50">
-            <h2 className="font-bold text-amber-900 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              Fail-safes & Transfers
+        {/* Human Agent Transfer */}
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Live Transfer & Human Handoff
             </h2>
+            <p className="text-xs text-gray-500 mt-1 ml-7">When a caller requests to speak with a live team member, the AI will seamlessly transfer them to this number.</p>
           </div>
           <div className="p-6">
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Human Forwarding Number</label>
-            <input 
-              placeholder="+1 (555) 000-0000" 
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Transfer-to Number</label>
+            <input
+              placeholder="+1 (555) 000-0000"
+              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               value={settings.voicemail_forwarding_number}
               onChange={e => setSettings({...settings, voicemail_forwarding_number: e.target.value})}
             />
-            <p className="mt-2 text-[10px] text-amber-600 font-bold">If the AI can&apos;t answer a medical question, it will offer to transfer to this number.</p>
+            <p className="mt-2 text-xs text-gray-400">Leave blank to disable live transfers.</p>
           </div>
         </div>
 

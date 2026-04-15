@@ -7,6 +7,70 @@ interface SMSSettings {
   sms_reminder_hours: number;
   sms_reminder_template: string;
   sms_confirmation_enabled: boolean;
+  sms_confirmation_message: string;
+  sms_followup_enabled: boolean;
+  sms_followup_hours: number;
+  sms_followup_message: string;
+}
+
+function Toggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+        enabled ? "bg-indigo-600" : "bg-gray-200"
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          enabled ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  enabled,
+  onToggle,
+  children,
+}: {
+  title: string;
+  description: string;
+  enabled: boolean;
+  onToggle: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-indigo-200 shadow-sm shadow-indigo-50" : "border-gray-200"}`}>
+      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+        <div>
+          <h2 className="font-semibold text-gray-900 text-sm">{title}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        </div>
+        <Toggle enabled={enabled} onChange={onToggle} />
+      </div>
+      {enabled && (
+        <div className="p-6 space-y-5 animate-in fade-in duration-200">
+          {children}
+        </div>
+      )}
+      {!enabled && (
+        <div className="px-6 py-3 bg-gray-50/50">
+          <p className="text-xs text-gray-400 italic">Enable to configure options.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MessagingPage() {
@@ -15,16 +79,21 @@ export default function MessagingPage() {
     sms_reminder_hours: 24,
     sms_reminder_template: "",
     sms_confirmation_enabled: true,
+    sms_confirmation_message: "Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]. We look forward to seeing you!",
+    sms_followup_enabled: false,
+    sms_followup_hours: 24,
+    sms_followup_message: "Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results. Don't hesitate to reach out if you have any questions — we'd love to see you again soon.",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     async function fetchSettings() {
       const res = await fetch("/api/settings/messaging");
       if (res.ok) {
-        setSettings(await res.json());
+        const data = await res.json();
+        setSettings((prev) => ({ ...prev, ...data }));
       }
       setLoading(false);
     }
@@ -39,83 +108,150 @@ export default function MessagingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-    setMessage("Settings saved successfully!");
+    setSaved(true);
     setSaving(false);
-    setTimeout(() => setMessage(""), 3000);
+    setTimeout(() => setSaved(false), 3000);
   }
 
-  if (loading) return <div className="p-10 text-gray-400">Loading messaging settings...</div>;
+  function set(patch: Partial<SMSSettings>) {
+    setSettings((prev) => ({ ...prev, ...patch }));
+  }
+
+  if (loading) return <div className="p-10 text-gray-400 text-sm">Loading messaging settings...</div>;
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Messaging & SMS</h1>
-        <p className="text-sm text-gray-500">Configure automated appointment reminders and customer communication.</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Messaging & SMS</h1>
+        <p className="text-sm text-gray-500">
+          Configure automated texts sent to clients before and after their appointments.
+        </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-5">
+
         {/* Instant Booking Confirmations */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-            <div>
-              <h2 className="font-bold text-gray-900">Instant Booking Confirmations</h2>
-              <p className="text-xs text-gray-500">Send a text immediately after an appointment is booked.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSettings({...settings, sms_confirmation_enabled: !settings.sms_confirmation_enabled})}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${settings.sms_confirmation_enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+        <SectionCard
+          title="Instant Booking Confirmations"
+          description="Send a text immediately after an appointment is booked."
+          enabled={settings.sms_confirmation_enabled}
+          onToggle={() => set({ sms_confirmation_enabled: !settings.sms_confirmation_enabled })}
+        >
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Confirmation Message
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              value={settings.sms_confirmation_message}
+              onChange={(e) => set({ sms_confirmation_message: e.target.value })}
+              placeholder="Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."
+            />
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Date]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Time]</code>
+            </p>
+          </div>
+        </SectionCard>
+
+        {/* Appointment Reminders */}
+        <SectionCard
+          title="Appointment Reminders"
+          description="Send an automatic reminder before a scheduled appointment."
+          enabled={settings.sms_reminders_enabled}
+          onToggle={() => set({ sms_reminders_enabled: !settings.sms_reminders_enabled })}
+        >
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Send Reminder
+            </label>
+            <select
+              value={settings.sms_reminder_hours}
+              onChange={(e) => set({ sms_reminder_hours: parseInt(e.target.value) })}
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
             >
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.sms_confirmation_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
+              <option value={2}>2 hours before</option>
+              <option value={12}>12 hours before</option>
+              <option value={24}>24 hours before</option>
+              <option value={48}>48 hours before</option>
+            </select>
           </div>
-          <div className="p-6 bg-gray-50/50">
-            <p className="text-xs text-gray-600 italic">"Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."</p>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Custom Reminder Message
+            </label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Reminder: You have an appointment at [Clinic] on [Date] at [Time]. Please avoid alcohol 24 hours prior."
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              value={settings.sms_reminder_template}
+              onChange={(e) => set({ sms_reminder_template: e.target.value })}
+            />
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Date]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Time]</code>
+            </p>
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Automated Appointment Reminders */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        {/* Post-Visit Follow-Up */}
+        <SectionCard
+          title="Post-Visit Follow-Up"
+          description="Send a personalized message after a client's appointment to encourage rebooking."
+          enabled={settings.sms_followup_enabled}
+          onToggle={() => set({ sms_followup_enabled: !settings.sms_followup_enabled })}
+        >
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Send Follow-Up
+            </label>
+            <select
+              value={settings.sms_followup_hours}
+              onChange={(e) => set({ sms_followup_hours: parseInt(e.target.value) })}
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value={2}>2 hours after appointment</option>
+              <option value={24}>24 hours after appointment</option>
+              <option value={48}>48 hours after appointment</option>
+              <option value={168}>1 week after appointment</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Follow-Up Message
+            </label>
+            <textarea
+              rows={4}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              value={settings.sms_followup_message}
+              onChange={(e) => set({ sms_followup_message: e.target.value })}
+              placeholder="Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results..."
+            />
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>
+            </p>
+          </div>
+        </SectionCard>
 
-          {settings.sms_reminders_enabled && (
-            <div className="p-6 space-y-6 animate-in fade-in duration-300">
-              <div className="flex items-center gap-4">
-                <label className="text-sm font-bold text-gray-700">Send reminder</label>
-                <select 
-                  value={settings.sms_reminder_hours}
-                  onChange={(e) => setSettings({...settings, sms_reminder_hours: parseInt(e.target.value)})}
-                  className="px-3 py-1.5 border rounded-lg bg-gray-50 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value={2}>2 hours before</option>
-                  <option value={24}>24 hours before</option>
-                  <option value={48}>48 hours before</option>
-                </select>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Automated Template (Standard):</p>
-                  <p className="text-xs text-gray-600 italic">"Reminder: You have an appointment at [MedSpa] tomorrow at [Time]. We look forward to seeing you!"</p>
-                </div>
-                
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">Custom Reminder Footer</label>
-                <textarea 
-                  placeholder="e.g. Remember to avoid alcohol 24 hours before your injections..."
-                  className="w-full px-4 py-3 border rounded-xl h-24 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                  value={settings.sms_reminder_template}
-                  onChange={e => setSettings({...settings, sms_reminder_template: e.target.value})}
-                />
-              </div>
-            </div>
+        <div className="flex justify-end items-center gap-4 pt-2">
+          {saved && (
+            <span className="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
+            </span>
           )}
-        </div>
-
-        <div className="flex justify-end gap-4 items-center">
-          {message && <p className="text-sm font-bold text-emerald-600">{message}</p>}
           <button
             type="submit"
             disabled={saving}
-            className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+            className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50 text-sm"
           >
             {saving ? "Saving..." : "Save Messaging Preferences"}
           </button>

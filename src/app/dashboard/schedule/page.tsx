@@ -64,20 +64,20 @@ export default function SchedulingSystemPage() {
             </div>
             <div>
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
-                {status.status === 'connected' ? `Engine: ${status.provider}` : 'Integration Restricted'}
+                {status.status === 'connected' ? `Engine: ${status.provider}` : 'Pending Integration'}
               </h2>
               <p className="text-sm text-gray-500 font-medium">
-                {status.status === 'connected' 
+                {status.status === 'connected'
                   ? `Your clinical calendar is fully synced. Our AI is actively reading and writing appointments.`
-                  : 'To link your Vagaro, Acuity, or Mindbody account, please contact your account manager at hello@vauxvoice.com.'
+                  : 'Contact your VauxVoice account manager to link your Vagaro, Acuity, or Mindbody account.'
                 }
               </p>
             </div>
           </div>
           <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-            status.status === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+            status.status === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'
           }`}>
-            {status.status === 'connected' ? 'Active' : 'Action Required'}
+            {status.status === 'connected' ? 'Active' : 'Contact Us to Activate'}
           </div>
         </div>
       </div>
