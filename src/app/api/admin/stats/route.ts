@@ -11,16 +11,11 @@ export async function GET() {
     { data: recentDemoRequests },
     { data: recentTenants },
   ] = await Promise.all([
-    supabaseAdmin.from("tenants").select("id", { count: "exact", head: true }),
-    supabaseAdmin.from("demo_requests").select("id", { count: "exact", head: true }),
-    supabaseAdmin
-      .from("demo_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "new"),
-    supabaseAdmin
-      .from("knowledge_base_documents")
-      .select("id", { count: "exact", head: true }),
-    supabaseAdmin.from("call_logs").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("tenants").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("demo_requests").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("demo_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
+    supabaseAdmin.from("knowledge_base_documents").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("call_logs").select("*", { count: "exact", head: true }),
     supabaseAdmin
       .from("demo_requests")
       .select("id, name, email, business_name, phone, status, created_at")
