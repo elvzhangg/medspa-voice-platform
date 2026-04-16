@@ -75,9 +75,7 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <StatCard
-          accent="bg-violet-500"
-          iconBg="bg-violet-50"
-          iconColor="text-violet-600"
+          gradient="from-violet-500 to-purple-600"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -88,9 +86,7 @@ export default async function DashboardPage() {
           sub="knowledge docs"
         />
         <StatCard
-          accent="bg-blue-500"
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          gradient="from-blue-500 to-indigo-600"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -101,9 +97,7 @@ export default async function DashboardPage() {
           sub="all time"
         />
         <StatCard
-          accent="bg-emerald-500"
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          gradient="from-emerald-500 to-teal-600"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -114,9 +108,7 @@ export default async function DashboardPage() {
           sub="last 7 days"
         />
         <StatCard
-          accent="bg-amber-500"
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          gradient="from-amber-500 to-orange-500"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -136,7 +128,7 @@ export default async function DashboardPage() {
             <h2 className="font-semibold text-gray-900 text-sm">Recent Calls</h2>
             <Link
               href="/dashboard/calls"
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-xs text-violet-600 hover:text-violet-800 font-medium"
             >
               View all →
             </Link>
@@ -158,8 +150,8 @@ export default async function DashboardPage() {
                   key={call.id}
                   className={`flex items-center gap-4 px-6 py-3.5 ${i < recentCalls.length - 1 ? "border-b border-gray-50" : ""}`}
                 >
-                  <div className="w-8 h-8 bg-indigo-50 rounded-full flex items-center justify-center shrink-0">
-                    <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full flex items-center justify-center shrink-0">
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                   </div>
@@ -196,7 +188,7 @@ export default async function DashboardPage() {
             <div className="space-y-2">
               <Link
                 href="/dashboard/knowledge-base"
-                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:from-violet-500 hover:to-indigo-500 transition-all shadow-sm"
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -267,18 +259,14 @@ export default async function DashboardPage() {
 }
 
 function StatCard({
-  accent,
-  iconBg,
-  iconColor,
+  gradient,
   icon,
   label,
   value,
   sub,
   small,
 }: {
-  accent: string;
-  iconBg: string;
-  iconColor: string;
+  gradient: string;
   icon: React.ReactNode;
   label: string;
   value: string | number;
@@ -286,16 +274,16 @@ function StatCard({
   small?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className={`h-0.5 ${accent}`} />
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md hover:border-gray-300 transition-all">
+      <div className={`h-1 bg-gradient-to-r ${gradient}`} />
       <div className="p-5">
-        <div className={`w-9 h-9 ${iconBg} ${iconColor} rounded-lg flex items-center justify-center mb-3`}>
+        <div className={`w-9 h-9 bg-gradient-to-br ${gradient} rounded-lg flex items-center justify-center mb-3 text-white`}>
           {icon}
         </div>
         <p className={`font-bold text-gray-900 mb-0.5 ${small ? "text-base" : "text-2xl"}`}>
           {value}
         </p>
-        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-xs font-semibold text-gray-500">{label}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
