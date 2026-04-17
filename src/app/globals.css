@@ -18,7 +18,7 @@
   --sage-100: #09090b;          /* zinc-950 — primary text */
   --sage-200: #27272a;          /* zinc-800 — headings */
   --sage-400: #52525b;          /* zinc-600 — muted body */
-  --sage-600: #a1a1aa;          /* zinc-400 — more muted / labels */
+  --sage-600: #71717a;          /* zinc-500 — more muted / labels (WCAG AA on white ~4.8:1) */
   --sage-800: #e4e4e7;          /* zinc-200 — subtle borders */
 
   /* Em slot — now primary (charcoal / near-black) */
