@@ -197,8 +197,8 @@ Start researching now. Use log_step frequently to explain what you're doing and 
             }
           }
 
-          // Add assistant message to history
-          messages.push({ role: "assistant", content: response.content });
+          // Add assistant message to history (beta blocks include server tool uses — cast through any)
+          messages.push({ role: "assistant", content: response.content as unknown as Anthropic.ContentBlockParam[] });
 
           if (response.stop_reason === "end_turn" || toolUses.length === 0) {
             continueLoop = false;
