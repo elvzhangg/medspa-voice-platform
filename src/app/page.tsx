@@ -278,7 +278,7 @@ function NavCTA() {
       onMouseMove={mag.onMouseMove}
       onMouseLeave={mag.onMouseLeave}
       href="/book-a-demo"
-      className="inline-flex items-center px-5 py-2.5 rounded-full font-medium text-sm tracking-[0.02em] text-sage-100 bg-ink-950 border border-ink-700/60 hover:border-em-500/40 hover:bg-ink-900 transition-all duration-300 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)]"
+      className="inline-flex items-center px-5 py-2.5 rounded-full font-medium text-sm tracking-[0.02em] text-white bg-[#0a0a0a] hover:bg-black border border-white/10 hover:border-em-500/40 transition-all duration-300 shadow-[0_8px_20px_-8px_rgba(0,0,0,0.55)]"
     >
       Book a private demo
     </Link>
@@ -297,7 +297,7 @@ function HeroCTA() {
         onMouseMove={primary.onMouseMove}
         onMouseLeave={primary.onMouseLeave}
         href="/book-a-demo"
-        className="group inline-flex items-center gap-2 px-7 py-3 rounded-full font-medium text-sm tracking-[0.02em] text-sage-100 bg-ink-950 border border-ink-700/60 hover:border-em-500/40 hover:bg-ink-900 transition-all duration-300 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] hover:scale-[1.02]"
+        className="group inline-flex items-center gap-2 px-7 py-3 rounded-full font-medium text-sm tracking-[0.02em] text-white bg-[#0a0a0a] hover:bg-black border border-white/10 hover:border-em-500/40 transition-all duration-300 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.6)] hover:scale-[1.02]"
       >
         Book a private demo
         <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5">→</span>
