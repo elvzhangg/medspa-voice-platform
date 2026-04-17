@@ -174,7 +174,7 @@ Start researching now. Use log_step frequently to explain what you're doing and 
           const response = await anthropic.beta.messages.create({
             model: "claude-opus-4-6",
             max_tokens: 8000,
-            thinking: { type: "adaptive" },
+            thinking: { type: "enabled", budget_tokens: 4000 },
             tools: [...SERVER_TOOLS, ...CUSTOM_TOOLS] as Anthropic.Tool[],
             messages,
             betas: ["web-search-2026-02-09"],
