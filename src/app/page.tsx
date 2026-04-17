@@ -334,7 +334,7 @@ function Hero() {
           Now handling 50,000+ calls per month
         </div>
 
-        <h1 className="font-serif text-[clamp(40px,5.8vw,72px)] font-light leading-[1.06] tracking-[-0.005em] mb-7">
+        <h1 className="font-serif text-[clamp(40px,5.8vw,72px)] font-medium leading-[1.06] tracking-[-0.005em] mb-7">
           <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block italic" />
           <span className="block mt-2">
             <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
@@ -518,7 +518,7 @@ function StatItem({ raw, num, suffix, label, delay, visible }: {
       className={`reveal-zoom ${visible ? "visible" : ""} group text-center py-14 px-8 border-r border-sage-800/20 last:border-r-0`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <p className="text-[clamp(50px,6.5vw,78px)] font-black tracking-tighter leading-none text-sage-100 group-hover:text-em-400 transition-colors duration-500">
+      <p className="font-serif text-[clamp(50px,6.5vw,78px)] font-medium tracking-tight leading-none text-sage-100 group-hover:text-em-400 transition-colors duration-500">
         {display}
       </p>
       <p className="text-[11px] font-semibold text-sage-600 uppercase tracking-[0.22em] mt-4">
@@ -833,7 +833,7 @@ function Pricing() {
               )}
               <p className={`font-bold text-lg tracking-tight ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
               <div className="mt-4 mb-1 flex items-end gap-1">
-                <span className={`text-5xl font-black tracking-tighter ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
+                <span className={`font-serif text-5xl font-medium tracking-tight ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
                 {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-white/70" : "text-sage-600"}`}>/month</span>}
               </div>
               <p className={`text-sm mb-7 ${plan.featured ? "text-white/75" : "text-sage-600"}`}>{plan.desc}</p>
