@@ -318,24 +318,8 @@ function HeroCTA() {
 function Hero() {
   return (
     <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
-      {/* Subtle video bed — reads as gentle texture behind the warm wash */}
-      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.10]" src="/hero-video.mp4" />
-
-      {/* Light warm wash — matches the body::before champagne feel used across the rest of the page */}
-      <div className="absolute inset-0 hero-wash-light pointer-events-none" />
-
-      {/* Single slow conic sweep — very subtle, provides ambient rotation */}
-      <div className="absolute inset-0 hero-conic-light pointer-events-none" />
-
-      {/* Diagonal light streaks — soft highlights */}
-      <div className="hero-streak-light" style={{ left: "-10%" }} />
-      <div className="hero-streak-light" style={{ left: "35%", animationDelay: "7s" }} />
-
-      {/* Single warm aurora blob — behind the orb/cards side */}
-      <ParallaxLayer strength={0.22} className="absolute -top-[18%] -right-[14%] pointer-events-none">
-        <div className="w-[760px] h-[760px] rounded-full blur-[130px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.22), transparent 70%)" }} />
-      </ParallaxLayer>
+      {/* Video bed — the entire hero backdrop */}
+      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.18]" src="/hero-video.mp4" />
 
       {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-12 lg:gap-16 items-center">
