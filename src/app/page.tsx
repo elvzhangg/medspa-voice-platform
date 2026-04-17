@@ -418,7 +418,7 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="hero-line-2 font-serif italic text-[clamp(20px,2.1vw,26px)] text-sage-200 max-w-[62ch] mx-auto mb-5 leading-snug tracking-[-0.005em]">
+        <p className="hero-line-2 font-serif italic text-[clamp(23px,2.45vw,30px)] text-sage-200 max-w-[62ch] mx-auto mb-5 leading-snug tracking-[-0.005em]">
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
         <p className="hero-line-2 text-[clamp(20px,2.1vw,26px)] text-sage-400 max-w-[62ch] mx-auto mb-10 leading-relaxed">
