@@ -186,13 +186,18 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             result = "I'm sorry, I can't access the calendar right now.";
             break;
           }
-          const { date, service } = toolCall.parameters as { date: string, service?: string };
-          const slots = await getAvailableSlots(tenant.id, date, service);
-          
+          const { date, service, provider } = toolCall.parameters as { date: string, service?: string, provider?: string };
+          const slots = await getAvailableSlots(tenant.id, date, service, provider);
+
           if (slots.length === 0) {
-            result = `I'm sorry, we don't have any openings for ${service || 'that service'} on ${date}. Is there another day that works for you?`;
+            if (provider && !/no preference|any|anyone/i.test(provider)) {
+              result = `${provider} doesn't have any openings for ${service || 'that service'} on ${date}. Would another day work, or would they be open to a different provider?`;
+            } else {
+              result = `I'm sorry, we don't have any openings for ${service || 'that service'} on ${date}. Is there another day that works for you?`;
+            }
           } else {
-            result = `On ${date}, we have the following times available: ${slots.join(", ")}. Which one should I grab for you?`;
+            const who = provider && !/no preference|any|anyone/i.test(provider) ? `${provider} has` : `we have`;
+            result = `On ${date}, ${who} the following times available: ${slots.join(", ")}. Which one should I grab for you?`;
           }
           break;
         }
@@ -209,6 +214,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             preferred_time,
             customer_name,
             customer_phone,
+            provider_preference,
             referred_by,
           } = toolCall.parameters as Record<string, string>;
 
@@ -223,6 +229,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customerName: customer_name,
             customerPhone: customer_phone,
             referredBy: referred_by,
+            providerPreference: provider_preference,
           });
 
           result = bookingResult.message;
@@ -238,7 +245,6 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customer_phone,
             backup_slots,
             time_preference,
-            provider_preference,
           } = toolCall.parameters as Record<string, string>;
 
           const prefResult = await updateBookingPreferences({
@@ -246,7 +252,6 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customerPhone: customer_phone,
             backupSlots: backup_slots,
             timePreference: time_preference,
-            providerPreference: provider_preference,
           });
           result = prefResult.message;
           break;
