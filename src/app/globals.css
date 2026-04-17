@@ -236,86 +236,68 @@ body {
   );
 }
 
-/* Bolder mesh — much more visible, but gentle cycle speed */
-.hero-mesh-bold {
+/* ─── NEW hero backdrop — LIGHT variant ────────────────────────────── */
+/* Design goal: hero reads bright white with warm champagne motion —
+   no charcoal stops, no multiply blend, no stacked dark tints. */
+
+@keyframes conic-spin    { to { transform: rotate(360deg); } }
+@keyframes conic-spin-rev { to { transform: rotate(-360deg); } }
+
+/* Warm champagne wash — only amber/gold/cream, no dark stops */
+.hero-wash-light {
   background:
-    radial-gradient(ellipse 60% 50% at 15% 25%,  rgba(245, 158, 11, 0.60), transparent 70%),
-    radial-gradient(ellipse 55% 55% at 85% 75%,  rgba(251, 191, 36, 0.52), transparent 70%),
-    radial-gradient(ellipse 45% 45% at 50%  5%,  rgba(252, 211, 77, 0.40), transparent 70%),
-    radial-gradient(ellipse 50% 55% at 20% 95%,  rgba(9,    9,   11, 0.16), transparent 70%);
-  background-size: 240% 240%;
+    radial-gradient(ellipse 55% 50% at 18% 30%, rgba(251, 191, 36, 0.38), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 82% 70%, rgba(252, 211, 77, 0.42), transparent 70%),
+    radial-gradient(ellipse 45% 45% at 50%  8%, rgba(254, 240, 138, 0.30), transparent 70%);
+  background-size: 220% 220%;
   animation: mesh-shift 22s ease-in-out infinite;
-  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
 }
 
-/* Rotating conic ribbon — slow warm sweep */
-@keyframes conic-spin    { to { transform: rotate(360deg); } }
-@keyframes conic-spin-rev { to { transform: rotate(-360deg); } }
-.hero-conic-sweep {
+/* Single airy conic sweep — all warm, gentle */
+.hero-conic-light {
   background: conic-gradient(
     from 0deg at 50% 50%,
     transparent 0deg,
-    rgba(245, 158, 11, 0.45) 35deg,
-    rgba(252, 211, 77, 0.60) 70deg,
-    rgba(245, 158, 11, 0.35) 110deg,
-    transparent 170deg,
-    transparent 190deg,
-    rgba(9, 9, 11, 0.18) 230deg,
-    transparent 290deg,
+    rgba(252, 211, 77, 0.28) 45deg,
+    rgba(251, 191, 36, 0.38) 90deg,
+    rgba(252, 211, 77, 0.28) 130deg,
+    transparent 200deg,
+    rgba(254, 240, 138, 0.22) 270deg,
+    transparent 340deg,
     transparent 360deg
   );
-  filter: blur(55px);
-  animation: conic-spin 44s linear infinite;
+  filter: blur(60px);
+  animation: conic-spin 48s linear infinite;
   transform-origin: 50% 50%;
-  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
 }
 
-/* Second counter-rotating conic */
-.hero-conic-sweep-2 {
-  background: conic-gradient(
-    from 180deg at 50% 50%,
-    transparent 0deg,
-    rgba(251, 191, 36, 0.35) 45deg,
-    rgba(245, 158, 11, 0.50) 90deg,
-    transparent 160deg,
-    transparent 360deg
-  );
-  filter: blur(70px);
-  animation: conic-spin-rev 60s linear infinite;
-  transform-origin: 50% 50%;
-  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
-  -webkit-mask-image: var(--hero-fade);
-          mask-image: var(--hero-fade);
-}
-
-/* Diagonal light-streak band — slow sweep, bottom-weighted */
+/* Airy diagonal streaks — no dark, lower alpha, lighter feel */
 @keyframes streak-slide {
   0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
   15%  { opacity: 1; }
   85%  { opacity: 1; }
   100% { transform: translateX(120%) skewX(-18deg); opacity: 0; }
 }
-.hero-streak {
+.hero-streak-light {
   position: absolute;
   top: -20%;
   left: 0;
-  width: 45%;
+  width: 50%;
   height: 140%;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(252, 211, 77, 0.35) 40%,
-    rgba(245, 158, 11, 0.55) 50%,
-    rgba(252, 211, 77, 0.35) 60%,
+    rgba(254, 240, 138, 0.28) 35%,
+    rgba(252, 211, 77, 0.45) 50%,
+    rgba(254, 240, 138, 0.28) 65%,
     transparent 100%
   );
-  filter: blur(40px);
+  filter: blur(45px);
   animation: streak-slide 22s ease-in-out infinite;
-  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   pointer-events: none;
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
@@ -569,10 +551,9 @@ button:focus-visible,
 
   /* Kill the body::before ambient animation residue & keep glow static */
   .hero-mesh,
-  .hero-mesh-bold { animation: none !important; background-size: 100% 100% !important; }
-  .hero-conic-sweep,
-  .hero-conic-sweep-2,
-  .hero-streak { animation: none !important; opacity: 0 !important; }
+  .hero-wash-light { animation: none !important; background-size: 100% 100% !important; }
+  .hero-conic-light,
+  .hero-streak-light { animation: none !important; opacity: 0 !important; }
   .orb-ripple  { animation: none !important; opacity: 0 !important; }
 
   /* Reveal variants: skip transform/blur so content is immediately legible */

@@ -317,46 +317,33 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
-      {/* Subtle video bed — barely visible on light theme */}
-      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.05] mix-blend-multiply" src="/hero-video.mp4" />
+    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-white pt-28 pb-20 lg:py-24">
+      {/* Bright base — explicit white so no dark layers can bleed through */}
+      <div className="absolute inset-0 bg-white pointer-events-none" />
 
-      {/* Champagne mesh — slowly pans warm amber wash across hero (amped up) */}
-      <div className="absolute inset-0 hero-mesh-bold pointer-events-none" />
+      {/* Light warm wash — pure champagne glow, no charcoal, no multiply */}
+      <div className="absolute inset-0 hero-wash-light pointer-events-none" />
 
-      {/* Conic sweeps — two counter-rotating warm ribbons */}
-      <div className="absolute inset-0 hero-conic-sweep   pointer-events-none" />
-      <div className="absolute inset-0 hero-conic-sweep-2 pointer-events-none" />
+      {/* Single slow conic sweep — airy, all amber/gold */}
+      <div className="absolute inset-0 hero-conic-light pointer-events-none" />
 
-      {/* Diagonal light streak — sweeps across every ~11s */}
-      <div className="hero-streak" style={{ left: "-10%" }} />
-      <div className="hero-streak" style={{ left: "30%", animationDelay: "5.5s" }} />
+      {/* Diagonal light streaks — airy highlights */}
+      <div className="hero-streak-light" style={{ left: "-10%" }} />
+      <div className="hero-streak-light" style={{ left: "35%", animationDelay: "7s" }} />
 
-      {/* Bold aurora blobs — bigger, more saturated, more of them */}
-      <ParallaxLayer strength={0.3} className="absolute -top-[15%] -right-[12%] pointer-events-none">
-        <div className="w-[780px] h-[780px] rounded-full blur-[120px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(245,158,11,0.38), transparent 70%)" }} />
+      {/* Three soft aurora blobs — all warm, all light */}
+      <ParallaxLayer strength={0.25} className="absolute -top-[18%] -right-[14%] pointer-events-none">
+        <div className="w-[760px] h-[760px] rounded-full blur-[130px] animate-aurora-a"
+             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.45), transparent 70%)" }} />
       </ParallaxLayer>
-      <ParallaxLayer strength={-0.22} className="absolute -bottom-[15%] -left-[10%] pointer-events-none">
-        <div className="w-[680px] h-[680px] rounded-full blur-[110px] animate-aurora-b"
-             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.30), transparent 70%)", animationDelay: "2s" }} />
+      <ParallaxLayer strength={-0.2} className="absolute -bottom-[18%] -left-[12%] pointer-events-none">
+        <div className="w-[680px] h-[680px] rounded-full blur-[120px] animate-aurora-b"
+             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.40), transparent 70%)", animationDelay: "2s" }} />
       </ParallaxLayer>
-      <ParallaxLayer strength={0.15} className="absolute top-[35%] left-[40%] pointer-events-none">
-        <div className="w-[520px] h-[520px] rounded-full blur-[100px] animate-aurora-c"
-             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.24), transparent 70%)", animationDelay: "1.2s" }} />
+      <ParallaxLayer strength={0.12} className="absolute top-[30%] left-[42%] pointer-events-none">
+        <div className="w-[460px] h-[460px] rounded-full blur-[110px] animate-aurora-c"
+             style={{ background: "radial-gradient(circle, rgba(254,240,138,0.45), transparent 70%)", animationDelay: "1.2s" }} />
       </ParallaxLayer>
-      <ParallaxLayer strength={-0.25} className="absolute top-[10%] left-[8%] pointer-events-none">
-        <div className="w-[360px] h-[360px] rounded-full blur-[90px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(9,9,11,0.10), transparent 70%)", animationDelay: "3.2s" }} />
-      </ParallaxLayer>
-
-      {/* Large masked grid — gives texture behind the amber wash */}
-      <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{
-        backgroundImage: "linear-gradient(rgba(9,9,11,0.6) 1px,transparent 1px),linear-gradient(90deg,rgba(9,9,11,0.6) 1px,transparent 1px)",
-        backgroundSize: "80px 80px",
-        maskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 50%, transparent 100%)",
-        WebkitMaskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 50%, transparent 100%)",
-      }} />
 
       {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-12 lg:gap-16 items-center">
