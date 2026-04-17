@@ -247,7 +247,7 @@ function Nav() {
             <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#nav-g)"/>
             <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
           </svg>
-          <span className="font-serif text-xl font-medium tracking-normal text-sage-100 group-hover:text-sage-200 transition-colors">
+          <span className="font-serif text-lg font-medium tracking-normal text-sage-100 group-hover:text-sage-200 transition-colors">
             Vaux<span className="text-em-400">Voice</span>
           </span>
         </Link>
@@ -278,7 +278,7 @@ function NavCTA() {
       onMouseMove={mag.onMouseMove}
       onMouseLeave={mag.onMouseLeave}
       href="/book-a-demo"
-      className="px-5 py-3 rounded-full font-semibold text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
+      className="px-5 py-3 rounded-full font-medium text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
     >
       Request Demo
     </Link>
@@ -298,7 +298,7 @@ function HeroCTA() {
         onMouseMove={primary.onMouseMove}
         onMouseLeave={primary.onMouseLeave}
         href="/book-a-demo"
-        className="px-8 py-4 rounded-full font-semibold text-base text-white bg-em-600 hover:bg-em-500 transition-colors animate-glow-pulse hover:scale-[1.03]"
+        className="px-8 py-4 rounded-full font-medium text-base text-white bg-em-600 hover:bg-em-500 transition-colors animate-glow-pulse hover:scale-[1.03]"
       >
         Get Started Free →
       </Link>
@@ -487,7 +487,7 @@ function HeroTimeline() {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-em-500" />
         </span>
-        <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-sage-400">
+        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-sage-400">
           Live · last 3 minutes at Glow Aesthetics
         </span>
       </div>
@@ -523,10 +523,10 @@ function HeroTimeline() {
               {/* Text */}
               <div className="order-3 md:order-none md:mt-3 flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-em-500">{step.label}</p>
-                <p className="text-sm font-semibold text-sage-100 leading-snug mt-0.5 truncate md:whitespace-normal">
+                <p className="text-sm font-medium text-sage-100 leading-snug mt-0.5 truncate md:whitespace-normal">
                   {step.title}
                 </p>
-                <p className="text-[11px] text-sage-500 leading-snug mt-0.5">{step.subtitle}</p>
+                <p className="text-[10px] text-sage-500 leading-snug mt-0.5">{step.subtitle}</p>
               </div>
             </li>
           ))}
@@ -553,9 +553,9 @@ function LogoMarquee() {
       <div className="relative">
         <div className="flex animate-marquee">
           {doubled.map((name, i) => (
-            <span key={i} className="inline-flex items-center gap-10 text-[11px] font-bold text-sage-800 uppercase tracking-[0.22em] whitespace-nowrap px-10">
+            <span key={i} className="inline-flex items-center gap-10 text-[10px] font-bold text-sage-800 uppercase tracking-[0.22em] whitespace-nowrap px-10">
               {name}
-              <span className="text-em-900/60 text-[8px]">◆</span>
+              <span className="text-em-900/60 text-[10px]">◆</span>
             </span>
           ))}
         </div>
@@ -586,10 +586,10 @@ function StatItem({ raw, num, suffix, label, delay, visible }: {
       className={`reveal-zoom ${visible ? "visible" : ""} group text-center py-14 px-8 border-r border-sage-800/20 last:border-r-0`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <p className="font-serif text-[clamp(50px,6.5vw,78px)] font-medium tracking-tight leading-none text-sage-100 group-hover:text-em-400 transition-colors duration-500">
+      <p className="font-serif text-[clamp(40px,5.8vw,72px)] font-medium tracking-tight leading-none text-sage-100 group-hover:text-em-400 transition-colors duration-500">
         {display}
       </p>
-      <p className="text-[11px] font-semibold text-sage-600 uppercase tracking-[0.22em] mt-4">
+      <p className="text-[10px] font-medium text-sage-600 uppercase tracking-[0.22em] mt-4">
         {label}
       </p>
     </div>
@@ -633,9 +633,9 @@ function StepCard({ step, index, visible }: {
       style={{ transitionDelay: `${index * 130}ms` }}
     >
       <div className="w-[52px] h-[52px] rounded-xl bg-gradient-to-br from-em-600 to-em-500/70 flex items-center justify-center mb-6 shadow-lg shadow-em-950/50">
-        <span className="text-sm font-black text-sage-100">{step.num}</span>
+        <span className="text-sm font-bold text-sage-100">{step.num}</span>
       </div>
-      <h3 className="font-serif text-2xl font-medium mb-3 text-sage-100 tracking-[-0.005em]">{step.title}</h3>
+      <h3 className="font-serif text-lg font-medium mb-3 text-sage-100 tracking-[-0.005em]">{step.title}</h3>
       <p className="text-sage-600 leading-relaxed text-sm">{step.desc}</p>
     </div>
   );
@@ -655,7 +655,7 @@ function HowItWorks() {
               How It Works
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em] leading-tight`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em] leading-tight`} style={{ transitionDelay: "80ms" }}>
               Live in three <span className="italic text-em-400">simple</span> steps
             </h2>
           </div>
@@ -748,7 +748,7 @@ function Features() {
               Features
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Everything your front desk does.
               <br /><span className="italic text-sage-600">Without the front desk.</span>
             </h2>
@@ -804,16 +804,16 @@ function QuoteCard({ quote, index, visible }: {
       className={`${dir} ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-8 group`}
       style={{ transitionDelay: `${index * 130}ms` }}
     >
-      <div className="text-6xl leading-none mb-2 select-none font-serif text-em-900/50 group-hover:text-em-500/60 transition-colors">&ldquo;</div>
+      <div className="text-[clamp(32px,4.5vw,58px)] leading-none mb-2 select-none font-serif text-em-900/50 group-hover:text-em-500/60 transition-colors">&ldquo;</div>
       <Stars />
       <p className="text-sage-400 leading-relaxed mb-8 text-sm group-hover:text-sage-200 transition-colors duration-300">{quote.text}</p>
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-em-600 to-em-500/70 flex items-center justify-center shrink-0">
-          <span className="text-xs font-bold text-sage-100">{quote.initials}</span>
+          <span className="text-[10px] font-bold text-sage-100">{quote.initials}</span>
         </div>
         <div>
-          <p className="font-semibold text-sm text-sage-200">{quote.name}</p>
-          <p className="text-sage-600 text-xs mt-0.5">{quote.role}</p>
+          <p className="font-medium text-sm text-sage-200">{quote.name}</p>
+          <p className="text-sage-600 text-[10px] mt-0.5">{quote.role}</p>
         </div>
       </div>
     </div>
@@ -835,7 +835,7 @@ function Testimonials() {
               Testimonials
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               <span className="italic">Loved</span> by med spa owners
             </h2>
           </div>
@@ -872,7 +872,7 @@ function Pricing() {
               Pricing
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               <span className="italic">Simple</span>, transparent pricing
             </h2>
             <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`} style={{ transitionDelay: "160ms" }}>
@@ -894,20 +894,20 @@ function Pricing() {
             >
               {plan.featured && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-gold-400 to-gold-500 text-ink-950 text-xs font-black px-5 py-2 rounded-full whitespace-nowrap shadow-lg shadow-gold-500/25 animate-gold-pulse">
+                  <span className="bg-gradient-to-r from-gold-400 to-gold-500 text-ink-950 text-[10px] font-bold px-5 py-2 rounded-full whitespace-nowrap shadow-lg shadow-gold-500/25 animate-gold-pulse">
                     Most Popular
                   </span>
                 </div>
               )}
-              <p className={`font-serif font-medium text-xl tracking-normal ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
+              <p className={`font-serif font-medium text-lg tracking-normal ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
               <div className="mt-4 mb-1 flex items-end gap-1">
-                <span className={`font-serif text-5xl font-medium tracking-tight ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
+                <span className={`font-serif text-[clamp(32px,4.5vw,58px)] font-medium tracking-tight ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
                 {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-white/70" : "text-sage-600"}`}>/month</span>}
               </div>
               <p className={`text-sm mb-7 ${plan.featured ? "text-white/75" : "text-sage-600"}`}>{plan.desc}</p>
               <Link
                 href="/book-a-demo"
-                className={`block text-center py-3 rounded-xl font-semibold text-sm transition-all mb-7 ${
+                className={`block text-center py-3 rounded-xl font-medium text-sm transition-all mb-7 ${
                   plan.featured
                     ? "bg-gold-400 text-em-600 hover:bg-gold-300"
                     : "bg-ink-800/80 text-sage-200 hover:bg-ink-700/80 border border-sage-800/30"
@@ -946,7 +946,7 @@ function DemoSection() {
 
       <div ref={ref} className="relative max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-4xl md:text-[52px] font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-tight`}>
+          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-tight`}>
             Ready to <span className="italic">never</span> miss a call again?
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
@@ -985,7 +985,7 @@ function DemoForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
           </svg>
         </div>
-        <h3 className="text-xl font-bold text-sage-100 mb-2">You&apos;re on the list!</h3>
+        <h3 className="text-lg font-bold text-sage-100 mb-2">You&apos;re on the list!</h3>
         <p className="text-sage-600">We&apos;ll reach out within 24 hours to schedule your personalized demo.</p>
       </div>
     );
@@ -1014,12 +1014,12 @@ function DemoForm() {
       </div>
       <button
         type="submit" disabled={status === "loading"}
-        className="w-full py-4 bg-em-600 text-sage-100 font-semibold rounded-xl hover:bg-em-500 disabled:opacity-50 transition-all text-base mt-2 shadow-lg shadow-em-950/60 hover:shadow-em-900/60"
+        className="w-full py-4 bg-em-600 text-sage-100 font-medium rounded-xl hover:bg-em-500 disabled:opacity-50 transition-all text-base mt-2 shadow-lg shadow-em-950/60 hover:shadow-em-900/60"
       >
         {status === "loading" ? "Submitting..." : "Request Your Free Demo →"}
       </button>
       {status === "error" && <p className="text-red-400 text-sm text-center">Something went wrong. Please try again.</p>}
-      <p className="text-sage-800 text-xs text-center tracking-wide">No commitment · Free trial available · Setup in 48 hours</p>
+      <p className="text-sage-800 text-[10px] text-center tracking-wide">No commitment · Free trial available · Setup in 48 hours</p>
     </form>
   );
 }

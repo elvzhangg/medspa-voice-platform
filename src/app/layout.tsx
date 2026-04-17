@@ -5,14 +5,14 @@ import "./globals.css";
 const dmSans = DM_Sans({
   variable: "--font-sans-primary",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500"],
   style: ["normal", "italic"],
   display: "swap",
 });
