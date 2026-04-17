@@ -337,11 +337,11 @@ function Hero() {
           Now handling 50,000+ calls per month
         </div>
 
-        <h1 className="text-[clamp(44px,7.2vw,88px)] font-extrabold leading-[1.02] tracking-[-0.04em] mb-7">
-          <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
+        <h1 className="text-[clamp(36px,5.4vw,64px)] font-extrabold leading-[1.05] tracking-[-0.035em] mb-7">
+          <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block" />
           <span className="block mt-1">
             <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
-              Clientele Specialist
+              AI Clientele Specialist
             </span>
           </span>
         </h1>
@@ -457,14 +457,6 @@ function HeroCardCloud() {
         </div>
       </ParallaxLayer>
 
-      {/* Tiny accent chip: revenue saved — upper-center, peeking above headline */}
-      <ParallaxLayer strength={0.12} className="absolute top-[6%] left-1/2 -translate-x-1/2 pointer-events-auto">
-        <div className="glass rounded-full px-4 py-1.5 flex items-center gap-2 animate-float-b hero-line-2"
-             style={{ animationDelay: "0.9s" }}>
-          <span className="text-[10px] font-bold text-gold-500 uppercase tracking-[0.2em]">This week</span>
-          <span className="text-xs font-bold text-sage-100">+$14,280 recovered</span>
-        </div>
-      </ParallaxLayer>
     </div>
   );
 }
