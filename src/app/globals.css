@@ -173,6 +173,41 @@ body {
   to   { transform: scaleX(1); }
 }
 
+/* ── Aurora drift (hero background blobs) ──────────────────────────── */
+@keyframes aurora-a {
+  0%, 100% { transform: translate(0, 0)    scale(1);    opacity: 0.75; }
+  33%      { transform: translate(8%, -6%) scale(1.12); opacity: 1;    }
+  66%      { transform: translate(-5%, 7%) scale(0.95); opacity: 0.6;  }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate(0, 0)     scale(1);    opacity: 0.65; }
+  50%      { transform: translate(-9%, 5%)  scale(1.18); opacity: 0.95; }
+}
+@keyframes aurora-c {
+  0%, 100% { transform: translate(0, 0)     scale(1);    opacity: 0.55; }
+  40%      { transform: translate(6%, 10%)  scale(1.08); opacity: 0.85; }
+  80%      { transform: translate(-7%, -5%) scale(0.92); opacity: 0.4;  }
+}
+
+/* Shimmering mesh — slowly pans a conic-ish backdrop across the hero */
+@keyframes mesh-shift {
+  0%, 100% { background-position: 0%   50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.animate-aurora-a { animation: aurora-a 22s ease-in-out infinite; }
+.animate-aurora-b { animation: aurora-b 26s ease-in-out infinite; }
+.animate-aurora-c { animation: aurora-c 19s ease-in-out infinite; }
+
+.hero-mesh {
+  background:
+    radial-gradient(ellipse 55% 45% at 18% 28%,  rgba(245, 158, 11, 0.14), transparent 70%),
+    radial-gradient(ellipse 50% 50% at 82% 72%,  rgba(251, 191, 36, 0.10), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 50% 100%, rgba(9,   9,   11, 0.05), transparent 70%);
+  background-size: 200% 200%;
+  animation: mesh-shift 18s ease-in-out infinite;
+}
+
 /* ── Reveal variants ─────────────────────────────────────────────── */
 .reveal-up,
 .reveal-left,

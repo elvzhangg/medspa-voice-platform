@@ -219,8 +219,8 @@ function Nav() {
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
             <defs>
               <linearGradient id="nav-g" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#6ee7b7"/>
-                <stop offset="100%" stopColor="#34d399"/>
+                <stop offset="0%" stopColor="#f59e0b"/>
+                <stop offset="100%" stopColor="#09090b"/>
               </linearGradient>
             </defs>
             <rect x="1"  y="10" width="5" height="12" rx="2.5" fill="url(#nav-g)"/>
@@ -259,7 +259,7 @@ function NavCTA() {
       onMouseMove={mag.onMouseMove}
       onMouseLeave={mag.onMouseLeave}
       href="/book-a-demo"
-      className="px-5 py-2.5 rounded-full font-semibold text-sm bg-em-600 text-sage-100 hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
+      className="px-5 py-2.5 rounded-full font-semibold text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
     >
       Request Demo
     </Link>
@@ -279,7 +279,7 @@ function HeroCTA() {
         onMouseMove={primary.onMouseMove}
         onMouseLeave={primary.onMouseLeave}
         href="/book-a-demo"
-        className="px-8 py-4 rounded-full font-semibold text-base text-sage-100 bg-em-600 hover:bg-em-500 transition-colors animate-glow-pulse hover:scale-[1.03]"
+        className="px-8 py-4 rounded-full font-semibold text-base text-white bg-em-600 hover:bg-em-500 transition-colors animate-glow-pulse hover:scale-[1.03]"
       >
         Get Started Free →
       </Link>
@@ -298,31 +298,41 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
-      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.14]" src="/hero-video.mp4" />
+    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-ink-950">
+      {/* Subtle video bed — barely visible on light theme */}
+      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.07] mix-blend-multiply" src="/hero-video.mp4" />
 
-      {/* Layered dark overlays */}
-      <div className="absolute inset-0 bg-ink-950/78" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_30%,rgba(5,150,105,0.14),transparent)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_70%,rgba(5,120,80,0.08),transparent)]" />
+      {/* Champagne mesh — slowly pans warm amber wash across hero */}
+      <div className="absolute inset-0 hero-mesh pointer-events-none" />
 
-      {/* Grid */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: "linear-gradient(rgba(110,231,183,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(110,231,183,0.5) 1px,transparent 1px)",
+      {/* Soft warm wash accents */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_25%,rgba(245,158,11,0.10),transparent)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_35%_35%_at_82%_72%,rgba(9,9,11,0.05),transparent)]" />
+
+      {/* Fine grid — charcoal on white */}
+      <div className="absolute inset-0 opacity-[0.045]" style={{
+        backgroundImage: "linear-gradient(rgba(9,9,11,0.55) 1px,transparent 1px),linear-gradient(90deg,rgba(9,9,11,0.55) 1px,transparent 1px)",
         backgroundSize: "72px 72px",
+        maskImage: "radial-gradient(ellipse 60% 55% at 50% 45%, black 60%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(ellipse 60% 55% at 50% 45%, black 60%, transparent 100%)",
       }} />
 
       {/* Particles */}
       <HeroParticles />
 
       {/* Spinning decorative rings */}
-      <div className="spin-ring animate-spin-slow  absolute top-[15%] right-[8%]  w-[320px] h-[320px] opacity-30" />
-      <div className="spin-ring animate-spin-rev   absolute bottom-[12%] left-[6%]  w-[200px] h-[200px] opacity-20" />
+      <div className="spin-ring animate-spin-slow  absolute top-[15%] right-[8%]  w-[320px] h-[320px] opacity-40" />
+      <div className="spin-ring animate-spin-rev   absolute bottom-[12%] left-[6%]  w-[200px] h-[200px] opacity-25" />
 
-      {/* Floating orbs */}
-      <div className="absolute top-[28%] left-[12%]  w-[440px] h-[440px] rounded-full bg-em-900/22  blur-[130px] pointer-events-none animate-float-a" />
-      <div className="absolute bottom-[18%] right-[10%] w-[300px] h-[300px] rounded-full bg-em-950/30  blur-[95px]  pointer-events-none animate-float-b" style={{ animationDelay: "2s" }} />
-      <div className="absolute top-[55%] left-[40%]  w-[200px] h-[200px] rounded-full bg-gold-500/6   blur-[80px]  pointer-events-none animate-float-c" style={{ animationDelay: "1.2s" }} />
+      {/* Aurora blobs — amber + charcoal, drifting slowly */}
+      <div className="absolute -top-[5%] -left-[10%] w-[620px] h-[620px] rounded-full blur-[110px] pointer-events-none animate-aurora-a"
+           style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
+      <div className="absolute -bottom-[8%] -right-[8%] w-[680px] h-[680px] rounded-full blur-[120px] pointer-events-none animate-aurora-b"
+           style={{ background: "radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)", animationDelay: "2s" }} />
+      <div className="absolute top-[38%] left-[32%] w-[520px] h-[520px] rounded-full blur-[100px] pointer-events-none animate-aurora-c"
+           style={{ background: "radial-gradient(circle, rgba(9,9,11,0.07), transparent 70%)", animationDelay: "1.2s" }} />
+      <div className="absolute top-[18%] right-[22%] w-[280px] h-[280px] rounded-full blur-[80px] pointer-events-none animate-aurora-a"
+           style={{ background: "radial-gradient(circle, rgba(252,211,77,0.14), transparent 70%)", animationDelay: "3.5s" }} />
 
       <div className="relative z-10 max-w-5xl mx-auto text-center w-full pt-20">
         {/* Badge */}
