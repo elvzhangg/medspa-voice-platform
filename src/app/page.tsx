@@ -316,22 +316,31 @@ function HeroCTA() {
 }
 
 /* ─── Hero video carousel: 3 clips, each plays once, crossfade between ─ */
-const HERO_CLIPS = [
-  "/hero-video-1.mp4", // Option 1 — woman on phone near window (elegant, Aman)
-  "/hero-video-2.mp4", // Mixkit 39791 — young woman laughing during a phone call
-  "/hero-video-3.mp4", // Original — close-up man on call (last in rotation)
+type HeroClip = { src: string; start?: number; end?: number };
+
+const HERO_CLIPS: HeroClip[] = [
+  // Option 1 — woman on phone near window (Mixkit 23735, 21.7s) — trim to first ~10s
+  { src: "/hero-video-1.mp4", start: 0, end: 10 },
+  // Mixkit 39791 — young woman laughing (14.5s) — skip the teeth-closeup intro
+  { src: "/hero-video-2.mp4", start: 3, end: 12 },
+  // Original — close-up man on call (16s)
+  { src: "/hero-video-3.mp4" },
 ];
 
 function HeroVideoCarousel() {
   const [active, setActive] = useState(0);
   const refs = useRef<(HTMLVideoElement | null)[]>([]);
 
+  const advance = useCallback(() => {
+    setActive((i) => (i + 1) % HERO_CLIPS.length);
+  }, []);
+
   // Play only the active video to save bandwidth; pause others.
   useEffect(() => {
     refs.current.forEach((v, i) => {
       if (!v) return;
       if (i === active) {
-        v.currentTime = 0;
+        try { v.currentTime = HERO_CLIPS[i].start ?? 0; } catch {}
         v.play().catch(() => {});
       } else {
         v.pause();
@@ -339,24 +348,30 @@ function HeroVideoCarousel() {
     });
   }, [active]);
 
-  const handleEnded = useCallback(() => {
-    setActive((i) => (i + 1) % HERO_CLIPS.length);
-  }, []);
-
   return (
     <>
-      {HERO_CLIPS.map((src, i) => (
+      {HERO_CLIPS.map((clip, i) => (
         <video
-          key={src}
+          key={clip.src}
           ref={(el) => { refs.current[i] = el; }}
           muted
           playsInline
           preload={i === 0 ? "auto" : "metadata"}
           autoPlay={i === 0}
-          onEnded={i === active ? handleEnded : undefined}
+          onLoadedMetadata={(e) => {
+            if (clip.start != null) {
+              try { (e.currentTarget as HTMLVideoElement).currentTime = clip.start; } catch {}
+            }
+          }}
+          onTimeUpdate={(e) => {
+            if (i !== active) return;
+            const v = e.currentTarget as HTMLVideoElement;
+            if (clip.end != null && v.currentTime >= clip.end) advance();
+          }}
+          onEnded={i === active ? advance : undefined}
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1400ms] ease-in-out"
           style={{ opacity: i === active ? 0.18 : 0 }}
-          src={src}
+          src={clip.src}
         />
       ))}
     </>
