@@ -138,12 +138,21 @@ async function sendStaffForwardNotification(
 
   // Record which numbers were notified and when
   if (sentTo.length > 0) {
-    await supabaseAdmin
+    // .order() / .limit() are not valid on update() — fetch the latest record's ID first
+    const { data: latest } = await supabaseAdmin
       .from("booking_requests")
-      .update({ forwarded_to: sentTo, forward_sent_at: new Date().toISOString() })
+      .select("id")
       .eq("tenant_id", request.tenantId)
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(1)
+      .single();
+
+    if (latest) {
+      await supabaseAdmin
+        .from("booking_requests")
+        .update({ forwarded_to: sentTo, forward_sent_at: new Date().toISOString() })
+        .eq("id", latest.id);
+    }
   }
 }
 
