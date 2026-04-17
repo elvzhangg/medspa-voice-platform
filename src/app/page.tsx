@@ -413,6 +413,72 @@ function HeroShowcase() {
         </div>
       </div>
 
+      {/* ─── Floating glass cards ─────────────────────────────── */}
+
+      {/* Card 1: Live incoming call (top-left, overlapping portrait edge) */}
+      <div className="absolute top-[8%] -left-[2%] md:-left-[4%] w-[230px] glass rounded-2xl p-3.5 animate-float-a hero-line-1" style={{ animationDelay: "0.2s" }}>
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-em-500" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Incoming</p>
+            <p className="text-sm font-semibold text-sage-100 truncate">Sarah M. · Botox consult</p>
+          </div>
+        </div>
+        <div className="mt-2.5 flex items-center gap-1 h-4">
+          {[3,5,7,4,6,8,5,3,6,5,7,4].map((h,i) => (
+            <span key={i} className="flex-1 rounded-full bg-gradient-to-t from-em-500 to-gold-400 animate-float-b"
+                  style={{ height: `${h*2}px`, animationDelay: `${i*0.08}s`, animationDuration: "1.6s" }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Card 2: Booked (top-right, peeking out) */}
+      <div className="absolute top-[30%] -right-[3%] md:-right-[5%] w-[210px] glass rounded-2xl p-3.5 animate-float-b hero-line-2" style={{ animationDelay: "0.6s" }}>
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-em-600 flex items-center justify-center shadow-lg shadow-em-950/30">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Booked</p>
+            <p className="text-sm font-semibold text-sage-100 leading-snug">Thu 3:00pm · Lip filler</p>
+            <p className="text-[11px] text-sage-600 mt-0.5">Added to Acuity</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 3: Follow-up sent (bottom-right, overlapping mirror) */}
+      <div className="absolute bottom-[6%] right-[4%] w-[240px] glass rounded-2xl p-3.5 animate-float-c hero-line-3" style={{ animationDelay: "1s" }}>
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center">
+            <svg className="w-4 h-4 text-em-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M3 14h18M7 18h10" transform="rotate(-20 12 12)"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Follow-up sent</p>
+            <p className="text-sm font-semibold text-sage-100 leading-snug">6-wk Dysport recall</p>
+            <p className="text-[11px] text-sage-600 mt-0.5">Emma K. · via SMS</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 4: New 5★ review (bottom-left) */}
+      <div className="absolute bottom-[10%] left-[2%] md:left-[4%] w-[215px] glass rounded-2xl p-3.5 animate-float-a hero-line-4" style={{ animationDelay: "1.4s" }}>
+        <div className="flex items-center gap-0.5 mb-1.5">
+          {[0,1,2,3,4].map((i) => (
+            <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
+            </svg>
+          ))}
+        </div>
+        <p className="text-[12px] text-sage-200 leading-snug italic">&ldquo;Booked my filler without waiting on hold — incredible.&rdquo;</p>
+        <p className="text-[11px] text-sage-600 mt-1.5">Jenna R. · Yelp</p>
+      </div>
     </div>
   );
 }
