@@ -951,12 +951,12 @@ function Footer() {
               Vaux<span className="text-em-400">Voice</span>
             </span>
           </div>
-          <div className="flex items-center gap-8 text-sm text-sage-600">
-            <a href="#" className="hover:text-sage-200 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-sage-200 transition-colors">Terms of Service</a>
-            <a href="mailto:hello@vauxvoice.com" className="hover:text-sage-200 transition-colors">Contact</a>
+          <div className="flex items-center gap-2 text-sm text-sage-400">
+            <a href="#" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Privacy Policy</a>
+            <a href="#" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Terms of Service</a>
+            <a href="mailto:hello@vauxvoice.com" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Contact</a>
           </div>
-          <p className="text-sm text-sage-800">© 2026 VauxVoice. All rights reserved.</p>
+          <p className="text-sm text-sage-400">© 2026 VauxVoice. All rights reserved.</p>
         </div>
       </div>
     </footer>

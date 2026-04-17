@@ -418,6 +418,19 @@ body {
   pointer-events: none;
 }
 
+/* ── Focus-visible (WCAG 2.4.7, Apple HIG, Material Design) ──────── */
+/* Keyboard-only focus ring. Uses :focus-visible so mouse clicks
+   don't trigger it. Amber outline pairs with the Champagne Noir
+   accent and stays legible on both light and dark surfaces. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 3px;
+  border-radius: inherit;
+}
+
 /* ── Reduced-motion (WCAG 2.3.3, Apple HIG, Material Design) ─────── */
 /* Respect users who request reduced motion: disable decorative loops
    (aurora drift, mesh pan, particles, spins, glow pulses, marquee,
