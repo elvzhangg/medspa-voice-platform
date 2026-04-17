@@ -334,9 +334,9 @@ function Hero() {
           Now handling 50,000+ calls per month
         </div>
 
-        <h1 className="text-[clamp(36px,5.4vw,64px)] font-extrabold leading-[1.05] tracking-[-0.035em] mb-7">
-          <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block" />
-          <span className="block mt-1">
+        <h1 className="font-serif text-[clamp(40px,5.8vw,72px)] font-light leading-[1.06] tracking-[-0.005em] mb-7">
+          <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block italic" />
+          <span className="block mt-2">
             <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
               AI Clientele Specialist
             </span>
