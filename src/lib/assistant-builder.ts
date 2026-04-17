@@ -56,30 +56,45 @@ export async function buildAssistantConfig(
       type: "function",
       function: {
         name: "book_appointment",
-        description: "Log an appointment request and notify staff. Always collect backup scheduling preferences before calling this.",
+        description: "Submit an appointment request for a slot that has ALREADY been verified as available via get_available_slots. This locks the slot, notifies staff, and triggers the customer SMS confirmation. Do NOT call this until get_available_slots has returned the chosen slot as available.",
         parameters: {
           type: "object",
           properties: {
             service: { type: "string", description: "The service requested (e.g. Botox, HydraFacial)" },
-            preferred_date: { type: "string", description: "Primary preferred date (YYYY-MM-DD)" },
-            preferred_time: { type: "string", description: "Primary preferred time (HH:MM or natural like '2pm')" },
+            preferred_date: { type: "string", description: "Verified-available date (YYYY-MM-DD)" },
+            preferred_time: { type: "string", description: "Verified-available time (HH:MM 24h or natural like '2:00 PM')" },
             customer_name: { type: "string", description: "Full name of the caller" },
             customer_phone: { type: "string", description: "Caller's callback phone number" },
+            referred_by: { type: "string", description: "Who referred them, if mentioned" },
+          },
+          required: ["service", "preferred_date", "preferred_time", "customer_name", "customer_phone"],
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
+        name: "update_booking_preferences",
+        description: "Attach backup scheduling preferences to the booking that was just created. Call this AFTER book_appointment succeeds, once you've asked the caller about flexibility. Staff use these backups only if the primary slot later falls through.",
+        parameters: {
+          type: "object",
+          properties: {
+            customer_phone: { type: "string", description: "The same callback number used in book_appointment — used to locate the booking." },
             backup_slots: {
               type: "string",
-              description: "Any other dates/times they mentioned as alternatives, e.g. 'also Thursday mornings or any Friday afternoon'"
+              description: "Other dates/times they'd be open to as fallbacks, e.g. 'Thursday mornings or any Friday afternoon'"
             },
             time_preference: {
               type: "string",
-              description: "General time-of-day preference, e.g. 'mornings before noon', 'afternoons', 'evenings after 5'"
+              description: "General time-of-day preference, e.g. 'mornings before noon', 'afternoons'"
             },
             provider_preference: {
               type: "string",
               description: "Preferred provider or aesthetician, e.g. 'Dr. Sarah', 'no preference'"
             },
-            referred_by: { type: "string", description: "Who referred them, if mentioned" },
           },
-          required: ["service", "customer_name", "customer_phone"],
+          required: ["customer_phone"],
         },
       },
       server: { url: serverUrl },
@@ -160,36 +175,54 @@ function buildSystemPrompt(tenant: Tenant, kbContext: string): string {
     timeZone: "America/Los_Angeles",
   });
 
-  // Staff-forward booking instruction
-  let forwardInstruction = "";
-  if (tenant.booking_forward_enabled && (tenant.booking_forward_phones ?? []).length > 0) {
-    forwardInstruction = `
-## Appointment Booking Workflow (Staff Confirmation Required)
-IMPORTANT: Our scheduling team personally reviews every appointment before confirming. Follow these steps exactly:
+  // Availability-first booking workflow
+  const forwardInstruction = `
+## Appointment Booking Workflow — Availability First, Then Book, Then Backups
+Follow these steps IN ORDER. Do not skip availability checking.
 
-### Step 1 — Collect the essentials (conversationally, not like a form)
-  1. Full name
-  2. Best callback phone number (read it back to confirm)
-  3. Service they want
-  4. Preferred date and time
+### Step 1 — Figure out what they want
+Conversationally collect:
+  • Service (e.g. Botox, HydraFacial)
+  • Preferred date (or a day range like "sometime next week")
+  • Preferred time (or a window like "afternoon")
 
-### Step 2 — Gather scheduling flexibility (always ask these)
-After getting their preferred slot, ask:
-- "And just in case that exact time isn't available — do you have any other days or times that could work for you?"
-- "Do you have a preference for morning or afternoon appointments in general?"
-- "Is there a specific provider or aesthetician you'd like to see, or no preference?"
-Capture whatever they share — even a general preference like "mornings" or "Thursdays work best" is helpful.
+### Step 2 — Check availability using get_available_slots (MANDATORY)
+Call 'get_available_slots' with their preferred date and service.
+  • If they gave a specific time → check whether that exact slot is in the returned list.
+      - If yes → read it back: "I can see we have [time] available on [date] — should I grab that for you?"
+      - If no → offer the closest alternatives from the returned list: "That exact time isn't open, but we do have [slot A] and [slot B] on that day. Would either of those work?"
+  • If they didn't give a specific time → offer 2–3 slots from the returned list naturally: "On [date] we have [slot A], [slot B], or [slot C] open — which works best?"
+  • If the day has no availability at all → suggest the next business day and re-check.
 
-### Step 3 — Call the 'book_appointment' tool
-Include: service, preferred_date, preferred_time, customer_name, customer_phone, and whatever flexibility info was gathered in backup_slots, time_preference, and provider_preference.
+Never invent, guess, or assume a slot is open. Only offer times returned by get_available_slots.
 
-### Step 4 — Close the call with this exact message (fill in the bracketed parts):
-"We've received all the details for your [service] request. You'll receive a text confirmation at [their phone number] shortly once our team reviews and confirms your slot. And if [their preferred date/time] happens to not be available, we have your backup preferences noted so we can find the best fit. Is there anything else I can help you with?"
+### Step 3 — Collect caller identity (only after a slot is agreed)
+  • Full name
+  • Best callback phone number (read digits back to confirm)
 
-- Do NOT promise the specific slot is confirmed — the team reviews first.
-- Do NOT say "I've booked your appointment" — say "we've received your request".
+### Step 4 — Call 'book_appointment' for the agreed slot
+Pass: service, preferred_date, preferred_time (the verified-available one), customer_name, customer_phone.
+Wait for the tool response. It will either succeed or tell you the slot just got taken by someone else — if that happens, apologize, go back to Step 2 with a new date.
+
+### Step 5 — Read the confirmation to the caller (use this exact script, fill brackets):
+"Perfect — I've sent your appointment request for [service] on [date] at [time] over to our scheduling team. You'll receive a text confirmation at [phone number] shortly at this number."
+
+### Step 6 — AFTER confirming, collect backup preferences (this is the hedge)
+Now that the request is locked in, warmly ask:
+  • "Just in case anything comes up on our end — are there any other days or times that would also work for you?"
+  • "Do you generally prefer mornings or afternoons?"
+  • "Is there a specific provider you'd like, or no preference?"
+Whatever they share, call 'update_booking_preferences' with customer_phone (same as before) plus backup_slots / time_preference / provider_preference.
+If they say "no, just that one time works" — skip the tool call. Don't force it.
+
+### Step 7 — Close warmly
+"Great, we've got everything we need. You'll hear from us by text very soon. Anything else I can help you with?"
+
+### Critical Rules
+- NEVER call book_appointment for a slot that wasn't returned by get_available_slots.
+- NEVER promise the booking is fully confirmed — say "your request has been sent" / "you'll get a confirmation text shortly".
+- NEVER collect backup preferences BEFORE book_appointment — it makes the caller feel like their primary slot isn't real.
 `;
-  }
 
   let depositInstruction = "";
   if (tenant.booking_config && (tenant.booking_config as any).deposit_amount) {
@@ -217,7 +250,6 @@ ${forwardInstruction}
 - For booking requests, collect name, phone, service, and preferred time
 ${depositInstruction}
 - For any other payments or billing questions, use the create_payment_link tool as well
-${!tenant.booking_forward_enabled ? "- After a booking is confirmed, tell the caller they will receive a confirmation text message in a few moments." : ""}
 
 ${tenant.system_prompt_override ? `## Special Instructions\n${tenant.system_prompt_override}\n` : ""}
 

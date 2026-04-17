@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantByPhoneNumber, getTenantByVapiPhoneNumberId } from "@/lib/tenants";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { searchKnowledgeBase, formatKBContext } from "@/lib/knowledge-base";
-import { bookAppointment } from "@/lib/booking";
+import { bookAppointment, updateBookingPreferences } from "@/lib/booking";
 import { createPaymentLink } from "@/lib/payments";
 import { getAvailableSlots } from "@/lib/availability";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -210,12 +210,11 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customer_name,
             customer_phone,
             referred_by,
-            backup_slots,
-            time_preference,
-            provider_preference,
           } = toolCall.parameters as Record<string, string>;
 
-          // Book via the booking integration layer
+          // bookAppointment now handles availability re-check + customer SMS
+          // confirmation + staff SMS forward internally. Backup preferences
+          // are attached later via the update_booking_preferences tool.
           const bookingResult = await bookAppointment({
             tenantId: tenant.id,
             service,
@@ -224,33 +223,32 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customerName: customer_name,
             customerPhone: customer_phone,
             referredBy: referred_by,
+          });
+
+          result = bookingResult.message;
+          break;
+        }
+
+        case "update_booking_preferences": {
+          if (!tenant) {
+            result = "I wasn't able to save those preferences, but your booking is still in place.";
+            break;
+          }
+          const {
+            customer_phone,
+            backup_slots,
+            time_preference,
+            provider_preference,
+          } = toolCall.parameters as Record<string, string>;
+
+          const prefResult = await updateBookingPreferences({
+            tenantId: tenant.id,
+            customerPhone: customer_phone,
             backupSlots: backup_slots,
             timePreference: time_preference,
             providerPreference: provider_preference,
           });
-
-          result = bookingResult.message;
-
-          // AUTOMATIC POST-BOOKING SMS
-          if (bookingResult.success && tenant.phone_number && tenant.sms_confirmation_enabled !== false) {
-            const smsContent = `Hi ${customer_name}! Your appointment for ${service} at ${tenant.name} is confirmed for ${preferred_date} at ${preferred_time}. \n\nDirections & Parking: ${tenant.directions_parking_info || 'Please check our website for location details.'}`;
-            
-            console.log("AUTO_SMS_CONFIRMATION:", customer_phone, smsContent);
-            
-            // Trigger Vapi message API
-            await fetch(`https://api.vapi.ai/call/${call?.id}/message`, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${process.env.VAPI_API_KEY || "a0e0b763-2636-40ea-be74-ac0227ec7be5"}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                content: smsContent,
-                role: "assistant"
-              })
-            }).catch(e => console.error("AUTO_SMS_FAILED:", e));
-          }
-          
+          result = prefResult.message;
           break;
         }
 

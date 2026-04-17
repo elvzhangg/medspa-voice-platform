@@ -28,6 +28,8 @@ interface BookingResult {
   success: boolean;
   message: string;
   confirmationId?: string;
+  /** Set when a slot was requested but got taken between availability check and booking */
+  slotUnavailable?: boolean;
 }
 
 export async function bookAppointment(request: BookingRequest): Promise<BookingResult> {
@@ -64,7 +66,108 @@ export async function bookAppointment(request: BookingRequest): Promise<BookingR
     await sendStaffForwardNotification(request, tenant, result.confirmationId);
   }
 
+  // Customer SMS confirmation — only when the request was successfully locked in.
+  if (result.success && tenant) {
+    await sendCustomerConfirmation(request, tenant);
+  }
+
   return result;
+}
+
+/**
+ * Sends the customer a real SMS confirming their appointment request was
+ * received. Uses tenant-level Twilio if configured, platform env vars otherwise.
+ *
+ * The language is deliberately hedged ("request received", not "confirmed")
+ * because staff still review before final confirmation.
+ */
+async function sendCustomerConfirmation(request: BookingRequest, tenant: any): Promise<void> {
+  const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = tenant.twilio_auth_token  || process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = tenant.twilio_phone_number || process.env.TWILIO_FROM_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    console.warn("CUSTOMER_CONFIRMATION_SMS_SKIPPED: no Twilio credentials");
+    return;
+  }
+  if (!request.customerPhone) return;
+
+  const whenLine = request.preferredDate && request.preferredTime
+    ? `${request.preferredDate} at ${request.preferredTime}`
+    : request.preferredDate || "soon";
+
+  const body = `Hi ${request.customerName.split(" ")[0]} — this is ${tenant.name}. We've received your request for ${request.service} on ${whenLine}. Our team will send a final confirmation shortly. Reply STOP to opt out.`;
+
+  const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ From: fromNumber, To: request.customerPhone, Body: body }).toString(),
+    });
+    if (!res.ok) {
+      console.error("CUSTOMER_CONFIRMATION_SMS_FAILED:", await res.text());
+    } else {
+      console.log("CUSTOMER_CONFIRMATION_SMS_SENT:", request.customerPhone);
+    }
+  } catch (err) {
+    console.error("CUSTOMER_CONFIRMATION_SMS_EXCEPTION:", err);
+  }
+}
+
+/**
+ * Attach backup scheduling preferences to the most recent pending booking
+ * request for this customer on this tenant. Called by the
+ * update_booking_preferences tool after book_appointment has already fired.
+ */
+export async function updateBookingPreferences(args: {
+  tenantId: string;
+  customerPhone: string;
+  backupSlots?: string;
+  timePreference?: string;
+  providerPreference?: string;
+}): Promise<{ success: boolean; message: string }> {
+  const { data: latest } = await supabaseAdmin
+    .from("booking_requests")
+    .select("id")
+    .eq("tenant_id", args.tenantId)
+    .eq("customer_phone", args.customerPhone)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!latest) {
+    return {
+      success: false,
+      message: "I couldn't find your booking to attach those preferences to — but don't worry, your original request is still in place.",
+    };
+  }
+
+  const update: Record<string, string> = {};
+  if (args.backupSlots) update.backup_slots = args.backupSlots;
+  if (args.timePreference) update.time_preference = args.timePreference;
+  if (args.providerPreference) update.provider_preference = args.providerPreference;
+
+  if (Object.keys(update).length === 0) {
+    return { success: true, message: "Got it, no backup preferences to add." };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("booking_requests")
+    .update(update)
+    .eq("id", latest.id);
+
+  if (error) {
+    console.error("UPDATE_BOOKING_PREFS_ERROR:", error);
+    return { success: false, message: "I had trouble saving those, but your primary slot is still good." };
+  }
+
+  return { success: true, message: "Perfect, I've noted those backup preferences for our team." };
 }
 
 /**
@@ -168,35 +271,61 @@ async function sendStaffForwardNotification(
  * Mode 1: Internal — store in DB, staff follows up
  */
 async function bookInternal(request: BookingRequest): Promise<BookingResult> {
-  // 1. Log the booking request
-  const { data: requestRecord, error: reqErr } = await supabaseAdmin.from("booking_requests").insert({
-    tenant_id: request.tenantId,
-    service: request.service,
-    preferred_date: request.preferredDate || null,
-    preferred_time: request.preferredTime || null,
-    customer_name: request.customerName,
-    customer_phone: request.customerPhone,
-    referred_by: request.referredBy || null,
-    notes: request.notes || null,
-    backup_slots: request.backupSlots || null,
-    time_preference: request.timePreference || null,
-    provider_preference: request.providerPreference || null,
-    status: "pending",
-  }).select().single();
-
-  if (reqErr) {
-    console.error("BOOKING_INSERT_ERROR:", reqErr);
-    return {
-      success: false,
-      message: "I'm sorry, I had trouble recording your appointment request. Could you please call back?"
-    };
-  }
-
-  // 2. Also create a calendar event (tentative)
+  // 1. Availability re-check — the AI already called get_available_slots, but
+  //    another caller could have taken the slot in the meantime. Do a final
+  //    check against calendar_events before committing.
   if (request.preferredDate && request.preferredTime) {
-    const startTime = new Date(`${request.preferredDate}T${request.preferredTime}`);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour default
+    const startTime = normalizeSlotStart(request.preferredDate, request.preferredTime);
+    if (!startTime) {
+      return {
+        success: false,
+        message: "I couldn't quite parse that date and time. Could you say it once more?",
+      };
+    }
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
+    const { data: conflicts } = await supabaseAdmin
+      .from("calendar_events")
+      .select("id")
+      .eq("tenant_id", request.tenantId)
+      .neq("status", "cancelled")
+      .lt("start_time", endTime.toISOString())
+      .gt("end_time", startTime.toISOString())
+      .limit(1);
+
+    if (conflicts && conflicts.length > 0) {
+      return {
+        success: false,
+        slotUnavailable: true,
+        message: `I'm so sorry — it looks like that slot just got taken. Could you check get_available_slots again and offer the caller a different time?`,
+      };
+    }
+
+    // 2. Log the booking request
+    const { error: reqErr } = await supabaseAdmin.from("booking_requests").insert({
+      tenant_id: request.tenantId,
+      service: request.service,
+      preferred_date: request.preferredDate,
+      preferred_time: request.preferredTime,
+      customer_name: request.customerName,
+      customer_phone: request.customerPhone,
+      referred_by: request.referredBy || null,
+      notes: request.notes || null,
+      backup_slots: request.backupSlots || null,
+      time_preference: request.timePreference || null,
+      provider_preference: request.providerPreference || null,
+      status: "pending",
+    });
+
+    if (reqErr) {
+      console.error("BOOKING_INSERT_ERROR:", reqErr);
+      return {
+        success: false,
+        message: "I'm sorry, I had trouble recording your appointment request. Could you please call back?"
+      };
+    }
+
+    // 3. Create the calendar event (pending staff review — visible but not confirmed)
     await supabaseAdmin.from("calendar_events").insert({
       tenant_id: request.tenantId,
       title: `${request.customerName} - ${request.service}`,
@@ -205,16 +334,64 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       customer_name: request.customerName,
       customer_phone: request.customerPhone,
       service_type: request.service,
-      status: "confirmed"
+      status: "confirmed",
     });
+  } else {
+    // No specific slot — shouldn't happen under the new workflow, but be defensive
+    const { error: reqErr } = await supabaseAdmin.from("booking_requests").insert({
+      tenant_id: request.tenantId,
+      service: request.service,
+      preferred_date: request.preferredDate || null,
+      preferred_time: request.preferredTime || null,
+      customer_name: request.customerName,
+      customer_phone: request.customerPhone,
+      referred_by: request.referredBy || null,
+      notes: request.notes || null,
+      backup_slots: request.backupSlots || null,
+      time_preference: request.timePreference || null,
+      provider_preference: request.providerPreference || null,
+      status: "pending",
+    });
+    if (reqErr) {
+      return { success: false, message: "I'm sorry, I had trouble recording your request. Please call back." };
+    }
   }
 
-  let msg = `I've scheduled your ${request.service} appointment request`;
-  if (request.preferredDate) msg += ` for ${request.preferredDate}`;
-  if (request.preferredTime) msg += ` at ${request.preferredTime}`;
-  msg += `. I've added this to our team's calendar and you'll receive a confirmation text shortly. Is there anything else I can help with?`;
+  const when = request.preferredDate && request.preferredTime
+    ? `${request.preferredDate} at ${request.preferredTime}`
+    : request.preferredDate || "the time you mentioned";
 
-  return { success: true, message: msg };
+  return {
+    success: true,
+    message: `Your appointment request for ${request.service} on ${when} has been sent to our scheduling team. You'll receive a text confirmation at ${request.customerPhone} shortly.`,
+  };
+}
+
+/**
+ * Accepts "2024-11-15" + a time like "2pm" / "14:00" / "2:00 PM" and returns
+ * a real Date. Returns null if unparseable.
+ */
+function normalizeSlotStart(date: string, time: string): Date | null {
+  // Already HH:MM (24h)
+  const hhmm = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (hhmm) {
+    const d = new Date(`${date}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Natural: "2pm", "2:30 pm", "2:00 PM"
+  const natural = time.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (natural) {
+    let h = parseInt(natural[1], 10);
+    const m = natural[2] ? parseInt(natural[2], 10) : 0;
+    const ampm = natural[3].toLowerCase();
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    const d = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Fallback: try Date() directly
+  const d = new Date(`${date}T${time}`);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /**

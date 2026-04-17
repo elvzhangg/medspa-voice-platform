@@ -219,43 +219,6 @@ function ParallaxLayer({
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Hero particles
-═══════════════════════════════════════════════════════════════════ */
-function HeroParticles() {
-  const [pts, setPts] = useState<Array<{ x: number; y: number; dur: number; delay: number; size: number }>>([]);
-  useEffect(() => {
-    setPts(Array.from({ length: 28 }, () => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      dur:   3.5 + Math.random() * 4.5,
-      delay: Math.random() * 6,
-      size:  0.5 + Math.random() * 1.5,
-    })));
-  }, []);
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {pts.map((p, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full bg-em-400/25"
-          style={{
-            left: `${p.x}%`,
-            top:  `${p.y}%`,
-            width:  `${p.size}px`,
-            height: `${p.size}px`,
-            animationName: "particle-rise",
-            animationDuration: `${p.dur}s`,
-            animationDelay: `${p.delay}s`,
-            animationTimingFunction: "ease-out",
-            animationIterationCount: "infinite",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════
    Navigation
 ═══════════════════════════════════════════════════════════════════ */
 function Nav() {
@@ -354,87 +317,167 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-transparent">
+    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
       {/* Subtle video bed — barely visible on light theme */}
-      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.07] mix-blend-multiply" src="/hero-video.mp4" />
+      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.05] mix-blend-multiply" src="/hero-video.mp4" />
 
       {/* Champagne mesh — slowly pans warm amber wash across hero */}
       <div className="absolute inset-0 hero-mesh pointer-events-none" />
 
-      {/* Soft warm wash accents */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_25%,rgba(245,158,11,0.10),transparent)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_35%_35%_at_82%_72%,rgba(9,9,11,0.05),transparent)]" />
-
-      {/* Fine grid — charcoal on white */}
-      <div className="absolute inset-0 opacity-[0.045]" style={{
-        backgroundImage: "linear-gradient(rgba(9,9,11,0.55) 1px,transparent 1px),linear-gradient(90deg,rgba(9,9,11,0.55) 1px,transparent 1px)",
-        backgroundSize: "72px 72px",
-        maskImage: "radial-gradient(ellipse 60% 55% at 50% 45%, black 60%, transparent 100%)",
-        WebkitMaskImage: "radial-gradient(ellipse 60% 55% at 50% 45%, black 60%, transparent 100%)",
-      }} />
-
-      {/* Particles */}
-      <HeroParticles />
-
-      {/* Spinning decorative rings */}
-      <div className="spin-ring animate-spin-slow  absolute top-[15%] right-[8%]  w-[320px] h-[320px] opacity-40" />
-      <div className="spin-ring animate-spin-rev   absolute bottom-[12%] left-[6%]  w-[200px] h-[200px] opacity-25" />
-
-      {/* Aurora blobs — amber + charcoal, drifting + parallaxing */}
-      <ParallaxLayer strength={0.35} className="absolute -top-[5%] -left-[10%] pointer-events-none">
+      {/* Soft warm wash accent behind image column */}
+      <ParallaxLayer strength={0.25} className="absolute -top-[10%] -right-[10%] pointer-events-none">
         <div className="w-[620px] h-[620px] rounded-full blur-[110px] animate-aurora-a"
              style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
       </ParallaxLayer>
-      <ParallaxLayer strength={-0.22} className="absolute -bottom-[8%] -right-[8%] pointer-events-none">
-        <div className="w-[680px] h-[680px] rounded-full blur-[120px] animate-aurora-b"
-             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)", animationDelay: "2s" }} />
-      </ParallaxLayer>
-      <ParallaxLayer strength={0.18} className="absolute top-[38%] left-[32%] pointer-events-none">
-        <div className="w-[520px] h-[520px] rounded-full blur-[100px] animate-aurora-c"
-             style={{ background: "radial-gradient(circle, rgba(9,9,11,0.07), transparent 70%)", animationDelay: "1.2s" }} />
-      </ParallaxLayer>
-      <ParallaxLayer strength={-0.3} className="absolute top-[18%] right-[22%] pointer-events-none">
-        <div className="w-[280px] h-[280px] rounded-full blur-[80px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.14), transparent 70%)", animationDelay: "3.5s" }} />
+      <ParallaxLayer strength={-0.18} className="absolute -bottom-[12%] -left-[8%] pointer-events-none">
+        <div className="w-[480px] h-[480px] rounded-full blur-[100px] animate-aurora-b"
+             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.15), transparent 70%)", animationDelay: "2s" }} />
       </ParallaxLayer>
 
-      <div className="relative z-10 max-w-5xl mx-auto text-center w-full pt-20">
-        {/* Badge */}
-        <div className="hero-line-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-em-900/50 bg-em-950/40 backdrop-blur-md text-sm text-em-300 mb-10">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-em-400" />
-          </span>
-          Now handling 50,000+ calls per month
+      {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-12 lg:gap-16 items-center">
+
+        {/* ─── LEFT: Copy ─────────────────────────────────────────── */}
+        <div className="text-center lg:text-left">
+          <div className="hero-line-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-sage-800/50 bg-white/70 backdrop-blur-md text-sm text-em-400 mb-8 shadow-sm shadow-em-950/30">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-em-400" />
+            </span>
+            Now handling 50,000+ calls per month
+          </div>
+
+          <h1 className="text-[clamp(44px,7vw,76px)] font-extrabold leading-[1.04] tracking-[-0.035em] mb-6">
+            <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
+            <span className="block mt-1">
+              <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
+                receptionist
+              </span>
+            </span>
+          </h1>
+
+          <p className="hero-line-2 text-lg text-sage-400 max-w-[58ch] mx-auto lg:mx-0 mb-10 leading-relaxed font-light">
+            Never miss a call, never lose a lead. Our AI answers 24/7, knows your
+            services and pricing, and books appointments — so your team can focus
+            on what matters.
+          </p>
+
+          <div className="flex justify-center lg:justify-start"><HeroCTA /></div>
+
+          <p className="hero-line-4 text-sm text-sage-600 mt-6 tracking-wide">
+            No credit card required · Live in under 48 hours
+          </p>
         </div>
 
-        {/* Headline — word-by-word reveal */}
-        <h1 className="text-[clamp(52px,9vw,92px)] font-extrabold leading-[1.02] tracking-[-0.04em] mb-7">
-          <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
-          <span className="block mt-1">
-            <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
-              receptionist
-            </span>
-          </span>
-        </h1>
+        {/* ─── RIGHT: Photo + floating cards ────────────────────── */}
+        <HeroShowcase />
+      </div>
+    </section>
+  );
+}
 
-        {/* Sub */}
-        <p className="hero-line-2 text-lg md:text-xl text-sage-400 max-w-2xl mx-auto mb-12 leading-relaxed font-light">
-          Never miss a call, never lose a lead. Our AI answers 24/7, knows your
-          services and pricing, and books appointments — so your team can focus
-          on what matters.
-        </p>
+/* ─── Hero photo collage with animated glass cards ──────────────────── */
+function HeroShowcase() {
+  return (
+    <div className="relative h-[560px] md:h-[620px] lg:h-[640px] w-full">
+      {/* Warm glow behind collage */}
+      <div className="absolute inset-0 rounded-[40px] bg-[radial-gradient(ellipse_70%_60%_at_50%_45%,rgba(245,158,11,0.22),transparent)] blur-2xl" />
 
-        {/* CTAs — magnetic */}
-        <HeroCTA />
-
-        <p className="hero-line-4 text-sm text-sage-600 mt-6 tracking-wide">
-          No credit card required · Live in under 48 hours
-        </p>
+      {/* Main portrait — woman calling, satisfied */}
+      <div className="absolute top-0 right-0 w-[78%] h-[78%] rounded-[28px] overflow-hidden shadow-2xl shadow-em-950/15 ring-1 ring-sage-800/40 hero-line-2">
+        {/* TODO: swap src with your own asset (e.g. /public/hero-portrait.jpg). Unsplash placeholder below. */}
+        <img
+          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=80"
+          alt="Med spa client smiling during a phone call"
+          className="w-full h-full object-cover"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
+        {/* Fallback gradient if image fails */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-gold-300 via-gold-400 to-em-400" />
+        {/* Inner warm sheen */}
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,transparent_30%,rgba(245,158,11,0.08)_70%,rgba(9,9,11,0.25)_100%)]" />
       </div>
 
-      <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-ink-950 to-transparent pointer-events-none" />
-    </section>
+      {/* Secondary inset — mirror / post-treatment glow */}
+      <div className="absolute bottom-0 left-0 w-[52%] h-[44%] rounded-[22px] overflow-hidden shadow-2xl shadow-em-950/20 ring-1 ring-sage-800/40 hero-line-3">
+        {/* TODO: swap src with your own asset (e.g. /public/hero-mirror.jpg). */}
+        <img
+          src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80"
+          alt="Client admiring her results in the mirror"
+          className="w-full h-full object-cover"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-em-300 via-em-400 to-em-600" />
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(315deg,transparent_30%,rgba(251,191,36,0.12)_70%)]" />
+      </div>
+
+      {/* ─── Floating glass cards ─────────────────────────────── */}
+
+      {/* Card 1: Live incoming call (top-left, overlapping portrait edge) */}
+      <div className="absolute top-[8%] -left-[2%] md:-left-[4%] w-[230px] glass rounded-2xl p-3.5 animate-float-a hero-line-1" style={{ animationDelay: "0.2s" }}>
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-em-500" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Incoming</p>
+            <p className="text-sm font-semibold text-sage-100 truncate">Sarah M. · Botox consult</p>
+          </div>
+        </div>
+        <div className="mt-2.5 flex items-center gap-1 h-4">
+          {[3,5,7,4,6,8,5,3,6,5,7,4].map((h,i) => (
+            <span key={i} className="flex-1 rounded-full bg-gradient-to-t from-em-500 to-gold-400 animate-float-b"
+                  style={{ height: `${h*2}px`, animationDelay: `${i*0.08}s`, animationDuration: "1.6s" }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Card 2: Booked (top-right, peeking out) */}
+      <div className="absolute top-[30%] -right-[3%] md:-right-[5%] w-[210px] glass rounded-2xl p-3.5 animate-float-b hero-line-2" style={{ animationDelay: "0.6s" }}>
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-em-600 flex items-center justify-center shadow-lg shadow-em-950/30">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Booked</p>
+            <p className="text-sm font-semibold text-sage-100 leading-snug">Thu 3:00pm · Lip filler</p>
+            <p className="text-[11px] text-sage-600 mt-0.5">Added to Acuity</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 3: Follow-up sent (bottom-right, overlapping mirror) */}
+      <div className="absolute bottom-[6%] right-[4%] w-[240px] glass rounded-2xl p-3.5 animate-float-c hero-line-3" style={{ animationDelay: "1s" }}>
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center">
+            <svg className="w-4 h-4 text-em-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M3 14h18M7 18h10" transform="rotate(-20 12 12)"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Follow-up sent</p>
+            <p className="text-sm font-semibold text-sage-100 leading-snug">6-wk Dysport recall</p>
+            <p className="text-[11px] text-sage-600 mt-0.5">Emma K. · via SMS</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 4: New 5★ review (middle-left, near mirror) */}
+      <div className="absolute bottom-[30%] left-[18%] md:left-[22%] w-[205px] glass rounded-2xl p-3.5 animate-float-a hero-line-4" style={{ animationDelay: "1.4s" }}>
+        <div className="flex items-center gap-0.5 mb-1.5">
+          {[0,1,2,3,4].map((i) => (
+            <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
+            </svg>
+          ))}
+        </div>
+        <p className="text-[12px] text-sage-200 leading-snug italic">&ldquo;Booked my filler without waiting on hold — incredible.&rdquo;</p>
+        <p className="text-[11px] text-sage-600 mt-1.5">Jenna R. · Yelp</p>
+      </div>
+    </div>
   );
 }
 
