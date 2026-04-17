@@ -126,7 +126,7 @@ function useMagnetic(strength = 12) {
 ═══════════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen bg-ink-900 text-sage-100 overflow-x-hidden">
+    <div className="relative z-[1] min-h-screen bg-transparent text-sage-100 overflow-x-hidden">
       <ScrollProgress />
       <CursorGlow />
       <Nav />
@@ -480,7 +480,7 @@ function StatItem({ raw, num, suffix, label, delay, visible }: {
   const display = num > 0 ? `${count}${suffix}` : raw;
   return (
     <div
-      className={`reveal-scale ${visible ? "visible" : ""} group text-center py-14 px-8 border-r border-sage-800/20 last:border-r-0`}
+      className={`reveal-zoom ${visible ? "visible" : ""} group text-center py-14 px-8 border-r border-sage-800/20 last:border-r-0`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <p className="text-[clamp(50px,6.5vw,78px)] font-black tracking-tighter leading-none text-sage-100 group-hover:text-em-400 transition-colors duration-500">
@@ -552,7 +552,7 @@ function HowItWorks() {
               How It Works
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-up ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em] leading-tight`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em] leading-tight`} style={{ transitionDelay: "80ms" }}>
               Live in three simple steps
             </h2>
           </div>
@@ -631,14 +631,21 @@ function Features() {
   return (
     <section id="features" className="py-32 bg-transparent relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_50%_at_80%_30%,rgba(245,158,11,0.06),transparent)] pointer-events-none" />
-      <div className="max-w-6xl mx-auto px-6">
+      {/* Parallax decoration */}
+      <ParallaxLayer strength={0.4} className="absolute top-[10%] -left-[5%] pointer-events-none">
+        <div className="w-[420px] h-[420px] rounded-full blur-[90px] animate-aurora-a" style={{ background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)" }} />
+      </ParallaxLayer>
+      <ParallaxLayer strength={-0.25} className="absolute bottom-[10%] -right-[6%] pointer-events-none">
+        <div className="w-[380px] h-[380px] rounded-full blur-[80px] animate-aurora-b" style={{ background: "radial-gradient(circle, rgba(251,191,36,0.09), transparent 70%)" }} />
+      </ParallaxLayer>
+      <div className="max-w-6xl mx-auto px-6 relative">
         <div className="text-center mb-20">
           <div ref={head.ref}>
             <span className={`reveal-blur ${head.visible ? "visible" : ""} inline-block text-[10px] font-bold text-em-400 uppercase tracking-[0.3em] border border-em-900/50 bg-em-950/40 px-4 py-1.5 rounded-full mb-6`}>
               Features
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-up ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
               Everything your front desk does.
               <br /><span className="text-sage-800">Without the front desk.</span>
             </h2>
@@ -725,7 +732,7 @@ function Testimonials() {
               Testimonials
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-up ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
               Loved by med spa owners
             </h2>
           </div>
@@ -762,7 +769,7 @@ function Pricing() {
               Pricing
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-up ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
               Simple, transparent pricing
             </h2>
             <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg font-light`} style={{ transitionDelay: "160ms" }}>
@@ -836,7 +843,7 @@ function DemoSection() {
 
       <div ref={ref} className="relative max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className={`reveal-up ${visible ? "visible" : ""} text-4xl md:text-[52px] font-extrabold text-sage-100 mb-5 tracking-[-0.03em] leading-tight`}>
+          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-4xl md:text-[52px] font-extrabold text-sage-100 mb-5 tracking-[-0.03em] leading-tight`}>
             Ready to never miss a call again?
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg font-light`} style={{ transitionDelay: "100ms" }}>
