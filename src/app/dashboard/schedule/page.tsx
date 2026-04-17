@@ -31,6 +31,7 @@ interface ForwardedRequest {
   backup_slots: string | null;
   time_preference: string | null;
   provider_preference: string | null;
+  provider_flexibility: string | null;
   status: string;
   forwarded_to: string[];
   forward_sent_at: string;
@@ -44,9 +45,10 @@ const TEMPLATE_TOKENS = [
   { token: "[CustomerPhone]", label: "Patient Phone" },
   { token: "[Service]", label: "Service" },
   { token: "[DateTime]", label: "Date & Time" },
+  { token: "[ProviderPreference]", label: "Provider Pref." },
+  { token: "[ProviderFlexibility]", label: "Provider Flex." },
   { token: "[BackupSlots]", label: "Backup Slots" },
   { token: "[TimePreference]", label: "Time Preference" },
-  { token: "[ProviderPreference]", label: "Provider Pref." },
   { token: "[Notes]", label: "Notes" },
   { token: "[ClinicName]", label: "Clinic Name" },
 ];
@@ -56,9 +58,10 @@ const SAMPLE_VALUES: Record<string, string> = {
   "[CustomerPhone]": "+1 (310) 555-0192",
   "[Service]": "Botox — 20 Units",
   "[DateTime]": "Friday Apr 19 at 2:00 PM",
+  "[ProviderPreference]": "Dr. Sarah",
+  "[ProviderFlexibility]": "Open to Dr. Mia as a second choice",
   "[BackupSlots]": "Also Thursday mornings or any Friday",
   "[TimePreference]": "Afternoons preferred",
-  "[ProviderPreference]": "Prefers Dr. Sarah",
   "[Notes]": "First-time patient, referred by Mia",
   "[ClinicName]": "Glow Med Spa",
 };
@@ -829,7 +832,15 @@ export default function SchedulingSystemPage() {
                       </div>
 
                       {/* Scheduling flexibility row */}
-                      <div className="col-span-2 bg-white rounded-2xl border border-gray-200 px-4 py-3 grid grid-cols-3 gap-4">
+                      <div className="col-span-2 bg-white rounded-2xl border border-gray-200 px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Provider Pref.</p>
+                          <p className="text-sm font-medium text-gray-700 mt-0.5">{req.provider_preference || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Open to Others?</p>
+                          <p className="text-sm font-medium text-gray-700 mt-0.5">{req.provider_flexibility || "—"}</p>
+                        </div>
                         <div>
                           <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Backup Slots</p>
                           <p className="text-sm font-medium text-gray-700 mt-0.5">{req.backup_slots || "—"}</p>
@@ -837,10 +848,6 @@ export default function SchedulingSystemPage() {
                         <div>
                           <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Time Preference</p>
                           <p className="text-sm font-medium text-gray-700 mt-0.5">{req.time_preference || "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Provider Pref.</p>
-                          <p className="text-sm font-medium text-gray-700 mt-0.5">{req.provider_preference || "—"}</p>
                         </div>
                       </div>
 

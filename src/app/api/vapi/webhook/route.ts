@@ -215,6 +215,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customer_name,
             customer_phone,
             provider_preference,
+            provider_flexibility,
             referred_by,
           } = toolCall.parameters as Record<string, string>;
 
@@ -230,6 +231,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customerPhone: customer_phone,
             referredBy: referred_by,
             providerPreference: provider_preference,
+            providerFlexibility: provider_flexibility,
           });
 
           result = bookingResult.message;

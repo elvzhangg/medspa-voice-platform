@@ -67,6 +67,7 @@ export async function buildAssistantConfig(
             customer_name: { type: "string", description: "Full name of the caller" },
             customer_phone: { type: "string", description: "Caller's callback phone number" },
             provider_preference: { type: "string", description: "Provider they asked for (already used to filter availability), e.g. 'Dr. Sarah' or 'No preference'" },
+            provider_flexibility: { type: "string", description: "How flexible they are on provider if their primary isn't available. E.g. 'open to any aesthetician', 'would rather wait for Dr. Sarah', 'second choice would be Dr. Mia'. Omit if they had no provider preference." },
             referred_by: { type: "string", description: "Who referred them, if mentioned" },
           },
           required: ["service", "preferred_date", "preferred_time", "customer_name", "customer_phone"],
@@ -182,8 +183,10 @@ Follow these steps IN ORDER. Provider preference is a HARD filter on availabilit
 Conversationally collect:
   • Service (e.g. Botox, HydraFacial)
   • Provider preference: ask "Do you have a specific provider or aesthetician you'd like to see, or are you open to anyone?"
-    - If they name someone → capture the name (e.g. "Dr. Sarah")
-    - If they're open → treat as no preference and skip the provider filter
+    - If they name someone → capture the name (e.g. "Dr. Sarah") as provider_preference.
+      Then ALWAYS follow up: "And if [Provider] happens to not be available, would you be open to seeing someone else, or would you rather wait for [Provider] specifically?"
+      Capture the answer as provider_flexibility — e.g. "open to any other aesthetician", "second choice would be Dr. Mia", "would rather wait for Dr. Sarah".
+    - If they're open → no preference; skip the flexibility question.
   • Preferred date (or a day range like "sometime next week")
   • Preferred time (or a window like "afternoon")
 
@@ -208,7 +211,7 @@ Never invent, guess, or assume a slot is open. Only offer times returned by get_
   • Best callback phone number (read digits back to confirm)
 
 ### Step 4 — Call 'book_appointment' for the agreed slot
-Pass: service, preferred_date, preferred_time (the verified-available one), customer_name, customer_phone, and provider_preference (pass the provider name you used in Step 2, or "No preference").
+Pass: service, preferred_date, preferred_time (the verified-available one), customer_name, customer_phone, provider_preference (the provider name from Step 1, or "No preference"), and provider_flexibility (their answer from Step 1, or omit if no provider preference).
 Wait for the tool response. If it returns that the slot just got taken, apologize and go back to Step 2 with a new date/time.
 
 ### Step 5 — Read the confirmation to the caller (fill brackets naturally):

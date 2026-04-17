@@ -9,7 +9,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("booking_requests")
     .select(
-      "id, customer_name, customer_phone, service, preferred_date, preferred_time, notes, backup_slots, time_preference, provider_preference, status, forwarded_to, forward_sent_at, created_at"
+      "id, customer_name, customer_phone, service, preferred_date, preferred_time, notes, backup_slots, time_preference, provider_preference, provider_flexibility, status, forwarded_to, forward_sent_at, created_at"
     )
     .eq("tenant_id", tenant.id)
     .not("forward_sent_at", "is", null)

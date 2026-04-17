@@ -321,18 +321,37 @@ function Hero() {
       {/* Subtle video bed — barely visible on light theme */}
       <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.05] mix-blend-multiply" src="/hero-video.mp4" />
 
-      {/* Champagne mesh — slowly pans warm amber wash across hero */}
-      <div className="absolute inset-0 hero-mesh pointer-events-none" />
+      {/* Champagne mesh — slowly pans warm amber wash across hero (amped up) */}
+      <div className="absolute inset-0 hero-mesh-bold pointer-events-none" />
 
-      {/* Soft warm wash accent behind image column */}
-      <ParallaxLayer strength={0.25} className="absolute -top-[10%] -right-[10%] pointer-events-none">
-        <div className="w-[620px] h-[620px] rounded-full blur-[110px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
+      {/* Conic sweep — rotating warm ribbon for strong ambient motion */}
+      <div className="absolute inset-0 hero-conic-sweep pointer-events-none opacity-70" />
+
+      {/* Bold aurora blobs — bigger, more saturated, more of them */}
+      <ParallaxLayer strength={0.3} className="absolute -top-[15%] -right-[12%] pointer-events-none">
+        <div className="w-[780px] h-[780px] rounded-full blur-[120px] animate-aurora-a"
+             style={{ background: "radial-gradient(circle, rgba(245,158,11,0.38), transparent 70%)" }} />
       </ParallaxLayer>
-      <ParallaxLayer strength={-0.18} className="absolute -bottom-[12%] -left-[8%] pointer-events-none">
-        <div className="w-[480px] h-[480px] rounded-full blur-[100px] animate-aurora-b"
-             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.15), transparent 70%)", animationDelay: "2s" }} />
+      <ParallaxLayer strength={-0.22} className="absolute -bottom-[15%] -left-[10%] pointer-events-none">
+        <div className="w-[680px] h-[680px] rounded-full blur-[110px] animate-aurora-b"
+             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.30), transparent 70%)", animationDelay: "2s" }} />
       </ParallaxLayer>
+      <ParallaxLayer strength={0.15} className="absolute top-[35%] left-[40%] pointer-events-none">
+        <div className="w-[520px] h-[520px] rounded-full blur-[100px] animate-aurora-c"
+             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.24), transparent 70%)", animationDelay: "1.2s" }} />
+      </ParallaxLayer>
+      <ParallaxLayer strength={-0.25} className="absolute top-[10%] left-[8%] pointer-events-none">
+        <div className="w-[360px] h-[360px] rounded-full blur-[90px] animate-aurora-a"
+             style={{ background: "radial-gradient(circle, rgba(9,9,11,0.10), transparent 70%)", animationDelay: "3.2s" }} />
+      </ParallaxLayer>
+
+      {/* Large masked grid — gives texture behind the amber wash */}
+      <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{
+        backgroundImage: "linear-gradient(rgba(9,9,11,0.6) 1px,transparent 1px),linear-gradient(90deg,rgba(9,9,11,0.6) 1px,transparent 1px)",
+        backgroundSize: "80px 80px",
+        maskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 50%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(ellipse 70% 65% at 50% 50%, black 50%, transparent 100%)",
+      }} />
 
       {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-12 lg:gap-16 items-center">
@@ -376,39 +395,54 @@ function Hero() {
   );
 }
 
-/* ─── Hero photo collage with animated glass cards ──────────────────── */
+/* ─── Hero focal: animated AI voice orb + floating cards ─────────────── */
 function HeroShowcase() {
   return (
     <div className="relative h-[560px] md:h-[620px] lg:h-[640px] w-full">
-      {/* Warm glow behind collage */}
-      <div className="absolute inset-0 rounded-[40px] bg-[radial-gradient(ellipse_70%_60%_at_50%_45%,rgba(245,158,11,0.22),transparent)] blur-2xl" />
+      {/* Outer warm glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(245,158,11,0.32),transparent)] blur-2xl" />
 
-      {/* Main portrait — woman calling, satisfied */}
-      <div className="absolute top-0 right-0 w-[78%] h-[78%] rounded-[28px] overflow-hidden shadow-2xl shadow-em-950/15 ring-1 ring-sage-800/40 hero-line-2">
-        {/* TODO: swap src with your own asset (e.g. /public/hero-portrait.jpg). Unsplash placeholder below. */}
-        <img
-          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=80"
-          alt="Med spa client smiling during a phone call"
-          className="w-full h-full object-cover"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-        />
-        {/* Fallback gradient if image fails */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-gold-300 via-gold-400 to-em-400" />
-        {/* Inner warm sheen */}
-        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,transparent_30%,rgba(245,158,11,0.08)_70%,rgba(9,9,11,0.25)_100%)]" />
-      </div>
+      {/* ─── Central AI voice orb with concentric ripples ─────── */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {/* Expanding ripple rings (stagger 3 rings for continuous pulse) */}
+        <span className="orb-ripple" />
+        <span className="orb-ripple" style={{ animationDelay: "1.3s" }} />
+        <span className="orb-ripple" style={{ animationDelay: "2.6s" }} />
 
-      {/* Secondary inset — mirror / post-treatment glow */}
-      <div className="absolute bottom-0 left-0 w-[52%] h-[44%] rounded-[22px] overflow-hidden shadow-2xl shadow-em-950/20 ring-1 ring-sage-800/40 hero-line-3">
-        {/* TODO: swap src with your own asset (e.g. /public/hero-mirror.jpg). */}
-        <img
-          src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80"
-          alt="Client admiring her results in the mirror"
-          className="w-full h-full object-cover"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-        />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-em-300 via-em-400 to-em-600" />
-        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(315deg,transparent_30%,rgba(251,191,36,0.12)_70%)]" />
+        {/* Slow-rotating dashed ring */}
+        <span className="absolute w-[420px] h-[420px] rounded-full border border-dashed border-em-500/20 animate-spin-slow" />
+        <span className="absolute w-[330px] h-[330px] rounded-full border border-em-500/15 animate-spin-rev" />
+
+        {/* Main orb */}
+        <div className="relative w-[230px] h-[230px] rounded-full flex items-center justify-center animate-float-a"
+             style={{
+               background: "radial-gradient(circle at 32% 28%, #fcd34d 0%, #f59e0b 45%, #09090b 100%)",
+               boxShadow: "0 20px 60px rgba(245,158,11,0.35), 0 0 0 1px rgba(9,9,11,0.15), inset 0 2px 30px rgba(255,255,255,0.25)",
+             }}>
+          {/* Specular highlight */}
+          <span className="absolute top-5 left-8 w-20 h-14 rounded-full bg-white/40 blur-xl" />
+
+          {/* Equalizer bars inside orb */}
+          <div className="relative flex items-end gap-1.5 h-16 z-10">
+            {[0.45, 0.85, 0.55, 1, 0.7, 0.9, 0.35, 0.65].map((h, i) => (
+              <span key={i}
+                    className="w-1.5 rounded-full bg-white/90"
+                    style={{
+                      animation: `eq-bounce 1.1s ease-in-out ${i * 0.09}s infinite alternate`,
+                      height: `${h * 64}px`,
+                    }} />
+            ))}
+          </div>
+        </div>
+
+        {/* LIVE chip under orb */}
+        <div className="absolute bottom-[14%] flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-em-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-em-950/30">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-80" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-400" />
+          </span>
+          Live · AI answering
+        </div>
       </div>
 
       {/* ─── Floating glass cards ─────────────────────────────── */}
@@ -465,8 +499,8 @@ function HeroShowcase() {
         </div>
       </div>
 
-      {/* Card 4: New 5★ review (middle-left, near mirror) */}
-      <div className="absolute bottom-[30%] left-[18%] md:left-[22%] w-[205px] glass rounded-2xl p-3.5 animate-float-a hero-line-4" style={{ animationDelay: "1.4s" }}>
+      {/* Card 4: New 5★ review (bottom-left) */}
+      <div className="absolute bottom-[10%] left-[2%] md:left-[4%] w-[215px] glass rounded-2xl p-3.5 animate-float-a hero-line-4" style={{ animationDelay: "1.4s" }}>
         <div className="flex items-center gap-0.5 mb-1.5">
           {[0,1,2,3,4].map((i) => (
             <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">

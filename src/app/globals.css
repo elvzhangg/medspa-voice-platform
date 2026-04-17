@@ -224,6 +224,56 @@ body {
   animation: mesh-shift 18s ease-in-out infinite;
 }
 
+/* Bolder mesh — same idea but much more visible */
+.hero-mesh-bold {
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 25%,  rgba(245, 158, 11, 0.32), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 85% 75%,  rgba(251, 191, 36, 0.26), transparent 70%),
+    radial-gradient(ellipse 45% 45% at 50%  5%,  rgba(252, 211, 77, 0.18), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 50% 100%, rgba(9,     9,  11, 0.08), transparent 70%);
+  background-size: 220% 220%;
+  animation: mesh-shift 14s ease-in-out infinite;
+}
+
+/* Rotating conic ribbon — a slow warm sweep across the hero */
+@keyframes conic-spin { to { transform: rotate(360deg); } }
+.hero-conic-sweep {
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    rgba(245, 158, 11, 0.14) 40deg,
+    rgba(252, 211, 77, 0.22) 80deg,
+    rgba(245, 158, 11, 0.10) 120deg,
+    transparent 180deg,
+    transparent 360deg
+  );
+  filter: blur(50px);
+  animation: conic-spin 38s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Concentric voice-ripple rings emanating from the AI orb */
+@keyframes orb-ripple {
+  0%   { transform: scale(0.4); opacity: 0.55; }
+  70%  { opacity: 0.08; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.orb-ripple {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 158, 11, 0.45);
+  animation: orb-ripple 3.9s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+  pointer-events: none;
+}
+
+/* Equalizer bars inside the orb */
+@keyframes eq-bounce {
+  from { transform: scaleY(0.35); }
+  to   { transform: scaleY(1); }
+}
+
 /* ── Reveal variants ─────────────────────────────────────────────── */
 .reveal-up,
 .reveal-left,
@@ -449,7 +499,10 @@ button:focus-visible,
   }
 
   /* Kill the body::before ambient animation residue & keep glow static */
-  .hero-mesh { animation: none !important; background-size: 100% 100% !important; }
+  .hero-mesh,
+  .hero-mesh-bold { animation: none !important; background-size: 100% 100% !important; }
+  .hero-conic-sweep { animation: none !important; opacity: 0 !important; }
+  .orb-ripple { animation: none !important; opacity: 0 !important; }
 
   /* Reveal variants: skip transform/blur so content is immediately legible */
   .reveal-up, .reveal-left, .reveal-right,

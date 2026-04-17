@@ -19,9 +19,10 @@ interface BookingRequest {
   referredBy?: string;
   notes?: string;
   // Scheduling flexibility — collected during the call so staff can confirm
-  backupSlots?: string;       // e.g. "also Thursday mornings or any Friday afternoon"
-  timePreference?: string;    // e.g. "mornings before noon", "afternoons preferred"
-  providerPreference?: string; // e.g. "prefers Dr. Sarah", "no preference"
+  backupSlots?: string;          // e.g. "also Thursday mornings or any Friday afternoon"
+  timePreference?: string;       // e.g. "mornings before noon", "afternoons preferred"
+  providerPreference?: string;   // primary provider, e.g. "Dr. Sarah", "no preference"
+  providerFlexibility?: string;  // backup stance, e.g. "open to any aesthetician", "would rather wait for Dr. Sarah"
 }
 
 interface BookingResult {
@@ -202,7 +203,7 @@ async function sendStaffForwardNotification(
 
   const template: string =
     tenant.booking_forward_sms_template ||
-    "📋 New booking request via AI receptionist\n\nPatient: [CustomerName]\nPhone: [CustomerPhone]\nService: [Service]\nRequested: [DateTime]\nBackup slots: [BackupSlots]\nTime preference: [TimePreference]\nProvider preference: [ProviderPreference]\nNotes: [Notes]\n\nPlease text or call to confirm.\n— [ClinicName] VauxVoice";
+    "📋 New booking request via AI receptionist\n\nPatient: [CustomerName]\nPhone: [CustomerPhone]\nService: [Service]\nRequested: [DateTime]\nProvider preference: [ProviderPreference]\nOpen to other providers? [ProviderFlexibility]\nBackup slots: [BackupSlots]\nTime preference: [TimePreference]\nNotes: [Notes]\n\nPlease text or call to confirm.\n— [ClinicName] VauxVoice";
 
   const dateTime = [request.preferredDate, request.preferredTime].filter(Boolean).join(" at ") || "Flexible";
   const notes = request.notes || (request.referredBy ? `Referred by: ${request.referredBy}` : "None");
@@ -215,6 +216,7 @@ async function sendStaffForwardNotification(
     .replace(/\[BackupSlots\]/g, request.backupSlots || "None given")
     .replace(/\[TimePreference\]/g, request.timePreference || "No preference")
     .replace(/\[ProviderPreference\]/g, request.providerPreference || "No preference")
+    .replace(/\[ProviderFlexibility\]/g, request.providerFlexibility || (request.providerPreference && !/no preference/i.test(request.providerPreference) ? "Not asked" : "N/A"))
     .replace(/\[Notes\]/g, notes)
     .replace(/\[ClinicName\]/g, tenant.name);
 
@@ -314,6 +316,7 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       backup_slots: request.backupSlots || null,
       time_preference: request.timePreference || null,
       provider_preference: request.providerPreference || null,
+      provider_flexibility: request.providerFlexibility || null,
       status: "pending",
     });
 
@@ -350,6 +353,7 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       backup_slots: request.backupSlots || null,
       time_preference: request.timePreference || null,
       provider_preference: request.providerPreference || null,
+      provider_flexibility: request.providerFlexibility || null,
       status: "pending",
     });
     if (reqErr) {

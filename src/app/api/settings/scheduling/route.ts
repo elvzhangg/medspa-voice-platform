@@ -8,9 +8,10 @@ Patient: [CustomerName]
 Phone: [CustomerPhone]
 Service: [Service]
 Requested: [DateTime]
+Provider preference: [ProviderPreference]
+Open to other providers? [ProviderFlexibility]
 Backup slots: [BackupSlots]
 Time preference: [TimePreference]
-Provider preference: [ProviderPreference]
 Notes: [Notes]
 
 Please text or call to confirm their appointment.
