@@ -294,7 +294,7 @@ function Nav() {
             <a
               key={label}
               href={`#${label.toLowerCase().replace(/ /g, "-")}`}
-              className="px-4 py-1.5 rounded-full text-sm font-medium text-sage-400 hover:text-sage-100 hover:bg-ink-700/60 transition-all duration-200"
+              className="px-4 py-2.5 rounded-full text-sm font-medium text-sage-400 hover:text-sage-100 hover:bg-ink-700/60 transition-all duration-200"
             >
               {label}
             </a>
@@ -315,7 +315,7 @@ function NavCTA() {
       onMouseMove={mag.onMouseMove}
       onMouseLeave={mag.onMouseLeave}
       href="/book-a-demo"
-      className="px-5 py-2.5 rounded-full font-semibold text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
+      className="px-5 py-3 rounded-full font-semibold text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
     >
       Request Demo
     </Link>
@@ -619,7 +619,7 @@ function BentoCard({ f, index, visible, horizontal = false }: {
       className={`${dir} ${visible ? "visible" : ""} ${f.wide ? "md:col-span-2" : ""} glass-glow tilt rounded-2xl p-7 group ${horizontal ? "flex gap-6 items-start" : ""}`}
       style={{ transitionDelay: `${index * 55}ms` }}
     >
-      <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-em-900/50 bg-em-950/50 group-hover:border-em-700/50 group-hover:bg-em-900/40 transition-all duration-300 ${horizontal ? "" : "mb-4"}`}>
+      <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-em-900/50 bg-em-950/50 group-hover:border-em-500/50 group-hover:bg-em-900/80 transition-all duration-300 ${horizontal ? "" : "mb-4"}`}>
         {f.icon}
       </div>
       <div>
@@ -706,7 +706,7 @@ function QuoteCard({ quote, index, visible }: {
       className={`${dir} ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-8 group`}
       style={{ transitionDelay: `${index * 130}ms` }}
     >
-      <div className="text-6xl leading-none mb-2 select-none font-serif text-em-900/50 group-hover:text-em-800/60 transition-colors">&ldquo;</div>
+      <div className="text-6xl leading-none mb-2 select-none font-serif text-em-900/50 group-hover:text-em-500/60 transition-colors">&ldquo;</div>
       <Stars />
       <p className="text-sage-400 leading-relaxed mb-8 text-sm group-hover:text-sage-200 transition-colors duration-300">{quote.text}</p>
       <div className="flex items-center gap-3">
@@ -789,8 +789,8 @@ function Pricing() {
               key={plan.name}
               className={`reveal-scale ${cards.visible ? "visible" : ""} relative rounded-2xl p-8 border transition-all ${
                 plan.featured
-                  ? "border-em-600/30 bg-gradient-to-b from-em-700/80 to-em-950/95 -mt-4 animate-glow-pulse"
-                  : "glass-glow hover:border-em-800/40"
+                  ? "border-em-500/60 bg-gradient-to-b from-em-500 to-em-600 -mt-4 animate-glow-pulse"
+                  : "glass-glow hover:border-em-500/40"
               }`}
               style={{ transitionDelay: `${i * 130}ms` }}
             >
@@ -801,17 +801,17 @@ function Pricing() {
                   </span>
                 </div>
               )}
-              <p className={`font-bold text-lg tracking-tight ${plan.featured ? "text-sage-100" : "text-sage-200"}`}>{plan.name}</p>
+              <p className={`font-bold text-lg tracking-tight ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
               <div className="mt-4 mb-1 flex items-end gap-1">
-                <span className="text-5xl font-black tracking-tighter text-sage-100">{plan.price}</span>
-                {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-em-300" : "text-sage-600"}`}>/month</span>}
+                <span className={`text-5xl font-black tracking-tighter ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
+                {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-white/70" : "text-sage-600"}`}>/month</span>}
               </div>
-              <p className={`text-sm mb-7 ${plan.featured ? "text-em-300" : "text-sage-600"}`}>{plan.desc}</p>
+              <p className={`text-sm mb-7 ${plan.featured ? "text-white/75" : "text-sage-600"}`}>{plan.desc}</p>
               <Link
                 href="/book-a-demo"
                 className={`block text-center py-3 rounded-xl font-semibold text-sm transition-all mb-7 ${
                   plan.featured
-                    ? "bg-sage-100 text-em-900 hover:bg-sage-200"
+                    ? "bg-gold-400 text-em-600 hover:bg-gold-300"
                     : "bg-ink-800/80 text-sage-200 hover:bg-ink-700/80 border border-sage-800/30"
                 }`}
               >
@@ -819,8 +819,8 @@ function Pricing() {
               </Link>
               <ul className="space-y-3.5">
                 {plan.features.map((f) => (
-                  <li key={f} className={`text-sm flex items-start gap-3 ${plan.featured ? "text-em-200" : "text-sage-600"}`}>
-                    <svg className={`w-4 h-4 shrink-0 mt-0.5 ${plan.featured ? "text-em-300" : "text-em-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <li key={f} className={`text-sm flex items-start gap-3 ${plan.featured ? "text-white/85" : "text-sage-600"}`}>
+                    <svg className={`w-4 h-4 shrink-0 mt-0.5 ${plan.featured ? "text-gold-400" : "text-em-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
                     </svg>
                     {f}
