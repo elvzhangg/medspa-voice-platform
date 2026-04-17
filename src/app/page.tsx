@@ -247,8 +247,8 @@ function Nav() {
             <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#nav-g)"/>
             <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
           </svg>
-          <span className="font-serif text-lg font-medium tracking-normal text-sage-100 group-hover:text-sage-200 transition-colors">
-            Vaux<span className="text-em-400">Voice</span>
+          <span className="font-serif text-lg font-medium tracking-[0.08em] text-sage-100 group-hover:text-sage-200 transition-colors">
+            Vaux<span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite" }}>Voice</span>
           </span>
         </Link>
 
@@ -413,7 +413,7 @@ function Hero() {
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
         <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed">
-          Meet <span className="font-serif italic text-sage-200">Vivienne</span> — she speaks your services fluently, books appointments,
+          Meet <span className="gradient-text font-medium" style={{ animation: "gradient-pan 6s ease infinite" }}>Vivienne</span> — she speaks your services fluently, books appointments,
           and cares for each client the way your best spa would. Around the clock.
         </p>
 
@@ -1045,8 +1045,8 @@ function Footer() {
               <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#f-g)"/>
               <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#f-g)"/>
             </svg>
-            <span className="font-serif font-medium tracking-normal text-lg text-sage-200">
-              Vaux<span className="text-em-400">Voice</span>
+            <span className="font-serif font-medium tracking-[0.08em] text-lg text-sage-200">
+              Vaux<span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite" }}>Voice</span>
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-sage-400">
