@@ -348,7 +348,8 @@ async function bookViaMindbody(request: BookingRequest, config: any): Promise<Bo
     };
 
     // Step 1: Find client by phone or create
-    const clientRes = await fetch(`${baseUrl}/client/clients`, {
+    // Step 1 placeholder — result intentionally unused until full Mindbody integration
+    await fetch(`${baseUrl}/client/clients`, {
       method: "GET",
       headers: {
         ...headers,
