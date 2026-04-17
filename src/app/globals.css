@@ -1,40 +1,43 @@
 @import "tailwindcss";
 
-/* ── Palette tokens ──────────────────────────────────────────────── */
+/* ── Palette tokens — Champagne Noir (light) ─────────────────────── */
+/* Primary: zinc-900 (near-black). Accent: amber. Background: white.
+   Token names preserved (ink-*, sage-*, em-*, gold-*) so every existing
+   className in page.tsx maps cleanly onto the new light palette. */
 :root {
-  --background: #030c09;
-  --foreground: #e6f5ee;
+  --background: #ffffff;
+  --foreground: #09090b;
 
-  /* Ink (backgrounds — deep emerald-black) */
-  --ink-950: #030c09;
-  --ink-900: #050f0d;
-  --ink-800: #091a15;
-  --ink-700: #0d2219;
+  /* Ink (backgrounds — ascending = more separation from pure white) */
+  --ink-950: #ffffff;           /* body bg */
+  --ink-900: #fafafa;           /* zinc-50  — subtle section */
+  --ink-800: #f4f4f5;           /* zinc-100 — raised surface */
+  --ink-700: #e4e4e7;           /* zinc-200 — deeper surface */
 
-  /* Sage (text — warm cream with green tint) */
-  --sage-100: #e6f5ee;
-  --sage-200: #c0ddd0;
-  --sage-400: #7aaa93;
-  --sage-600: #3d6b56;
-  --sage-800: #1a3028;
+  /* Sage (text — 100 = darkest/primary, 800 = lightest/borders) */
+  --sage-100: #09090b;          /* zinc-950 — primary text */
+  --sage-200: #27272a;          /* zinc-800 — headings */
+  --sage-400: #52525b;          /* zinc-600 — muted body */
+  --sage-600: #a1a1aa;          /* zinc-400 — more muted / labels */
+  --sage-800: #e4e4e7;          /* zinc-200 — subtle borders */
 
-  /* Emerald (accent) */
-  --em-300:  #6ee7b7;
-  --em-400:  #34d399;
-  --em-500:  #10b981;
-  --em-600:  #059669;
-  --em-900:  #064e3b;
-  --em-950:  #022c22;
+  /* Em slot — now primary (charcoal / near-black) */
+  --em-300:  #3f3f46;           /* zinc-700 */
+  --em-400:  #27272a;           /* zinc-800 */
+  --em-500:  #18181b;           /* zinc-900 — primary hover */
+  --em-600:  #09090b;           /* zinc-950 — primary CTA */
+  --em-900:  #f4f4f5;           /* zinc-100 — soft primary surface */
+  --em-950:  #e4e4e7;           /* zinc-200 — soft primary border */
 
-  /* Gold (secondary accent) */
+  /* Gold (warm amber accent — kept and slightly intensified) */
   --gold-300: #fcd34d;
   --gold-400: #fbbf24;
   --gold-500: #f59e0b;
 
-  /* Borders */
-  --bd-dim:    rgba(52, 211, 153, 0.09);
-  --bd-mid:    rgba(52, 211, 153, 0.20);
-  --bd-bright: rgba(52, 211, 153, 0.38);
+  /* Borders — zinc-based rgba */
+  --bd-dim:    rgba(9, 9, 11, 0.06);
+  --bd-mid:    rgba(9, 9, 11, 0.12);
+  --bd-bright: rgba(9, 9, 11, 0.22);
 
   --background: var(--ink-950);
   --foreground: var(--sage-100);
@@ -119,8 +122,9 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 22px rgba(16,185,129,0.30), 0 0 55px rgba(16,185,129,0.10); }
-  50%       { box-shadow: 0 0 38px rgba(16,185,129,0.55), 0 0 90px rgba(16,185,129,0.18); }
+  /* Light-theme primary CTA: soft charcoal shadow + warm amber halo */
+  0%, 100% { box-shadow: 0 6px 18px rgba(9,9,11,0.18), 0 0 0 3px rgba(245,158,11,0.08); }
+  50%       { box-shadow: 0 10px 28px rgba(9,9,11,0.28), 0 0 0 4px rgba(245,158,11,0.16); }
 }
 
 @keyframes gold-pulse {
@@ -233,7 +237,7 @@ body {
 
 /* ── Glass card ──────────────────────────────────────────────────── */
 .glass {
-  background: rgba(5, 22, 16, 0.62);
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(22px) saturate(1.5);
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   border: 1px solid var(--bd-dim);
@@ -241,13 +245,13 @@ body {
 }
 .glass:hover {
   border-color: var(--bd-mid);
-  background:   rgba(8, 30, 20, 0.75);
-  box-shadow:   0 10px 45px rgba(16, 185, 129, 0.08);
+  background:   rgba(255, 255, 255, 0.92);
+  box-shadow:   0 10px 45px rgba(9, 9, 11, 0.08);
 }
 
 /* Animated gradient border on hover */
 .glass-glow {
-  background: rgba(5, 22, 16, 0.62);
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(22px) saturate(1.5);
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   border: 1px solid var(--bd-dim);
@@ -262,8 +266,8 @@ body {
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(135deg,
-    transparent 0%, rgba(52,211,153,0.4) 30%,
-    rgba(251,191,36,0.4) 60%, transparent 100%);
+    transparent 0%, rgba(9,9,11,0.35) 30%,
+    rgba(245,158,11,0.55) 60%, transparent 100%);
   background-size: 300% 300%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -277,9 +281,9 @@ body {
   animation-play-state: running;
 }
 
-/* ── Gradient text (emerald → gold) ─────────────────────────────── */
+/* ── Gradient text (champagne shimmer: black → amber → black) ───── */
 .gradient-text {
-  background: linear-gradient(125deg, #6ee7b7 0%, #fcd34d 50%, #34d399 100%);
+  background: linear-gradient(125deg, #18181b 0%, #f59e0b 50%, #09090b 100%);
   background-size: 300% 300%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -292,9 +296,9 @@ body {
   position: fixed;
   top: 0; left: 0;
   height: 2px;
-  background: linear-gradient(90deg, #059669, #34d399, #fbbf24);
+  background: linear-gradient(90deg, #09090b, #f59e0b, #18181b);
   z-index: 100;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.55);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
   pointer-events: none;
 }
 
@@ -304,7 +308,7 @@ body {
   width: 480px;
   height: 480px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(52,211,153,0.055), transparent 70%);
+  background: radial-gradient(circle, rgba(245,158,11,0.06), transparent 70%);
   pointer-events: none;
   z-index: 1;
   transform: translate(-50%, -50%);
@@ -317,8 +321,8 @@ body {
 
 /* ── Spinning ring (decorative hero) ────────────────────────────── */
 .spin-ring {
-  border: 1px solid rgba(52, 211, 153, 0.12);
-  border-top-color: rgba(52, 211, 153, 0.45);
+  border: 1px solid rgba(9, 9, 11, 0.10);
+  border-top-color: rgba(245, 158, 11, 0.55);
   border-radius: 50%;
   position: absolute;
   pointer-events: none;
