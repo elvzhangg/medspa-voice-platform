@@ -247,7 +247,7 @@ function Nav() {
             <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#nav-g)"/>
             <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
           </svg>
-          <span className="text-lg font-bold tracking-tight text-sage-100 group-hover:text-sage-200 transition-colors">
+          <span className="font-serif text-xl font-medium tracking-normal text-sage-100 group-hover:text-sage-200 transition-colors">
             Vaux<span className="text-em-400">Voice</span>
           </span>
         </Link>
@@ -567,7 +567,7 @@ function StepCard({ step, index, visible }: {
       <div className="w-[52px] h-[52px] rounded-xl bg-gradient-to-br from-em-600 to-em-500/70 flex items-center justify-center mb-6 shadow-lg shadow-em-950/50">
         <span className="text-sm font-black text-sage-100">{step.num}</span>
       </div>
-      <h3 className="text-lg font-bold mb-3 text-sage-100">{step.title}</h3>
+      <h3 className="text-xl font-medium mb-3 text-sage-100">{step.title}</h3>
       <p className="text-sage-600 leading-relaxed text-sm">{step.desc}</p>
     </div>
   );
@@ -587,7 +587,7 @@ function HowItWorks() {
               How It Works
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em] leading-tight`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em] leading-tight`} style={{ transitionDelay: "80ms" }}>
               Live in three simple steps
             </h2>
           </div>
@@ -653,7 +653,7 @@ function BentoCard({ f, index, visible, horizontal = false }: {
         {f.icon}
       </div>
       <div>
-        <h3 className="font-bold text-sm mb-2 text-sage-200 group-hover:text-sage-100 transition-colors">{f.title}</h3>
+        <h3 className="font-medium text-base mb-2 text-sage-200 group-hover:text-sage-100 transition-colors">{f.title}</h3>
         <p className="text-sage-600 text-sm leading-relaxed group-hover:text-sage-400 transition-colors duration-300">{f.desc}</p>
       </div>
     </div>
@@ -680,7 +680,7 @@ function Features() {
               Features
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Everything your front desk does.
               <br /><span className="text-sage-800">Without the front desk.</span>
             </h2>
@@ -767,7 +767,7 @@ function Testimonials() {
               Testimonials
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Loved by med spa owners
             </h2>
           </div>
@@ -804,7 +804,7 @@ function Pricing() {
               Pricing
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-extrabold text-sage-100 tracking-[-0.03em]`} style={{ transitionDelay: "80ms" }}>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Simple, transparent pricing
             </h2>
             <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg font-light`} style={{ transitionDelay: "160ms" }}>
@@ -831,7 +831,7 @@ function Pricing() {
                   </span>
                 </div>
               )}
-              <p className={`font-bold text-lg tracking-tight ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
+              <p className={`font-serif font-medium text-xl tracking-normal ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
               <div className="mt-4 mb-1 flex items-end gap-1">
                 <span className={`font-serif text-5xl font-medium tracking-tight ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
                 {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-white/70" : "text-sage-600"}`}>/month</span>}
@@ -977,7 +977,7 @@ function Footer() {
               <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#f-g)"/>
               <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#f-g)"/>
             </svg>
-            <span className="font-bold tracking-tight text-base text-sage-200">
+            <span className="font-serif font-medium tracking-normal text-lg text-sage-200">
               Vaux<span className="text-em-400">Voice</span>
             </span>
           </div>
