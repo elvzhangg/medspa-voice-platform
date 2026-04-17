@@ -317,125 +317,154 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
+    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
       {/* Video bed — the entire hero backdrop */}
       <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.18]" src="/hero-video.mp4" />
 
-      {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-12 lg:gap-16 items-center">
+      {/* Centered warm glow behind the headline */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] h-[62%] bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.18),transparent_70%)] blur-3xl pointer-events-none" />
 
-        {/* ─── LEFT: Copy ─────────────────────────────────────────── */}
-        <div className="text-center lg:text-left">
-          <div className="hero-line-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-sage-800/50 bg-white/70 backdrop-blur-md text-sm text-em-400 mb-8 shadow-sm shadow-em-950/30">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-em-400" />
-            </span>
-            Now handling 50,000+ calls per month
-          </div>
+      {/* ─── Scattered floating cards around the centered content ─────── */}
+      <HeroCardCloud />
 
-          <h1 className="text-[clamp(40px,6.5vw,72px)] font-extrabold leading-[1.04] tracking-[-0.035em] mb-6">
-            <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
-            <span className="block mt-1">
-              <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
-                Clientele Specialist
-              </span>
-            </span>
-          </h1>
-
-          <p className="hero-line-2 text-lg text-sage-400 max-w-[58ch] mx-auto lg:mx-0 mb-10 leading-relaxed font-light">
-            Never miss a call, never lose a lead. Our AI answers 24/7, knows your
-            services and pricing, and books appointments — so your team can focus
-            on what matters.
-          </p>
-
-          <div className="flex justify-center lg:justify-start"><HeroCTA /></div>
-
-          <p className="hero-line-4 text-sm text-sage-600 mt-6 tracking-wide">
-            No credit card required · Live in under 48 hours
-          </p>
+      {/* ─── CENTER: Copy ───────────────────────────────────────────── */}
+      <div className="relative z-20 w-full max-w-3xl mx-auto text-center">
+        <div className="hero-line-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-sage-800/50 bg-white/70 backdrop-blur-md text-sm text-em-400 mb-8 shadow-sm shadow-em-950/30">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-em-400" />
+          </span>
+          Now handling 50,000+ calls per month
         </div>
 
-        {/* ─── RIGHT: Photo + floating cards ────────────────────── */}
-        <HeroShowcase />
+        <h1 className="text-[clamp(44px,7.2vw,88px)] font-extrabold leading-[1.02] tracking-[-0.04em] mb-7">
+          <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
+          <span className="block mt-1">
+            <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
+              Clientele Specialist
+            </span>
+          </span>
+        </h1>
+
+        <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed font-light">
+          Never miss a call, never lose a lead. Our AI answers 24/7, knows your
+          services and pricing, and books appointments — so your team can focus
+          on what matters.
+        </p>
+
+        <div className="flex justify-center"><HeroCTA /></div>
+
+        <p className="hero-line-4 text-sm text-sage-600 mt-6 tracking-wide">
+          No credit card required · Live in under 48 hours
+        </p>
       </div>
     </section>
   );
 }
 
-/* ─── Hero focal: floating glass cards over the video bed ─────────────── */
-function HeroShowcase() {
+/* ─── Scattered glass cards that frame the centered headline ─────────── */
+function HeroCardCloud() {
   return (
-    <div className="relative h-[560px] md:h-[620px] lg:h-[640px] w-full">
-      {/* Soft warm glow anchors the card cluster */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(245,158,11,0.18),transparent)] blur-2xl" />
+    <div className="absolute inset-0 z-10 pointer-events-none hidden sm:block">
+      {/* Thin constellation connectors — barely visible hairlines */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.12] pointer-events-none" aria-hidden>
+        <defs>
+          <linearGradient id="line-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#fcd34d" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <line x1="14%" y1="20%" x2="48%" y2="42%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
+        <line x1="86%" y1="18%" x2="52%" y2="42%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
+        <line x1="18%" y1="82%" x2="48%" y2="58%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
+        <line x1="82%" y1="80%" x2="52%" y2="58%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
+      </svg>
 
-      {/* ─── Floating glass cards ─────────────────────────────── */}
-
-      {/* Card 1: Live incoming call (top-left, overlapping portrait edge) */}
-      <div className="absolute top-[8%] -left-[2%] md:-left-[4%] w-[230px] glass rounded-2xl p-3.5 animate-float-a hero-line-1" style={{ animationDelay: "0.2s" }}>
-        <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-em-500" />
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Incoming</p>
-            <p className="text-sm font-semibold text-sage-100 truncate">Sarah M. · Botox consult</p>
+      {/* Card 1: Live incoming call — upper-left, tilted */}
+      <ParallaxLayer strength={0.18} className="absolute top-[14%] left-[3%] md:left-[6%] pointer-events-auto">
+        <div className="w-[240px] glass rounded-2xl p-3.5 animate-float-a hero-line-1"
+             style={{ animationDelay: "0.2s", transform: "rotate(-3.5deg)" }}>
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-em-500" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Incoming · 0:12</p>
+              <p className="text-sm font-semibold text-sage-100 truncate">Sarah M. · Botox consult</p>
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center gap-1 h-4">
+            {[3,5,7,4,6,8,5,3,6,5,7,4].map((h,i) => (
+              <span key={i} className="flex-1 rounded-full bg-gradient-to-t from-em-500 to-gold-400 animate-float-b"
+                    style={{ height: `${h*2}px`, animationDelay: `${i*0.08}s`, animationDuration: "1.6s" }} />
+            ))}
           </div>
         </div>
-        <div className="mt-2.5 flex items-center gap-1 h-4">
-          {[3,5,7,4,6,8,5,3,6,5,7,4].map((h,i) => (
-            <span key={i} className="flex-1 rounded-full bg-gradient-to-t from-em-500 to-gold-400 animate-float-b"
-                  style={{ height: `${h*2}px`, animationDelay: `${i*0.08}s`, animationDuration: "1.6s" }} />
-          ))}
-        </div>
-      </div>
+      </ParallaxLayer>
 
-      {/* Card 2: Booked (top-right, peeking out) */}
-      <div className="absolute top-[30%] -right-[3%] md:-right-[5%] w-[210px] glass rounded-2xl p-3.5 animate-float-b hero-line-2" style={{ animationDelay: "0.6s" }}>
-        <div className="flex items-start gap-3">
-          <div className="shrink-0 w-9 h-9 rounded-full bg-em-600 flex items-center justify-center shadow-lg shadow-em-950/30">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Booked</p>
-            <p className="text-sm font-semibold text-sage-100 leading-snug">Thu 3:00pm · Lip filler</p>
-            <p className="text-[11px] text-sage-600 mt-0.5">Added to Acuity</p>
+      {/* Card 2: Booked — upper-right, opposite tilt */}
+      <ParallaxLayer strength={-0.22} className="absolute top-[11%] right-[4%] md:right-[7%] pointer-events-auto">
+        <div className="w-[220px] glass rounded-2xl p-3.5 animate-float-b hero-line-2"
+             style={{ animationDelay: "0.6s", transform: "rotate(2.5deg)" }}>
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 w-9 h-9 rounded-full bg-em-600 flex items-center justify-center shadow-lg shadow-em-950/30">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Booked</p>
+              <p className="text-sm font-semibold text-sage-100 leading-snug">Thu 3:00pm · Lip filler</p>
+              <p className="text-[11px] text-sage-600 mt-0.5">Added to Acuity</p>
+            </div>
           </div>
         </div>
-      </div>
+      </ParallaxLayer>
 
-      {/* Card 3: Follow-up sent (bottom-right, overlapping mirror) */}
-      <div className="absolute bottom-[6%] right-[4%] w-[240px] glass rounded-2xl p-3.5 animate-float-c hero-line-3" style={{ animationDelay: "1s" }}>
-        <div className="flex items-center gap-3">
-          <div className="shrink-0 w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center">
-            <svg className="w-4 h-4 text-em-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M3 14h18M7 18h10" transform="rotate(-20 12 12)"/>
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Follow-up sent</p>
-            <p className="text-sm font-semibold text-sage-100 leading-snug">6-wk Dysport recall</p>
-            <p className="text-[11px] text-sage-600 mt-0.5">Emma K. · via SMS</p>
+      {/* Card 3: Follow-up — lower-right, slight tilt */}
+      <ParallaxLayer strength={0.26} className="absolute bottom-[12%] right-[5%] md:right-[8%] pointer-events-auto">
+        <div className="w-[250px] glass rounded-2xl p-3.5 animate-float-c hero-line-3"
+             style={{ animationDelay: "1s", transform: "rotate(-2deg)" }}>
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center">
+              <svg className="w-4 h-4 text-em-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M3 14h18M7 18h10" transform="rotate(-20 12 12)"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Follow-up sent</p>
+              <p className="text-sm font-semibold text-sage-100 leading-snug">6-wk Dysport recall</p>
+              <p className="text-[11px] text-sage-600 mt-0.5">Emma K. · via SMS</p>
+            </div>
           </div>
         </div>
-      </div>
+      </ParallaxLayer>
 
-      {/* Card 4: New 5★ review (bottom-left) */}
-      <div className="absolute bottom-[10%] left-[2%] md:left-[4%] w-[215px] glass rounded-2xl p-3.5 animate-float-a hero-line-4" style={{ animationDelay: "1.4s" }}>
-        <div className="flex items-center gap-0.5 mb-1.5">
-          {[0,1,2,3,4].map((i) => (
-            <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
-            </svg>
-          ))}
+      {/* Card 4: 5★ review — lower-left, opposite tilt */}
+      <ParallaxLayer strength={-0.18} className="absolute bottom-[14%] left-[4%] md:left-[7%] pointer-events-auto">
+        <div className="w-[225px] glass rounded-2xl p-3.5 animate-float-a hero-line-4"
+             style={{ animationDelay: "1.4s", transform: "rotate(3deg)" }}>
+          <div className="flex items-center gap-0.5 mb-1.5">
+            {[0,1,2,3,4].map((i) => (
+              <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
+              </svg>
+            ))}
+          </div>
+          <p className="text-[12px] text-sage-200 leading-snug italic">&ldquo;Booked my filler without waiting on hold — incredible.&rdquo;</p>
+          <p className="text-[11px] text-sage-600 mt-1.5">Jenna R. · Yelp</p>
         </div>
-        <p className="text-[12px] text-sage-200 leading-snug italic">&ldquo;Booked my filler without waiting on hold — incredible.&rdquo;</p>
-        <p className="text-[11px] text-sage-600 mt-1.5">Jenna R. · Yelp</p>
-      </div>
+      </ParallaxLayer>
+
+      {/* Tiny accent chip: revenue saved — upper-center, peeking above headline */}
+      <ParallaxLayer strength={0.12} className="absolute top-[6%] left-1/2 -translate-x-1/2 pointer-events-auto">
+        <div className="glass rounded-full px-4 py-1.5 flex items-center gap-2 animate-float-b hero-line-2"
+             style={{ animationDelay: "0.9s" }}>
+          <span className="text-[10px] font-bold text-gold-500 uppercase tracking-[0.2em]">This week</span>
+          <span className="text-xs font-bold text-sage-100">+$14,280 recovered</span>
+        </div>
+      </ParallaxLayer>
     </div>
   );
 }
