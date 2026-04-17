@@ -245,7 +245,7 @@ body {
     radial-gradient(ellipse 50% 55% at 20% 95%,  rgba(9,    9,   11, 0.16), transparent 70%);
   background-size: 240% 240%;
   animation: mesh-shift 22s ease-in-out infinite;
-  mix-blend-mode: multiply;
+  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
 }
@@ -269,7 +269,7 @@ body {
   filter: blur(55px);
   animation: conic-spin 44s linear infinite;
   transform-origin: 50% 50%;
-  mix-blend-mode: multiply;
+  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
 }
@@ -287,7 +287,7 @@ body {
   filter: blur(70px);
   animation: conic-spin-rev 60s linear infinite;
   transform-origin: 50% 50%;
-  mix-blend-mode: multiply;
+  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
 }
@@ -315,7 +315,7 @@ body {
   );
   filter: blur(40px);
   animation: streak-slide 22s ease-in-out infinite;
-  mix-blend-mode: multiply;
+  /* no blend mode — keeps hero light; warm alpha shows as soft glow */
   pointer-events: none;
   -webkit-mask-image: var(--hero-fade);
           mask-image: var(--hero-fade);
