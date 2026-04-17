@@ -278,9 +278,9 @@ function NavCTA() {
       onMouseMove={mag.onMouseMove}
       onMouseLeave={mag.onMouseLeave}
       href="/book-a-demo"
-      className="px-5 py-3 rounded-full font-medium text-sm bg-em-600 text-white hover:bg-em-500 transition-colors shadow-lg shadow-em-950/60"
+      className="inline-flex items-center px-5 py-2.5 rounded-full font-medium text-sm tracking-[0.02em] text-sage-100 bg-ink-950 border border-ink-700/60 hover:border-em-500/40 hover:bg-ink-900 transition-all duration-300 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)]"
     >
-      Request Demo
+      Book a private demo
     </Link>
   );
 }
@@ -289,28 +289,19 @@ function NavCTA() {
    Hero
 ═══════════════════════════════════════════════════════════════════ */
 function HeroCTA() {
-  const primary = useMagnetic(14);
-  const secondary = useMagnetic(10);
+  const primary = useMagnetic(12);
   return (
-    <div className="hero-line-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+    <div className="hero-line-3 flex items-center justify-center">
       <Link
         ref={primary.ref}
         onMouseMove={primary.onMouseMove}
         onMouseLeave={primary.onMouseLeave}
         href="/book-a-demo"
-        className="px-8 py-4 rounded-full font-medium text-base text-white bg-em-600 hover:bg-em-500 transition-colors animate-glow-pulse hover:scale-[1.03]"
+        className="group inline-flex items-center gap-2 px-7 py-3 rounded-full font-medium text-sm tracking-[0.02em] text-sage-100 bg-ink-950 border border-ink-700/60 hover:border-em-500/40 hover:bg-ink-900 transition-all duration-300 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] hover:scale-[1.02]"
       >
-        Get Started Free →
+        Book a private demo
+        <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5">→</span>
       </Link>
-      <a
-        ref={secondary.ref}
-        onMouseMove={secondary.onMouseMove}
-        onMouseLeave={secondary.onMouseLeave}
-        href="tel:+14783752044"
-        className="px-8 py-4 rounded-full font-medium text-base text-sage-400 border border-sage-800/50 hover:border-em-600/50 hover:text-sage-200 hover:bg-ink-800/50 transition-all backdrop-blur-sm"
-      >
-        Try a Live Demo Call
-      </a>
     </div>
   );
 }
@@ -409,10 +400,10 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="hero-line-2 font-serif italic text-[clamp(20px,2.1vw,26px)] text-sage-200 max-w-[62ch] mx-auto mb-5 leading-snug tracking-[-0.005em]">
+        <p className="hero-line-2 font-serif italic text-[clamp(19px,1.9vw,23px)] text-sage-200 max-w-[62ch] mx-auto mb-5 leading-snug tracking-[-0.005em]">
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
-        <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed">
+        <p className="hero-line-2 text-[clamp(19px,1.9vw,23px)] text-sage-400 max-w-[62ch] mx-auto mb-10 leading-relaxed">
           Meet <span className="gradient-text font-medium" style={{ animation: "gradient-pan 6s ease infinite" }}>Vivienne</span> — she speaks your services fluently, books appointments,
           and cares for each client the way your best spa would. Around the clock.
         </p>
