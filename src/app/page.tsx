@@ -323,8 +323,8 @@ const HERO_CLIPS: HeroClip[] = [
   { src: "/hero-video-1.mp4", start: 0, end: 6 },
   // Mixkit 39791 — young woman laughing (14.5s) — skip the teeth-closeup intro
   { src: "/hero-video-2.mp4", start: 3, end: 9 },
-  // Original — close-up man on call (16s)
-  { src: "/hero-video-3.mp4", start: 0, end: 6 },
+  // Original — close-up man on call (16s) — only the solo-man section
+  { src: "/hero-video-3.mp4", start: 14, end: 16 },
 ];
 
 function HeroVideoCarousel() {
