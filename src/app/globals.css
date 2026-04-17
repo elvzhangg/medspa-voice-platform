@@ -227,29 +227,78 @@ body {
 /* Bolder mesh — same idea but much more visible */
 .hero-mesh-bold {
   background:
-    radial-gradient(ellipse 60% 50% at 15% 25%,  rgba(245, 158, 11, 0.32), transparent 70%),
-    radial-gradient(ellipse 55% 55% at 85% 75%,  rgba(251, 191, 36, 0.26), transparent 70%),
-    radial-gradient(ellipse 45% 45% at 50%  5%,  rgba(252, 211, 77, 0.18), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 50% 100%, rgba(9,     9,  11, 0.08), transparent 70%);
-  background-size: 220% 220%;
-  animation: mesh-shift 14s ease-in-out infinite;
+    radial-gradient(ellipse 60% 50% at 15% 25%,  rgba(245, 158, 11, 0.60), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 85% 75%,  rgba(251, 191, 36, 0.52), transparent 70%),
+    radial-gradient(ellipse 45% 45% at 50%  5%,  rgba(252, 211, 77, 0.40), transparent 70%),
+    radial-gradient(ellipse 50% 55% at 20% 95%,  rgba(9,    9,   11, 0.16), transparent 70%);
+  background-size: 240% 240%;
+  animation: mesh-shift 9s ease-in-out infinite;
+  mix-blend-mode: multiply;
 }
 
-/* Rotating conic ribbon — a slow warm sweep across the hero */
-@keyframes conic-spin { to { transform: rotate(360deg); } }
+/* Rotating conic ribbon — a fast warm sweep across the hero */
+@keyframes conic-spin    { to { transform: rotate(360deg); } }
+@keyframes conic-spin-rev { to { transform: rotate(-360deg); } }
 .hero-conic-sweep {
   background: conic-gradient(
     from 0deg at 50% 50%,
     transparent 0deg,
-    rgba(245, 158, 11, 0.14) 40deg,
-    rgba(252, 211, 77, 0.22) 80deg,
-    rgba(245, 158, 11, 0.10) 120deg,
-    transparent 180deg,
+    rgba(245, 158, 11, 0.45) 35deg,
+    rgba(252, 211, 77, 0.60) 70deg,
+    rgba(245, 158, 11, 0.35) 110deg,
+    transparent 170deg,
+    transparent 190deg,
+    rgba(9, 9, 11, 0.20) 230deg,
+    transparent 290deg,
     transparent 360deg
   );
-  filter: blur(50px);
-  animation: conic-spin 38s linear infinite;
+  filter: blur(55px);
+  animation: conic-spin 18s linear infinite;
   transform-origin: 50% 50%;
+  mix-blend-mode: multiply;
+}
+
+/* Second counter-rotating conic — doubles the motion */
+.hero-conic-sweep-2 {
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    transparent 0deg,
+    rgba(251, 191, 36, 0.35) 45deg,
+    rgba(245, 158, 11, 0.50) 90deg,
+    transparent 160deg,
+    transparent 360deg
+  );
+  filter: blur(70px);
+  animation: conic-spin-rev 26s linear infinite;
+  transform-origin: 50% 50%;
+  mix-blend-mode: multiply;
+}
+
+/* Diagonal light-streak band — sweeps across every few seconds */
+@keyframes streak-slide {
+  0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateX(120%) skewX(-18deg); opacity: 0; }
+}
+.hero-streak {
+  position: absolute;
+  top: -20%;
+  left: 0;
+  width: 45%;
+  height: 140%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(252, 211, 77, 0.35) 40%,
+    rgba(245, 158, 11, 0.55) 50%,
+    rgba(252, 211, 77, 0.35) 60%,
+    transparent 100%
+  );
+  filter: blur(40px);
+  animation: streak-slide 11s ease-in-out infinite;
+  mix-blend-mode: multiply;
+  pointer-events: none;
 }
 
 /* Concentric voice-ripple rings emanating from the AI orb */
@@ -501,8 +550,10 @@ button:focus-visible,
   /* Kill the body::before ambient animation residue & keep glow static */
   .hero-mesh,
   .hero-mesh-bold { animation: none !important; background-size: 100% 100% !important; }
-  .hero-conic-sweep { animation: none !important; opacity: 0 !important; }
-  .orb-ripple { animation: none !important; opacity: 0 !important; }
+  .hero-conic-sweep,
+  .hero-conic-sweep-2,
+  .hero-streak { animation: none !important; opacity: 0 !important; }
+  .orb-ripple  { animation: none !important; opacity: 0 !important; }
 
   /* Reveal variants: skip transform/blur so content is immediately legible */
   .reveal-up, .reveal-left, .reveal-right,

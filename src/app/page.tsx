@@ -324,8 +324,13 @@ function Hero() {
       {/* Champagne mesh — slowly pans warm amber wash across hero (amped up) */}
       <div className="absolute inset-0 hero-mesh-bold pointer-events-none" />
 
-      {/* Conic sweep — rotating warm ribbon for strong ambient motion */}
-      <div className="absolute inset-0 hero-conic-sweep pointer-events-none opacity-70" />
+      {/* Conic sweeps — two counter-rotating warm ribbons */}
+      <div className="absolute inset-0 hero-conic-sweep   pointer-events-none" />
+      <div className="absolute inset-0 hero-conic-sweep-2 pointer-events-none" />
+
+      {/* Diagonal light streak — sweeps across every ~11s */}
+      <div className="hero-streak" style={{ left: "-10%" }} />
+      <div className="hero-streak" style={{ left: "30%", animationDelay: "5.5s" }} />
 
       {/* Bold aurora blobs — bigger, more saturated, more of them */}
       <ParallaxLayer strength={0.3} className="absolute -top-[15%] -right-[12%] pointer-events-none">
@@ -366,11 +371,11 @@ function Hero() {
             Now handling 50,000+ calls per month
           </div>
 
-          <h1 className="text-[clamp(44px,7vw,76px)] font-extrabold leading-[1.04] tracking-[-0.035em] mb-6">
+          <h1 className="text-[clamp(40px,6.5vw,72px)] font-extrabold leading-[1.04] tracking-[-0.035em] mb-6">
             <WordReveal text="Your med spa's AI" baseDelay={220} className="text-sage-100 block" />
             <span className="block mt-1">
               <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
-                receptionist
+                Clientele Specialist
               </span>
             </span>
           </h1>
