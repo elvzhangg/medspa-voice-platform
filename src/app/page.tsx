@@ -324,11 +324,8 @@ function Hero() {
       {/* Centered warm glow behind the headline */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] h-[62%] bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.18),transparent_70%)] blur-3xl pointer-events-none" />
 
-      {/* ─── Scattered floating cards around the centered content ─────── */}
-      <HeroCardCloud />
-
-      {/* ─── CENTER: Copy ───────────────────────────────────────────── */}
-      <div className="relative z-20 w-full max-w-3xl mx-auto text-center">
+      {/* ─── CENTER: Copy + live timeline ──────────────────────────── */}
+      <div className="relative z-20 w-full max-w-5xl mx-auto text-center">
         <div className="hero-line-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-sage-800/50 bg-white/70 backdrop-blur-md text-sm text-em-400 mb-8 shadow-sm shadow-em-950/30">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-60" />
@@ -357,106 +354,116 @@ function Hero() {
         <p className="hero-line-4 text-sm text-sage-600 mt-6 tracking-wide">
           No credit card required · Live in under 48 hours
         </p>
+
+        {/* ─── Live activity timeline ───────────────────────────────── */}
+        <HeroTimeline />
       </div>
     </section>
   );
 }
 
-/* ─── Scattered glass cards that frame the centered headline ─────────── */
-function HeroCardCloud() {
-  return (
-    <div className="absolute inset-0 z-10 pointer-events-none hidden sm:block">
-      {/* Thin constellation connectors — barely visible hairlines */}
-      <svg className="absolute inset-0 w-full h-full opacity-[0.12] pointer-events-none" aria-hidden>
-        <defs>
-          <linearGradient id="line-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#fcd34d" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1="14%" y1="20%" x2="48%" y2="42%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
-        <line x1="86%" y1="18%" x2="52%" y2="42%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
-        <line x1="18%" y1="82%" x2="48%" y2="58%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
-        <line x1="82%" y1="80%" x2="52%" y2="58%" stroke="url(#line-g)" strokeWidth="1" strokeDasharray="3 5" />
+/* ─── Live activity timeline — 4 events connected left-to-right ─────── */
+type TimelineStep = {
+  time: string;
+  label: string;
+  title: string;
+  subtitle: string;
+  accent: "call" | "check" | "message" | "star";
+};
+
+const TIMELINE_STEPS: TimelineStep[] = [
+  { time: "10:42", label: "Incoming",    title: "Sarah M.",    subtitle: "Botox consult · after-hours",  accent: "call" },
+  { time: "10:43", label: "Booked",      title: "Thu 3:00 pm", subtitle: "Lip filler · added to Acuity", accent: "check" },
+  { time: "10:43", label: "Follow-up",   title: "Emma K.",     subtitle: "6-wk Dysport recall · SMS",    accent: "message" },
+  { time: "10:45", label: "5★ review",   title: "Jenna R.",    subtitle: "“Called at 11 pm, still got booked.”", accent: "star" },
+];
+
+function TimelineIcon({ accent }: { accent: TimelineStep["accent"] }) {
+  const base = "w-4 h-4";
+  if (accent === "call") {
+    return (
+      <svg className={base} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2}
+              d="M3 5a2 2 0 012-2h2l2 5-2.5 1.5a11 11 0 006 6L14 13l5 2v2a2 2 0 01-2 2A14 14 0 013 5z"/>
       </svg>
+    );
+  }
+  if (accent === "check") {
+    return (
+      <svg className={base} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+      </svg>
+    );
+  }
+  if (accent === "message") {
+    return (
+      <svg className={base} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2}
+              d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+      </svg>
+    );
+  }
+  return (
+    <svg className={base} fill="currentColor" viewBox="0 0 20 20">
+      <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
+    </svg>
+  );
+}
 
-      {/* Card 1: Live incoming call — upper-left, tilted */}
-      <ParallaxLayer strength={0.18} className="absolute top-[14%] left-[3%] md:left-[6%] pointer-events-auto">
-        <div className="w-[240px] glass rounded-2xl p-3.5 animate-float-a hero-line-1"
-             style={{ animationDelay: "0.2s", transform: "rotate(-3.5deg)" }}>
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-em-500" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Incoming · 0:12</p>
-              <p className="text-sm font-semibold text-sage-100 truncate">Sarah M. · Botox consult</p>
-            </div>
-          </div>
-          <div className="mt-2.5 flex items-center gap-1 h-4">
-            {[3,5,7,4,6,8,5,3,6,5,7,4].map((h,i) => (
-              <span key={i} className="flex-1 rounded-full bg-gradient-to-t from-em-500 to-gold-400 animate-float-b"
-                    style={{ height: `${h*2}px`, animationDelay: `${i*0.08}s`, animationDuration: "1.6s" }} />
-            ))}
-          </div>
-        </div>
-      </ParallaxLayer>
+function HeroTimeline() {
+  return (
+    <div className="hero-line-4 relative mt-16 mx-auto max-w-4xl" style={{ animationDelay: "1.6s" }}>
+      {/* Header strip */}
+      <div className="flex items-center justify-center gap-2 mb-5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-em-400 opacity-70" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-em-500" />
+        </span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-sage-400">
+          Live · last 3 minutes at Glow Aesthetics
+        </span>
+      </div>
 
-      {/* Card 2: Booked — upper-right, opposite tilt */}
-      <ParallaxLayer strength={-0.22} className="absolute top-[11%] right-[4%] md:right-[7%] pointer-events-auto">
-        <div className="w-[220px] glass rounded-2xl p-3.5 animate-float-b hero-line-2"
-             style={{ animationDelay: "0.6s", transform: "rotate(2.5deg)" }}>
-          <div className="flex items-start gap-3">
-            <div className="shrink-0 w-9 h-9 rounded-full bg-em-600 flex items-center justify-center shadow-lg shadow-em-950/30">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Booked</p>
-              <p className="text-sm font-semibold text-sage-100 leading-snug">Thu 3:00pm · Lip filler</p>
-              <p className="text-[11px] text-sage-600 mt-0.5">Added to Acuity</p>
-            </div>
-          </div>
-        </div>
-      </ParallaxLayer>
+      <div className="glass rounded-2xl p-5 md:p-6 relative">
+        {/* Connecting rail behind the icons (desktop only) */}
+        <div className="hidden md:block absolute left-[10%] right-[10%] top-[46px]
+                        h-px bg-gradient-to-r from-transparent via-em-500/40 to-transparent pointer-events-none" />
 
-      {/* Card 3: Follow-up — lower-right, slight tilt */}
-      <ParallaxLayer strength={0.26} className="absolute bottom-[12%] right-[5%] md:right-[8%] pointer-events-auto">
-        <div className="w-[250px] glass rounded-2xl p-3.5 animate-float-c hero-line-3"
-             style={{ animationDelay: "1s", transform: "rotate(-2deg)" }}>
-          <div className="flex items-center gap-3">
-            <div className="shrink-0 w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center">
-              <svg className="w-4 h-4 text-em-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h18M3 14h18M7 18h10" transform="rotate(-20 12 12)"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-sage-400 uppercase tracking-wider">Follow-up sent</p>
-              <p className="text-sm font-semibold text-sage-100 leading-snug">6-wk Dysport recall</p>
-              <p className="text-[11px] text-sage-600 mt-0.5">Emma K. · via SMS</p>
-            </div>
-          </div>
-        </div>
-      </ParallaxLayer>
+        <ol className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-3 text-left">
+          {TIMELINE_STEPS.map((step, i) => (
+            <li key={i} className="relative flex md:flex-col md:items-center md:text-center gap-3 md:gap-0">
+              {/* Timestamp pill */}
+              <p className="order-1 md:order-none md:mb-3 shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-sage-600 md:text-sage-500">
+                {step.time}
+              </p>
 
-      {/* Card 4: 5★ review — lower-left, opposite tilt */}
-      <ParallaxLayer strength={-0.18} className="absolute bottom-[14%] left-[4%] md:left-[7%] pointer-events-auto">
-        <div className="w-[225px] glass rounded-2xl p-3.5 animate-float-a hero-line-4"
-             style={{ animationDelay: "1.4s", transform: "rotate(3deg)" }}>
-          <div className="flex items-center gap-0.5 mb-1.5">
-            {[0,1,2,3,4].map((i) => (
-              <svg key={i} className="w-3.5 h-3.5 text-gold-500" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 1.5l2.6 5.3 5.9.85-4.26 4.14 1 5.87L10 14.77l-5.25 2.76 1-5.87L1.5 7.65l5.9-.85L10 1.5z"/>
-              </svg>
-            ))}
-          </div>
-          <p className="text-[12px] text-sage-200 leading-snug italic">&ldquo;Booked my filler without waiting on hold — incredible.&rdquo;</p>
-          <p className="text-[11px] text-sage-600 mt-1.5">Jenna R. · Yelp</p>
-        </div>
-      </ParallaxLayer>
+              {/* Icon bubble */}
+              <div className={`order-2 md:order-none shrink-0 w-10 h-10 rounded-full flex items-center justify-center
+                               relative z-[1] md:mx-auto ${
+                  step.accent === "star"
+                    ? "bg-gold-400 text-em-700"
+                    : step.accent === "message"
+                    ? "bg-em-500/90 text-white"
+                    : step.accent === "check"
+                    ? "bg-em-600 text-white"
+                    : "bg-em-700 text-gold-300"
+                }`}
+                   style={{ boxShadow: "0 6px 20px rgba(9,9,11,0.18)" }}>
+                <TimelineIcon accent={step.accent} />
+              </div>
 
+              {/* Text */}
+              <div className="order-3 md:order-none md:mt-3 flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-em-500">{step.label}</p>
+                <p className="text-sm font-semibold text-sage-100 leading-snug mt-0.5 truncate md:whitespace-normal">
+                  {step.title}
+                </p>
+                <p className="text-[11px] text-sage-500 leading-snug mt-0.5">{step.subtitle}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }
