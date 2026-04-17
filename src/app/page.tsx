@@ -410,7 +410,7 @@ function Hero() {
         </div>
 
         <h1 className="font-serif text-[clamp(40px,5.8vw,72px)] font-medium leading-[1.06] tracking-[-0.005em] mb-7">
-          <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block italic" />
+          <WordReveal text="Your med spa's" baseDelay={220} className="text-sage-100 block" />
           <span className="block mt-2">
             <span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite, word-up 0.75s cubic-bezier(0.16,1,0.3,1) 680ms both" }}>
               AI Clientele Specialist
