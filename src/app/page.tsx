@@ -409,11 +409,11 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="hero-line-2 text-lg text-sage-300 max-w-[62ch] mx-auto mb-5 leading-relaxed">
+        <p className="hero-line-2 font-serif italic text-[clamp(20px,2.1vw,26px)] text-sage-200 max-w-[62ch] mx-auto mb-5 leading-snug tracking-[-0.005em]">
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
         <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed">
-          Meet Vivienne — she speaks your services fluently, books appointments,
+          Meet <span className="font-serif italic text-sage-200">Vivienne</span> — she speaks your services fluently, books appointments,
           and cares for each client the way your best spa would. Around the clock.
         </p>
 
@@ -635,7 +635,7 @@ function StepCard({ step, index, visible }: {
       <div className="w-[52px] h-[52px] rounded-xl bg-gradient-to-br from-em-600 to-em-500/70 flex items-center justify-center mb-6 shadow-lg shadow-em-950/50">
         <span className="text-sm font-black text-sage-100">{step.num}</span>
       </div>
-      <h3 className="text-xl font-medium mb-3 text-sage-100">{step.title}</h3>
+      <h3 className="font-serif text-2xl font-medium mb-3 text-sage-100 tracking-[-0.005em]">{step.title}</h3>
       <p className="text-sage-600 leading-relaxed text-sm">{step.desc}</p>
     </div>
   );
@@ -656,7 +656,7 @@ function HowItWorks() {
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em] leading-tight`} style={{ transitionDelay: "80ms" }}>
-              Live in three simple steps
+              Live in three <span className="italic text-em-400">simple</span> steps
             </h2>
           </div>
         </div>
@@ -721,7 +721,7 @@ function BentoCard({ f, index, visible, horizontal = false }: {
         {f.icon}
       </div>
       <div>
-        <h3 className="font-medium text-base mb-2 text-sage-200 group-hover:text-sage-100 transition-colors">{f.title}</h3>
+        <h3 className="font-serif text-lg font-medium mb-2 text-sage-200 tracking-[-0.005em] group-hover:text-sage-100 transition-colors">{f.title}</h3>
         <p className="text-sage-600 text-sm leading-relaxed group-hover:text-sage-400 transition-colors duration-300">{f.desc}</p>
       </div>
     </div>
@@ -750,7 +750,7 @@ function Features() {
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Everything your front desk does.
-              <br /><span className="text-sage-800">Without the front desk.</span>
+              <br /><span className="italic text-sage-600">Without the front desk.</span>
             </h2>
           </div>
         </div>
@@ -836,7 +836,7 @@ function Testimonials() {
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-              Loved by med spa owners
+              <span className="italic">Loved</span> by med spa owners
             </h2>
           </div>
         </div>
@@ -873,7 +873,7 @@ function Pricing() {
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-              Simple, transparent pricing
+              <span className="italic">Simple</span>, transparent pricing
             </h2>
             <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`} style={{ transitionDelay: "160ms" }}>
               Less than the cost of a part-time receptionist. Cancel anytime.
@@ -946,8 +946,8 @@ function DemoSection() {
 
       <div ref={ref} className="relative max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-4xl md:text-[52px] font-extrabold text-sage-100 mb-5 tracking-[-0.03em] leading-tight`}>
-            Ready to never miss a call again?
+          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-4xl md:text-[52px] font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-tight`}>
+            Ready to <span className="italic">never</span> miss a call again?
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
             Get a personalized demo for your med spa. We&apos;ll have your AI receptionist ready in 48 hours.
