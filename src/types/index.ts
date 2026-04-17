@@ -19,6 +19,13 @@ export interface Tenant {
   booking_forward_enabled?: boolean;
   booking_forward_phones?: string[];
   booking_forward_sms_template?: string;
+  // Per-tenant Twilio (BYO) — number doubles as inbound AI line + outbound SMS sender
+  twilio_account_sid?: string;
+  twilio_auth_token?: string;
+  twilio_phone_number?: string;
+  twilio_connected_at?: string;
+  twilio_last_test_at?: string;
+  twilio_last_test_status?: string;
   ai_voice_id?: string;
   call_recording_enabled?: boolean;
   voicemail_forwarding_number?: string;

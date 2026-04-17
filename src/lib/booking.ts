@@ -33,7 +33,7 @@ interface BookingResult {
 export async function bookAppointment(request: BookingRequest): Promise<BookingResult> {
   const { data: tenant } = await supabaseAdmin
     .from("tenants")
-    .select("id, name, booking_provider, booking_config, booking_forward_enabled, booking_forward_phones, booking_forward_sms_template")
+    .select("id, name, booking_provider, booking_config, booking_forward_enabled, booking_forward_phones, booking_forward_sms_template, twilio_account_sid, twilio_auth_token, twilio_phone_number")
     .eq("id", request.tenantId)
     .single();
 
@@ -80,14 +80,22 @@ async function sendStaffForwardNotification(
   tenant: any,
   confirmationId?: string
 ): Promise<void> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_FROM_NUMBER;
+  // Prefer tenant-owned Twilio credentials; fall back to platform env vars.
+  // This way the staff SMS comes FROM the clinic's own AI number — recognizable
+  // to staff and consistent with the inbound receptionist experience.
+  const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+  const authToken  = tenant.twilio_auth_token  || process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = tenant.twilio_phone_number || process.env.TWILIO_FROM_NUMBER;
+  const usingTenantTwilio = Boolean(tenant.twilio_account_sid && tenant.twilio_auth_token && tenant.twilio_phone_number);
 
   if (!accountSid || !authToken || !fromNumber) {
-    console.warn("STAFF_FORWARD_SMS_SKIPPED: Twilio env vars not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)");
+    console.warn(
+      "STAFF_FORWARD_SMS_SKIPPED: No Twilio credentials available (neither tenant-level nor platform env vars)."
+    );
     return;
   }
+
+  console.log(`STAFF_FORWARD_SMS_SENDER: using ${usingTenantTwilio ? "tenant" : "platform"} Twilio (from=${fromNumber})`);
 
   const template: string =
     tenant.booking_forward_sms_template ||

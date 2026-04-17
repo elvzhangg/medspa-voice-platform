@@ -35,6 +35,35 @@ function useScrollProgress() {
   return pct;
 }
 
+/** Scroll-linked parallax — translates element on Y as user scrolls past it. */
+function useParallax(strength = 0.3) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const center = rect.top + rect.height / 2;
+      const offset = (center - window.innerHeight / 2) * -strength;
+      el.style.transform = `translate3d(0, ${offset.toFixed(1)}px, 0)`;
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", update);
+      cancelAnimationFrame(raf);
+    };
+  }, [strength]);
+  return ref;
+}
+
 function useCounter(target: number, duration = 1900, enabled = false) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -97,7 +126,7 @@ function useMagnetic(strength = 12) {
 ═══════════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-ink-950 text-sage-100 overflow-x-hidden">
+    <div className="relative min-h-screen bg-ink-900 text-sage-100 overflow-x-hidden">
       <ScrollProgress />
       <CursorGlow />
       <Nav />
@@ -159,6 +188,28 @@ function WordReveal({ text, baseDelay = 0, className = "" }: {
         </span>
       ))}
     </span>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Parallax layer — element translates on Y as the user scrolls
+═══════════════════════════════════════════════════════════════════ */
+function ParallaxLayer({
+  strength = 0.25,
+  className = "",
+  style,
+  children,
+}: {
+  strength?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}) {
+  const ref = useParallax(strength);
+  return (
+    <div ref={ref} className={className} style={style}>
+      {children}
+    </div>
   );
 }
 
@@ -298,7 +349,7 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-ink-950">
+    <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-transparent">
       {/* Subtle video bed — barely visible on light theme */}
       <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.07] mix-blend-multiply" src="/hero-video.mp4" />
 
@@ -324,15 +375,23 @@ function Hero() {
       <div className="spin-ring animate-spin-slow  absolute top-[15%] right-[8%]  w-[320px] h-[320px] opacity-40" />
       <div className="spin-ring animate-spin-rev   absolute bottom-[12%] left-[6%]  w-[200px] h-[200px] opacity-25" />
 
-      {/* Aurora blobs — amber + charcoal, drifting slowly */}
-      <div className="absolute -top-[5%] -left-[10%] w-[620px] h-[620px] rounded-full blur-[110px] pointer-events-none animate-aurora-a"
-           style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
-      <div className="absolute -bottom-[8%] -right-[8%] w-[680px] h-[680px] rounded-full blur-[120px] pointer-events-none animate-aurora-b"
-           style={{ background: "radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)", animationDelay: "2s" }} />
-      <div className="absolute top-[38%] left-[32%] w-[520px] h-[520px] rounded-full blur-[100px] pointer-events-none animate-aurora-c"
-           style={{ background: "radial-gradient(circle, rgba(9,9,11,0.07), transparent 70%)", animationDelay: "1.2s" }} />
-      <div className="absolute top-[18%] right-[22%] w-[280px] h-[280px] rounded-full blur-[80px] pointer-events-none animate-aurora-a"
-           style={{ background: "radial-gradient(circle, rgba(252,211,77,0.14), transparent 70%)", animationDelay: "3.5s" }} />
+      {/* Aurora blobs — amber + charcoal, drifting + parallaxing */}
+      <ParallaxLayer strength={0.35} className="absolute -top-[5%] -left-[10%] pointer-events-none">
+        <div className="w-[620px] h-[620px] rounded-full blur-[110px] animate-aurora-a"
+             style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)" }} />
+      </ParallaxLayer>
+      <ParallaxLayer strength={-0.22} className="absolute -bottom-[8%] -right-[8%] pointer-events-none">
+        <div className="w-[680px] h-[680px] rounded-full blur-[120px] animate-aurora-b"
+             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)", animationDelay: "2s" }} />
+      </ParallaxLayer>
+      <ParallaxLayer strength={0.18} className="absolute top-[38%] left-[32%] pointer-events-none">
+        <div className="w-[520px] h-[520px] rounded-full blur-[100px] animate-aurora-c"
+             style={{ background: "radial-gradient(circle, rgba(9,9,11,0.07), transparent 70%)", animationDelay: "1.2s" }} />
+      </ParallaxLayer>
+      <ParallaxLayer strength={-0.3} className="absolute top-[18%] right-[22%] pointer-events-none">
+        <div className="w-[280px] h-[280px] rounded-full blur-[80px] animate-aurora-a"
+             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.14), transparent 70%)", animationDelay: "3.5s" }} />
+      </ParallaxLayer>
 
       <div className="relative z-10 max-w-5xl mx-auto text-center w-full pt-20">
         {/* Badge */}
@@ -380,11 +439,14 @@ function Hero() {
 function LogoMarquee() {
   const names = ["Glow Aesthetics", "Radiance MD", "BeautyFix", "Skin Studio", "AuraClinic"];
   const doubled = [...names, ...names];
+  const head = useReveal();
   return (
-    <section className="py-12 border-y border-sage-800/15 bg-ink-900/40 overflow-hidden">
-      <p className="text-center text-[10px] font-bold text-sage-600 uppercase tracking-[0.3em] mb-8">
-        Trusted by leading med spas nationwide
-      </p>
+    <section className="py-12 border-y border-sage-800/25 bg-transparent overflow-hidden relative">
+      <div ref={head.ref}>
+        <p className={`reveal-blur ${head.visible ? "visible" : ""} text-center text-[10px] font-bold text-sage-600 uppercase tracking-[0.3em] mb-8`}>
+          Trusted by leading med spas nationwide
+        </p>
+      </div>
       <div className="relative">
         <div className="flex animate-marquee">
           {doubled.map((name, i) => (
@@ -394,8 +456,8 @@ function LogoMarquee() {
             </span>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0  w-28 bg-gradient-to-r from-ink-900/40 to-transparent pointer-events-none" />
-        <div className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-ink-900/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 left-0  w-28 bg-gradient-to-r from-[var(--ink-900)] to-transparent pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-[var(--ink-900)] to-transparent pointer-events-none" />
       </div>
     </section>
   );
@@ -434,7 +496,7 @@ function StatItem({ raw, num, suffix, label, delay, visible }: {
 function Stats() {
   const { ref, visible } = useReveal(0.25);
   return (
-    <section className="bg-ink-950 relative overflow-hidden">
+    <section className="bg-transparent relative overflow-hidden">
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent" />
       <div className="max-w-6xl mx-auto px-6">
         <div ref={ref} className="grid grid-cols-2 md:grid-cols-4">
@@ -480,8 +542,8 @@ function HowItWorks() {
   const head  = useReveal();
   const cards = useReveal(0.1);
   return (
-    <section id="how-it-works" className="py-32 bg-ink-900/50 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_80%,rgba(5,150,105,0.07),transparent)]" />
+    <section id="how-it-works" className="py-32 bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_80%,rgba(245,158,11,0.07),transparent)] pointer-events-none" />
       <div className="max-w-5xl mx-auto px-6 relative">
 
         <div className="text-center mb-24">
@@ -513,8 +575,8 @@ function FG() {
   return (
     <defs>
       <linearGradient id={GID} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#6ee7b7"/>
-        <stop offset="100%" stopColor="#34d399"/>
+        <stop offset="0%" stopColor="#f59e0b"/>
+        <stop offset="100%" stopColor="#09090b"/>
       </linearGradient>
     </defs>
   );
@@ -567,7 +629,8 @@ function Features() {
   const head = useReveal();
   const grid = useReveal(0.05);
   return (
-    <section id="features" className="py-32 bg-ink-950">
+    <section id="features" className="py-32 bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_50%_at_80%_30%,rgba(245,158,11,0.06),transparent)] pointer-events-none" />
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-20">
           <div ref={head.ref}>
@@ -651,8 +714,8 @@ function Testimonials() {
   const head  = useReveal();
   const cards = useReveal(0.1);
   return (
-    <section className="py-32 bg-ink-900/50 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_50%_at_50%_50%,rgba(5,150,105,0.06),transparent)]" />
+    <section className="py-32 bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_50%_at_50%_50%,rgba(245,158,11,0.06),transparent)] pointer-events-none" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/18 to-transparent" />
 
       <div className="relative max-w-6xl mx-auto px-6">
@@ -690,7 +753,8 @@ function Pricing() {
   const head  = useReveal();
   const cards = useReveal(0.1);
   return (
-    <section id="pricing" className="py-32 bg-ink-950">
+    <section id="pricing" className="py-32 bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_45%_at_20%_70%,rgba(251,191,36,0.05),transparent)] pointer-events-none" />
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-20">
           <div ref={head.ref}>
@@ -765,8 +829,8 @@ function Pricing() {
 function DemoSection() {
   const { ref, visible } = useReveal();
   return (
-    <section id="demo" className="py-32 bg-ink-900/50 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_65%_at_50%_60%,rgba(5,150,105,0.10),transparent)]" />
+    <section id="demo" className="py-32 bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_65%_at_50%_60%,rgba(245,158,11,0.10),transparent)] pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_30%_30%_at_20%_20%,rgba(251,191,36,0.04),transparent)]" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/18 to-transparent" />
 
@@ -855,7 +919,7 @@ function DemoForm() {
 ═══════════════════════════════════════════════════════════════════ */
 function Footer() {
   return (
-    <footer className="border-t border-sage-800/15 py-14 bg-ink-950">
+    <footer className="border-t border-sage-800/25 py-14 bg-transparent relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
