@@ -41,6 +41,11 @@ function useParallax(strength = 0.3) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Respect user OS setting — skip JS-driven parallax entirely.
+    if (typeof window !== "undefined"
+        && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     let raf = 0;
     const update = () => {
       const rect = el.getBoundingClientRect();

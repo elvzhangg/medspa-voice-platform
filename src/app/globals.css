@@ -417,3 +417,37 @@ body {
   position: absolute;
   pointer-events: none;
 }
+
+/* ── Reduced-motion (WCAG 2.3.3, Apple HIG, Material Design) ─────── */
+/* Respect users who request reduced motion: disable decorative loops
+   (aurora drift, mesh pan, particles, spins, glow pulses, marquee,
+   parallax) and collapse reveal transitions to instant fade. Scroll
+   behavior falls back to the user's OS default. */
+@media (prefers-reduced-motion: reduce) {
+  html, body { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Kill the body::before ambient animation residue & keep glow static */
+  .hero-mesh { animation: none !important; background-size: 100% 100% !important; }
+
+  /* Reveal variants: skip transform/blur so content is immediately legible */
+  .reveal-up, .reveal-left, .reveal-right,
+  .reveal-scale, .reveal-blur,
+  .reveal-rotate, .reveal-tilt, .reveal-zoom, .reveal-flip,
+  .stagger > *, .line-expand, .line-expand-center {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* Disable scroll-linked parallax transforms applied inline via JS */
+  .parallax-slow { transform: none !important; }
+}
