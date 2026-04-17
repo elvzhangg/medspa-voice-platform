@@ -319,12 +319,12 @@ function HeroCTA() {
 type HeroClip = { src: string; start?: number; end?: number };
 
 const HERO_CLIPS: HeroClip[] = [
-  // Option 1 — woman on phone near window (Mixkit 23735, 21.7s) — trim to first ~10s
-  { src: "/hero-video-1.mp4", start: 0, end: 10 },
+  // Option 1 — woman on phone near window (Mixkit 23735, 21.7s)
+  { src: "/hero-video-1.mp4", start: 0, end: 6 },
   // Mixkit 39791 — young woman laughing (14.5s) — skip the teeth-closeup intro
-  { src: "/hero-video-2.mp4", start: 3, end: 12 },
+  { src: "/hero-video-2.mp4", start: 3, end: 9 },
   // Original — close-up man on call (16s)
-  { src: "/hero-video-3.mp4" },
+  { src: "/hero-video-3.mp4", start: 0, end: 6 },
 ];
 
 function HeroVideoCarousel() {
