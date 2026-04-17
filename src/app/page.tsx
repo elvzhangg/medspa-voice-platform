@@ -315,11 +315,59 @@ function HeroCTA() {
   );
 }
 
+/* ─── Hero video carousel: 3 clips, each plays once, crossfade between ─ */
+const HERO_CLIPS = [
+  "/hero-video-1.mp4", // Option 1 — woman on phone near window (elegant, Aman)
+  "/hero-video-2.mp4", // Mixkit 39791 — young woman laughing during a phone call
+  "/hero-video-3.mp4", // Original — close-up man on call (last in rotation)
+];
+
+function HeroVideoCarousel() {
+  const [active, setActive] = useState(0);
+  const refs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  // Play only the active video to save bandwidth; pause others.
+  useEffect(() => {
+    refs.current.forEach((v, i) => {
+      if (!v) return;
+      if (i === active) {
+        v.currentTime = 0;
+        v.play().catch(() => {});
+      } else {
+        v.pause();
+      }
+    });
+  }, [active]);
+
+  const handleEnded = useCallback(() => {
+    setActive((i) => (i + 1) % HERO_CLIPS.length);
+  }, []);
+
+  return (
+    <>
+      {HERO_CLIPS.map((src, i) => (
+        <video
+          key={src}
+          ref={(el) => { refs.current[i] = el; }}
+          muted
+          playsInline
+          preload={i === 0 ? "auto" : "metadata"}
+          autoPlay={i === 0}
+          onEnded={i === active ? handleEnded : undefined}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1400ms] ease-in-out"
+          style={{ opacity: i === active ? 0.18 : 0 }}
+          src={src}
+        />
+      ))}
+    </>
+  );
+}
+
 function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
-      {/* Video bed — the entire hero backdrop */}
-      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.18]" src="/hero-video.mp4" />
+      {/* Video bed — 3-clip crossfade carousel */}
+      <HeroVideoCarousel />
 
       {/* Centered warm glow behind the headline */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] h-[62%] bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.18),transparent_70%)] blur-3xl pointer-events-none" />
