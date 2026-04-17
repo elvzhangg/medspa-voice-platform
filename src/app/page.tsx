@@ -340,6 +340,23 @@ function HeroVideoCarousel() {
     });
   }, [active]);
 
+  // iOS Safari fallback: if autoplay is blocked (Low Power Mode, data saver, etc.),
+  // kick off playback on the first user gesture.
+  useEffect(() => {
+    const kick = () => {
+      const v = refs.current[0];
+      if (v && v.paused) v.play().catch(() => {});
+    };
+    window.addEventListener("touchstart", kick, { once: true, passive: true });
+    window.addEventListener("scroll",     kick, { once: true, passive: true });
+    window.addEventListener("click",      kick, { once: true, passive: true });
+    return () => {
+      window.removeEventListener("touchstart", kick);
+      window.removeEventListener("scroll",     kick);
+      window.removeEventListener("click",      kick);
+    };
+  }, []);
+
   return (
     <>
       {HERO_CLIPS.map((clip, i) => (
@@ -348,8 +365,8 @@ function HeroVideoCarousel() {
           ref={(el) => { refs.current[i] = el; }}
           muted
           playsInline
-          preload={i === 0 ? "auto" : "metadata"}
-          autoPlay={i === 0}
+          preload="auto"
+          autoPlay
           onLoadedMetadata={(e) => {
             const v = e.currentTarget as HTMLVideoElement;
             if (clip.start != null) {
@@ -363,8 +380,9 @@ function HeroVideoCarousel() {
             if (clip.end != null && v.currentTime >= clip.end) advance();
           }}
           onEnded={i === active ? advance : undefined}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1400ms] ease-in-out"
-          style={{ opacity: i === active ? 0.18 : 0 }}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1400ms] ease-in-out hero-video-layer"
+          style={{ opacity: i === active ? undefined : 0 }}
+          data-active={i === active ? "true" : "false"}
           src={clip.src}
         />
       ))}

@@ -417,6 +417,12 @@ h1 {
 .line-expand.visible,
 .line-expand-center.visible { transform: scaleX(1); }
 
+/* ── Hero video layer: stronger on mobile (washed out vs. light page bg) ─ */
+.hero-video-layer[data-active="true"] { opacity: 0.32; }
+@media (min-width: 768px) {
+  .hero-video-layer[data-active="true"] { opacity: 0.18; }
+}
+
 /* ── Hero load stagger ───────────────────────────────────────────── */
 .hero-line-1 { animation: fade-up 1s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
 .hero-line-2 { animation: fade-up 1s cubic-bezier(0.16,1,0.3,1) 0.40s both; }
