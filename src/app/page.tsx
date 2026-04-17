@@ -409,10 +409,12 @@ function Hero() {
           </span>
         </h1>
 
+        <p className="hero-line-2 text-lg text-sage-300 max-w-[62ch] mx-auto mb-5 leading-relaxed">
+          Every call answered. Every client remembered. Every opportunity captured.
+        </p>
         <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed">
-          Never miss a call, never lose a lead. Our AI answers 24/7, knows your
-          services and pricing, and books appointments — so your team can focus
-          on what matters.
+          Meet Vivienne — she speaks your services fluently, books appointments,
+          and cares for each client the way your best spa would. Around the clock.
         </p>
 
         <div className="flex justify-center"><HeroCTA /></div>
