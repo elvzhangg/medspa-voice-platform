@@ -406,7 +406,7 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed font-light">
+        <p className="hero-line-2 text-lg text-sage-400 max-w-[60ch] mx-auto mb-10 leading-relaxed">
           Never miss a call, never lose a lead. Our AI answers 24/7, knows your
           services and pricing, and books appointments — so your team can focus
           on what matters.
@@ -870,7 +870,7 @@ function Pricing() {
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-4xl md:text-[58px] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
               Simple, transparent pricing
             </h2>
-            <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg font-light`} style={{ transitionDelay: "160ms" }}>
+            <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`} style={{ transitionDelay: "160ms" }}>
               Less than the cost of a part-time receptionist. Cancel anytime.
             </p>
           </div>
@@ -944,7 +944,7 @@ function DemoSection() {
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-4xl md:text-[52px] font-extrabold text-sage-100 mb-5 tracking-[-0.03em] leading-tight`}>
             Ready to never miss a call again?
           </h2>
-          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg font-light`} style={{ transitionDelay: "100ms" }}>
+          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
             Get a personalized demo for your med spa. We&apos;ll have your AI receptionist ready in 48 hours.
           </p>
         </div>

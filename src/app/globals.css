@@ -62,7 +62,7 @@ body::before {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jost), system-ui, sans-serif;
+  --font-sans: var(--font-sans-primary), system-ui, sans-serif;
   --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
 
