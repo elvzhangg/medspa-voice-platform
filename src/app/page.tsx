@@ -363,55 +363,12 @@ function Hero() {
   );
 }
 
-/* ─── Hero focal: animated AI voice orb + floating cards ─────────────── */
+/* ─── Hero focal: floating glass cards over the video bed ─────────────── */
 function HeroShowcase() {
   return (
     <div className="relative h-[560px] md:h-[620px] lg:h-[640px] w-full">
-      {/* Outer warm glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(245,158,11,0.32),transparent)] blur-2xl" />
-
-      {/* ─── Central AI voice orb with concentric ripples ─────── */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Expanding ripple rings (stagger 3 rings for continuous pulse) */}
-        <span className="orb-ripple" />
-        <span className="orb-ripple" style={{ animationDelay: "1.3s" }} />
-        <span className="orb-ripple" style={{ animationDelay: "2.6s" }} />
-
-        {/* Slow-rotating dashed ring */}
-        <span className="absolute w-[420px] h-[420px] rounded-full border border-dashed border-em-500/20 animate-spin-slow" />
-        <span className="absolute w-[330px] h-[330px] rounded-full border border-em-500/15 animate-spin-rev" />
-
-        {/* Main orb */}
-        <div className="relative w-[230px] h-[230px] rounded-full flex items-center justify-center animate-float-a"
-             style={{
-               background: "radial-gradient(circle at 32% 28%, #fcd34d 0%, #f59e0b 45%, #09090b 100%)",
-               boxShadow: "0 20px 60px rgba(245,158,11,0.35), 0 0 0 1px rgba(9,9,11,0.15), inset 0 2px 30px rgba(255,255,255,0.25)",
-             }}>
-          {/* Specular highlight */}
-          <span className="absolute top-5 left-8 w-20 h-14 rounded-full bg-white/40 blur-xl" />
-
-          {/* Equalizer bars inside orb */}
-          <div className="relative flex items-end gap-1.5 h-16 z-10">
-            {[0.45, 0.85, 0.55, 1, 0.7, 0.9, 0.35, 0.65].map((h, i) => (
-              <span key={i}
-                    className="w-1.5 rounded-full bg-white/90"
-                    style={{
-                      animation: `eq-bounce 1.1s ease-in-out ${i * 0.09}s infinite alternate`,
-                      height: `${h * 64}px`,
-                    }} />
-            ))}
-          </div>
-        </div>
-
-        {/* LIVE chip under orb */}
-        <div className="absolute bottom-[14%] flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-em-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-em-950/30">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-80" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-400" />
-          </span>
-          Live · AI answering
-        </div>
-      </div>
+      {/* Soft warm glow anchors the card cluster */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(245,158,11,0.18),transparent)] blur-2xl" />
 
       {/* ─── Floating glass cards ─────────────────────────────── */}
 
