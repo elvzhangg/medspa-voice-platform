@@ -375,7 +375,7 @@ const TIMELINE_STEPS: TimelineStep[] = [
   { time: "10:42", label: "Incoming",    title: "Sarah M.",    subtitle: "Botox consult · after-hours",  accent: "call" },
   { time: "10:43", label: "Booked",      title: "Thu 3:00 pm", subtitle: "Lip filler · added to Acuity", accent: "check" },
   { time: "10:43", label: "Follow-up",   title: "Emma K.",     subtitle: "6-wk Dysport recall · SMS",    accent: "message" },
-  { time: "10:45", label: "5★ review",   title: "Jenna R.",    subtitle: "“Called at 11 pm, still got booked.”", accent: "star" },
+  { time: "10:45", label: "5★ review",   title: "Jenna R.",    subtitle: "“Remembered my last visit — felt so taken care of.”", accent: "star" },
 ];
 
 function TimelineIcon({ accent }: { accent: TimelineStep["accent"] }) {
