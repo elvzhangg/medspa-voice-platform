@@ -248,7 +248,7 @@ function Nav() {
             <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
           </svg>
           <span className="font-serif text-lg font-medium tracking-[0.08em] text-sage-100 group-hover:text-sage-200 transition-colors">
-            Vaux<span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite" }}>Voice</span>
+            Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
           </span>
         </Link>
 
@@ -1046,7 +1046,7 @@ function Footer() {
               <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#f-g)"/>
             </svg>
             <span className="font-serif font-medium tracking-[0.08em] text-lg text-sage-200">
-              Vaux<span className="gradient-text" style={{ animation: "gradient-pan 6s ease infinite" }}>Voice</span>
+              Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-sage-400">
