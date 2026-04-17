@@ -18,6 +18,10 @@ interface BookingRequest {
   customerPhone: string;
   referredBy?: string;
   notes?: string;
+  // Scheduling flexibility — collected during the call so staff can confirm
+  backupSlots?: string;       // e.g. "also Thursday mornings or any Friday afternoon"
+  timePreference?: string;    // e.g. "mornings before noon", "afternoons preferred"
+  providerPreference?: string; // e.g. "prefers Dr. Sarah", "no preference"
 }
 
 interface BookingResult {
@@ -29,23 +33,117 @@ interface BookingResult {
 export async function bookAppointment(request: BookingRequest): Promise<BookingResult> {
   const { data: tenant } = await supabaseAdmin
     .from("tenants")
-    .select("id, name, booking_provider, booking_config")
+    .select("id, name, booking_provider, booking_config, booking_forward_enabled, booking_forward_phones, booking_forward_sms_template")
     .eq("id", request.tenantId)
     .single();
 
   const provider = tenant?.booking_provider || "internal";
 
+  let result: BookingResult;
+
   switch (provider) {
     case "vagaro":
-      return bookViaVagaro(request, tenant?.booking_config);
+      result = await bookViaVagaro(request, tenant?.booking_config);
+      break;
     case "acuity":
-      return bookViaAcuity(request, tenant?.booking_config);
+      result = await bookViaAcuity(request, tenant?.booking_config);
+      break;
     case "mindbody":
-      return bookViaMindbody(request, tenant?.booking_config);
+      result = await bookViaMindbody(request, tenant?.booking_config);
+      break;
     case "link":
-      return bookViaLink(request, tenant?.booking_config);
+      result = await bookViaLink(request, tenant?.booking_config);
+      break;
     default:
-      return bookInternal(request);
+      result = await bookInternal(request);
+  }
+
+  // Staff-forward notification: if enabled, SMS the designated staff phones
+  // regardless of booking provider so the right people are always in the loop.
+  if (result.success && tenant?.booking_forward_enabled && (tenant.booking_forward_phones ?? []).length > 0) {
+    await sendStaffForwardNotification(request, tenant, result.confirmationId);
+  }
+
+  return result;
+}
+
+/**
+ * Sends an SMS to every phone number in booking_forward_phones so staff can
+ * manually confirm the appointment with the patient.
+ *
+ * Uses Twilio REST API directly (env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+ * TWILIO_FROM_NUMBER). If credentials are absent the error is logged but the
+ * booking result is unaffected — staff can still see requests in the dashboard.
+ */
+async function sendStaffForwardNotification(
+  request: BookingRequest,
+  tenant: any,
+  confirmationId?: string
+): Promise<void> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_FROM_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    console.warn("STAFF_FORWARD_SMS_SKIPPED: Twilio env vars not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)");
+    return;
+  }
+
+  const template: string =
+    tenant.booking_forward_sms_template ||
+    "📋 New booking request via AI receptionist\n\nPatient: [CustomerName]\nPhone: [CustomerPhone]\nService: [Service]\nRequested: [DateTime]\nBackup slots: [BackupSlots]\nTime preference: [TimePreference]\nProvider preference: [ProviderPreference]\nNotes: [Notes]\n\nPlease text or call to confirm.\n— [ClinicName] VauxVoice";
+
+  const dateTime = [request.preferredDate, request.preferredTime].filter(Boolean).join(" at ") || "Flexible";
+  const notes = request.notes || (request.referredBy ? `Referred by: ${request.referredBy}` : "None");
+
+  const smsBody = template
+    .replace(/\[CustomerName\]/g, request.customerName)
+    .replace(/\[CustomerPhone\]/g, request.customerPhone)
+    .replace(/\[Service\]/g, request.service)
+    .replace(/\[DateTime\]/g, dateTime)
+    .replace(/\[BackupSlots\]/g, request.backupSlots || "None given")
+    .replace(/\[TimePreference\]/g, request.timePreference || "No preference")
+    .replace(/\[ProviderPreference\]/g, request.providerPreference || "No preference")
+    .replace(/\[Notes\]/g, notes)
+    .replace(/\[ClinicName\]/g, tenant.name);
+
+  const phones: string[] = tenant.booking_forward_phones ?? [];
+  const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+
+  const sentTo: string[] = [];
+
+  for (const toNumber of phones) {
+    try {
+      const res = await fetch(twilioUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ From: fromNumber, To: toNumber, Body: smsBody }).toString(),
+      });
+
+      if (res.ok) {
+        sentTo.push(toNumber);
+        console.log("STAFF_FORWARD_SMS_SENT:", toNumber);
+      } else {
+        const err = await res.text();
+        console.error("STAFF_FORWARD_SMS_FAILED:", toNumber, err);
+      }
+    } catch (err) {
+      console.error("STAFF_FORWARD_SMS_EXCEPTION:", toNumber, err);
+    }
+  }
+
+  // Record which numbers were notified and when
+  if (sentTo.length > 0) {
+    await supabaseAdmin
+      .from("booking_requests")
+      .update({ forwarded_to: sentTo, forward_sent_at: new Date().toISOString() })
+      .eq("tenant_id", request.tenantId)
+      .order("created_at", { ascending: false })
+      .limit(1);
   }
 }
 
@@ -63,6 +161,9 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
     customer_phone: request.customerPhone,
     referred_by: request.referredBy || null,
     notes: request.notes || null,
+    backup_slots: request.backupSlots || null,
+    time_preference: request.timePreference || null,
+    provider_preference: request.providerPreference || null,
     status: "pending",
   }).select().single();
 
@@ -288,6 +389,9 @@ async function bookViaLink(request: BookingRequest, config: any): Promise<Bookin
     customer_phone: request.customerPhone,
     referred_by: request.referredBy || null,
     notes: "Booking link sent",
+    backup_slots: request.backupSlots || null,
+    time_preference: request.timePreference || null,
+    provider_preference: request.providerPreference || null,
     status: "pending",
   });
   if (logErr) console.error("LINK_MODE_LOG_ERROR:", logErr);

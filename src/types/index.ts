@@ -15,6 +15,10 @@ export interface Tenant {
   sms_reminder_hours?: number;
   sms_reminder_template?: string;
   sms_confirmation_enabled?: boolean;
+  // Staff-forward booking notification workflow
+  booking_forward_enabled?: boolean;
+  booking_forward_phones?: string[];
+  booking_forward_sms_template?: string;
   ai_voice_id?: string;
   call_recording_enabled?: boolean;
   voicemail_forwarding_number?: string;

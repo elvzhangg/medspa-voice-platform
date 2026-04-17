@@ -203,8 +203,17 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             break;
           }
 
-          const { service, preferred_date, preferred_time, customer_name, customer_phone, referred_by } =
-            toolCall.parameters as Record<string, string>;
+          const {
+            service,
+            preferred_date,
+            preferred_time,
+            customer_name,
+            customer_phone,
+            referred_by,
+            backup_slots,
+            time_preference,
+            provider_preference,
+          } = toolCall.parameters as Record<string, string>;
 
           // Book via the booking integration layer
           const bookingResult = await bookAppointment({
@@ -215,6 +224,9 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             customerName: customer_name,
             customerPhone: customer_phone,
             referredBy: referred_by,
+            backupSlots: backup_slots,
+            timePreference: time_preference,
+            providerPreference: provider_preference,
           });
 
           result = bookingResult.message;
