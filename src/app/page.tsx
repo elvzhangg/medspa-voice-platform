@@ -317,32 +317,24 @@ function HeroCTA() {
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-white pt-28 pb-20 lg:py-24">
-      {/* Bright base — explicit white so no dark layers can bleed through */}
-      <div className="absolute inset-0 bg-white pointer-events-none" />
+    <section className="relative min-h-screen flex items-center px-6 overflow-hidden bg-transparent pt-28 pb-20 lg:py-24">
+      {/* Subtle video bed — reads as gentle texture behind the warm wash */}
+      <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.10]" src="/hero-video.mp4" />
 
-      {/* Light warm wash — pure champagne glow, no charcoal, no multiply */}
+      {/* Light warm wash — matches the body::before champagne feel used across the rest of the page */}
       <div className="absolute inset-0 hero-wash-light pointer-events-none" />
 
-      {/* Single slow conic sweep — airy, all amber/gold */}
+      {/* Single slow conic sweep — very subtle, provides ambient rotation */}
       <div className="absolute inset-0 hero-conic-light pointer-events-none" />
 
-      {/* Diagonal light streaks — airy highlights */}
+      {/* Diagonal light streaks — soft highlights */}
       <div className="hero-streak-light" style={{ left: "-10%" }} />
       <div className="hero-streak-light" style={{ left: "35%", animationDelay: "7s" }} />
 
-      {/* Three soft aurora blobs — all warm, all light */}
-      <ParallaxLayer strength={0.25} className="absolute -top-[18%] -right-[14%] pointer-events-none">
+      {/* Single warm aurora blob — behind the orb/cards side */}
+      <ParallaxLayer strength={0.22} className="absolute -top-[18%] -right-[14%] pointer-events-none">
         <div className="w-[760px] h-[760px] rounded-full blur-[130px] animate-aurora-a"
-             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.45), transparent 70%)" }} />
-      </ParallaxLayer>
-      <ParallaxLayer strength={-0.2} className="absolute -bottom-[18%] -left-[12%] pointer-events-none">
-        <div className="w-[680px] h-[680px] rounded-full blur-[120px] animate-aurora-b"
-             style={{ background: "radial-gradient(circle, rgba(252,211,77,0.40), transparent 70%)", animationDelay: "2s" }} />
-      </ParallaxLayer>
-      <ParallaxLayer strength={0.12} className="absolute top-[30%] left-[42%] pointer-events-none">
-        <div className="w-[460px] h-[460px] rounded-full blur-[110px] animate-aurora-c"
-             style={{ background: "radial-gradient(circle, rgba(254,240,138,0.45), transparent 70%)", animationDelay: "1.2s" }} />
+             style={{ background: "radial-gradient(circle, rgba(251,191,36,0.22), transparent 70%)" }} />
       </ParallaxLayer>
 
       {/* ─── Hero grid: left = text, right = photo+cards ──────────────── */}

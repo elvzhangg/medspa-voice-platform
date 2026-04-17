@@ -246,9 +246,9 @@ body {
 /* Warm champagne wash — only amber/gold/cream, no dark stops */
 .hero-wash-light {
   background:
-    radial-gradient(ellipse 55% 50% at 18% 30%, rgba(251, 191, 36, 0.38), transparent 70%),
-    radial-gradient(ellipse 55% 55% at 82% 70%, rgba(252, 211, 77, 0.42), transparent 70%),
-    radial-gradient(ellipse 45% 45% at 50%  8%, rgba(254, 240, 138, 0.30), transparent 70%);
+    radial-gradient(ellipse 55% 50% at 18% 30%, rgba(245, 158, 11, 0.12), transparent 70%),
+    radial-gradient(ellipse 55% 55% at 82% 70%, rgba(251, 191, 36, 0.10), transparent 70%),
+    radial-gradient(ellipse 45% 45% at 50%  8%, rgba(254, 240, 138, 0.08), transparent 70%);
   background-size: 220% 220%;
   animation: mesh-shift 22s ease-in-out infinite;
   -webkit-mask-image: var(--hero-fade);
@@ -260,11 +260,11 @@ body {
   background: conic-gradient(
     from 0deg at 50% 50%,
     transparent 0deg,
-    rgba(252, 211, 77, 0.28) 45deg,
-    rgba(251, 191, 36, 0.38) 90deg,
-    rgba(252, 211, 77, 0.28) 130deg,
+    rgba(252, 211, 77, 0.10) 45deg,
+    rgba(251, 191, 36, 0.14) 90deg,
+    rgba(252, 211, 77, 0.10) 130deg,
     transparent 200deg,
-    rgba(254, 240, 138, 0.22) 270deg,
+    rgba(254, 240, 138, 0.08) 270deg,
     transparent 340deg,
     transparent 360deg
   );
@@ -291,9 +291,9 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(254, 240, 138, 0.28) 35%,
-    rgba(252, 211, 77, 0.45) 50%,
-    rgba(254, 240, 138, 0.28) 65%,
+    rgba(254, 240, 138, 0.10) 35%,
+    rgba(252, 211, 77, 0.16) 50%,
+    rgba(254, 240, 138, 0.10) 65%,
     transparent 100%
   );
   filter: blur(45px);
