@@ -224,7 +224,19 @@ body {
   animation: mesh-shift 18s ease-in-out infinite;
 }
 
-/* Bolder mesh — same idea but much more visible */
+/* Shared vertical fade — top is lighter/faded, bottom stays bold.
+   Used as a mask on every hero backdrop layer so the nav area reads
+   calm and the animation intensity builds as the eye travels down. */
+:root {
+  --hero-fade: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(0,0,0,0.15) 12%,
+    rgba(0,0,0,0.55) 30%,
+    #000 55%
+  );
+}
+
+/* Bolder mesh — much more visible, but gentle cycle speed */
 .hero-mesh-bold {
   background:
     radial-gradient(ellipse 60% 50% at 15% 25%,  rgba(245, 158, 11, 0.60), transparent 70%),
@@ -232,11 +244,13 @@ body {
     radial-gradient(ellipse 45% 45% at 50%  5%,  rgba(252, 211, 77, 0.40), transparent 70%),
     radial-gradient(ellipse 50% 55% at 20% 95%,  rgba(9,    9,   11, 0.16), transparent 70%);
   background-size: 240% 240%;
-  animation: mesh-shift 9s ease-in-out infinite;
+  animation: mesh-shift 22s ease-in-out infinite;
   mix-blend-mode: multiply;
+  -webkit-mask-image: var(--hero-fade);
+          mask-image: var(--hero-fade);
 }
 
-/* Rotating conic ribbon — a fast warm sweep across the hero */
+/* Rotating conic ribbon — slow warm sweep */
 @keyframes conic-spin    { to { transform: rotate(360deg); } }
 @keyframes conic-spin-rev { to { transform: rotate(-360deg); } }
 .hero-conic-sweep {
@@ -248,17 +262,19 @@ body {
     rgba(245, 158, 11, 0.35) 110deg,
     transparent 170deg,
     transparent 190deg,
-    rgba(9, 9, 11, 0.20) 230deg,
+    rgba(9, 9, 11, 0.18) 230deg,
     transparent 290deg,
     transparent 360deg
   );
   filter: blur(55px);
-  animation: conic-spin 18s linear infinite;
+  animation: conic-spin 44s linear infinite;
   transform-origin: 50% 50%;
   mix-blend-mode: multiply;
+  -webkit-mask-image: var(--hero-fade);
+          mask-image: var(--hero-fade);
 }
 
-/* Second counter-rotating conic — doubles the motion */
+/* Second counter-rotating conic */
 .hero-conic-sweep-2 {
   background: conic-gradient(
     from 180deg at 50% 50%,
@@ -269,12 +285,14 @@ body {
     transparent 360deg
   );
   filter: blur(70px);
-  animation: conic-spin-rev 26s linear infinite;
+  animation: conic-spin-rev 60s linear infinite;
   transform-origin: 50% 50%;
   mix-blend-mode: multiply;
+  -webkit-mask-image: var(--hero-fade);
+          mask-image: var(--hero-fade);
 }
 
-/* Diagonal light-streak band — sweeps across every few seconds */
+/* Diagonal light-streak band — slow sweep, bottom-weighted */
 @keyframes streak-slide {
   0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
   15%  { opacity: 1; }
@@ -296,9 +314,11 @@ body {
     transparent 100%
   );
   filter: blur(40px);
-  animation: streak-slide 11s ease-in-out infinite;
+  animation: streak-slide 22s ease-in-out infinite;
   mix-blend-mode: multiply;
   pointer-events: none;
+  -webkit-mask-image: var(--hero-fade);
+          mask-image: var(--hero-fade);
 }
 
 /* Concentric voice-ripple rings emanating from the AI orb */
