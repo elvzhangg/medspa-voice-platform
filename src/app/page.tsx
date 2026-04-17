@@ -316,15 +316,15 @@ function HeroCTA() {
 }
 
 /* ─── Hero video carousel: 3 clips, each plays once, crossfade between ─ */
-type HeroClip = { src: string; start?: number; end?: number };
+type HeroClip = { src: string; start?: number; end?: number; rate?: number };
 
 const HERO_CLIPS: HeroClip[] = [
   // Option 1 — woman on phone near window (Mixkit 23735, 21.7s)
   { src: "/hero-video-1.mp4", start: 0, end: 6 },
   // Mixkit 39791 — young woman laughing (14.5s) — skip the teeth-closeup intro
   { src: "/hero-video-2.mp4", start: 3, end: 9 },
-  // Original — close-up man on call (16s) — only the solo-man section
-  { src: "/hero-video-3.mp4", start: 14, end: 16 },
+  // Original — close-up man on call (16s) — solo-man 2s stretched to ~6s
+  { src: "/hero-video-3.mp4", start: 14, end: 16, rate: 0.333 },
 ];
 
 function HeroVideoCarousel() {
@@ -341,6 +341,7 @@ function HeroVideoCarousel() {
       if (!v) return;
       if (i === active) {
         try { v.currentTime = HERO_CLIPS[i].start ?? 0; } catch {}
+        v.playbackRate = HERO_CLIPS[i].rate ?? 1;
         v.play().catch(() => {});
       } else {
         v.pause();
@@ -359,9 +360,11 @@ function HeroVideoCarousel() {
           preload={i === 0 ? "auto" : "metadata"}
           autoPlay={i === 0}
           onLoadedMetadata={(e) => {
+            const v = e.currentTarget as HTMLVideoElement;
             if (clip.start != null) {
-              try { (e.currentTarget as HTMLVideoElement).currentTime = clip.start; } catch {}
+              try { v.currentTime = clip.start; } catch {}
             }
+            v.playbackRate = clip.rate ?? 1;
           }}
           onTimeUpdate={(e) => {
             if (i !== active) return;
