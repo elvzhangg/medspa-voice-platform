@@ -1,5 +1,6 @@
 import { Tenant, TransientAssistantConfig, VapiTool } from "@/types";
 import { searchKnowledgeBase, formatKBContext } from "./knowledge-base";
+import { lookupCaller, buildCallerContext, ClientProfile } from "./client-intelligence";
 
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
@@ -11,7 +12,21 @@ export async function buildAssistantConfig(
   tenant: Tenant,
   callerNumber?: string
 ): Promise<TransientAssistantConfig> {
-  const systemPrompt = buildSystemPrompt(tenant, "");
+  // Look up returning-caller context (identity, history, preferences).
+  // Non-blocking enough — single indexed query by (tenant_id, phone).
+  let callerProfile: ClientProfile | null = null;
+  if (callerNumber) {
+    callerProfile = await lookupCaller(tenant.id, callerNumber);
+  }
+  const callerContext = buildCallerContext(callerProfile);
+
+  // Personalize first message if we recognize them
+  let firstMessage = tenant.greeting_message;
+  if (callerProfile && !callerProfile.no_personalization && callerProfile.first_name) {
+    firstMessage = `Hi ${callerProfile.first_name}, welcome back to ${tenant.name}! How can I help you today?`;
+  }
+
+  const systemPrompt = buildSystemPrompt(tenant, "", callerContext);
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
   const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
@@ -134,6 +149,28 @@ export async function buildAssistantConfig(
     {
       type: "function",
       function: {
+        name: "update_client_profile",
+        description: "Record or update facts about the caller (name, email, preferences, referral source, notes) so future calls feel personal. Call this whenever the caller volunteers information that would help next time — e.g. spells out their name, shares their email, mentions who referred them, tells you their preferred aesthetician, or notes an allergy/sensitivity we should remember. Do NOT probe — only call when they give the info naturally.",
+        parameters: {
+          type: "object",
+          properties: {
+            phone: { type: "string", description: "The caller's phone number (required to identify which profile to update)." },
+            first_name: { type: "string" },
+            last_name: { type: "string" },
+            email: { type: "string" },
+            preferred_provider: { type: "string", description: "Their go-to aesthetician going forward." },
+            preferred_time: { type: "string", description: "e.g. 'weekday mornings', 'after 5pm'." },
+            referral_source: { type: "string", description: "Who or what brought them in (person's name, Instagram, Google, etc.)." },
+            notes: { type: "string", description: "Short free-form note worth remembering for next time (e.g. 'allergic to lidocaine', 'prefers text over call')." },
+          },
+          required: ["phone"],
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
         name: "send_sms",
         description: "Sends a text message to the caller with information, links, or a confirmation.",
         parameters: {
@@ -160,13 +197,13 @@ export async function buildAssistantConfig(
       provider: "11labs",
       voiceId: tenant.voice_id,
     },
-    firstMessage: tenant.greeting_message,
+    firstMessage,
     endCallMessage:
       "Thank you for calling. Have a wonderful day! Goodbye.",
   };
 }
 
-function buildSystemPrompt(tenant: Tenant, kbContext: string): string {
+function buildSystemPrompt(tenant: Tenant, kbContext: string, callerContext: string = ""): string {
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -252,6 +289,9 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 
 ## Current Time
 ${timeStr} (Pacific Time)
+${callerContext}
+## Remembering the Caller
+When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}
 ## Guidelines
 - Be warm, professional, and concise - this is a phone call

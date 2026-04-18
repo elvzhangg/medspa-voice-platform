@@ -6,6 +6,11 @@ import { bookAppointment, updateBookingPreferences } from "@/lib/booking";
 import { createPaymentLink } from "@/lib/payments";
 import { getAvailableSlots } from "@/lib/availability";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  updateClientProfile,
+  logCallOutcome,
+  lookupCaller,
+} from "@/lib/client-intelligence";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -234,7 +239,67 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             providerFlexibility: provider_flexibility,
           });
 
+          // Cache what we just learned about this caller on their profile.
+          // Split "First Last" best-effort; staff can correct in dashboard.
+          if (customer_phone && customer_name) {
+            const parts = customer_name.trim().split(/\s+/);
+            const first = parts[0] || null;
+            const last = parts.length > 1 ? parts.slice(1).join(" ") : null;
+            updateClientProfile({
+              tenantId: tenant.id,
+              phone: customer_phone,
+              updates: {
+                first_name: first,
+                last_name: last,
+                preferred_provider: provider_preference && !/no preference|any|anyone/i.test(provider_preference) ? provider_preference : undefined,
+                referral_source: referred_by || undefined,
+              },
+              source: "ai_call",
+              sourceDetail: (call?.id as string) || undefined,
+            }).catch((e) => console.error("BOOK_PROFILE_UPDATE_ERR:", e));
+          }
+
           result = bookingResult.message;
+          break;
+        }
+
+        case "update_client_profile": {
+          if (!tenant) {
+            result = "Noted.";
+            break;
+          }
+          const {
+            phone,
+            first_name,
+            last_name,
+            email,
+            preferred_provider,
+            preferred_time,
+            referral_source,
+            notes,
+          } = toolCall.parameters as Record<string, string>;
+
+          if (!phone) {
+            result = "I need a phone number on file to update this client's record.";
+            break;
+          }
+
+          await updateClientProfile({
+            tenantId: tenant.id,
+            phone,
+            updates: {
+              first_name: first_name || undefined,
+              last_name: last_name || undefined,
+              email: email || undefined,
+              preferred_provider: preferred_provider || undefined,
+              preferred_time: preferred_time || undefined,
+              referral_source: referral_source || undefined,
+              staff_notes: notes || undefined,
+            },
+            source: "ai_call",
+            sourceDetail: (call?.id as string) || undefined,
+          });
+          result = "Got it, I've noted that for their file.";
           break;
         }
 
@@ -415,6 +480,51 @@ async function handleEndOfCallReport(message: Record<string, unknown>) {
       console.error("CALL_LOG_INSERT_ERROR:", error);
     } else {
       console.log("CALL_LOGGED:", vapiCallId, "tenant:", tenant?.name || "unknown");
+    }
+
+    // Bump the caller's profile: count this call, store a summary entry,
+    // mark booking flags if a booking_request landed during this call.
+    if (tenant && callerNumber) {
+      try {
+        const startedAt =
+          (callAny?.startedAt as string) ||
+          (callAny?.createdAt as string) ||
+          new Date().toISOString();
+
+        // Did this call result in a booking? Look for a booking_request
+        // from this caller created after the call started.
+        let booked = false;
+        let service: string | null = null;
+        let provider: string | null = null;
+        const { data: br } = await supabaseAdmin
+          .from("booking_requests")
+          .select("service, provider_preference, created_at")
+          .eq("tenant_id", tenant.id)
+          .eq("customer_phone", callerNumber)
+          .gte("created_at", startedAt)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (br) {
+          booked = true;
+          service = (br as any).service ?? null;
+          provider = (br as any).provider_preference ?? null;
+        }
+
+        await logCallOutcome({
+          tenantId: tenant.id,
+          phone: callerNumber,
+          callId: vapiCallId,
+          startedAt,
+          durationSeconds: durationSeconds ? Math.round(durationSeconds) : null,
+          summary: summary || null,
+          booked,
+          service,
+          provider,
+        });
+      } catch (e) {
+        console.error("CLIENT_PROFILE_CALL_LOG_ERR:", e);
+      }
     }
   } catch (err) {
     console.error("END_OF_CALL_ERROR:", err);
