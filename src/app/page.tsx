@@ -626,9 +626,9 @@ function Stats() {
    How It Works
 ═══════════════════════════════════════════════════════════════════ */
 const STEPS = [
-  { num: "01", title: "Share your business info",  desc: "Send us your services, pricing, policies, and FAQs. We handle all the setup — no technical work on your end." },
-  { num: "02", title: "We configure your AI",       desc: "Your AI receptionist is trained on your specific business. Custom voice, custom greeting, complete knowledge of your offerings." },
-  { num: "03", title: "Go live in 48 hours",        desc: "Get a dedicated phone number or forward your existing line. Start answering every call, every time." },
+  { num: "01", title: "Tell us about your spa.",              desc: "Share your services, pricing, and the little details that make your spa yours. We listen carefully." },
+  { num: "02", title: "We introduce Vivienne to your world.", desc: "Custom voice. Custom greeting. Fluent in your exact offerings. She becomes a natural part of your team." },
+  { num: "03", title: "She begins, gracefully.",              desc: "A dedicated number or your existing line — forwarded. Live in under 48 hours. Every call from that moment, cared for." },
 ];
 
 function StepCard({ step, index, visible }: {
@@ -640,14 +640,17 @@ function StepCard({ step, index, visible }: {
       ref={tilt.ref}
       onMouseMove={tilt.onMouseMove}
       onMouseLeave={tilt.onMouseLeave}
-      className={`reveal-up ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-8 z-10 relative`}
+      className={`reveal-up ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-8 z-10 relative overflow-hidden`}
       style={{ transitionDelay: `${index * 130}ms` }}
     >
-      <div className="w-[52px] h-[52px] rounded-xl bg-gradient-to-br from-em-600 to-em-500/70 flex items-center justify-center mb-6 shadow-lg shadow-em-950/50">
-        <span className="text-sm font-bold text-sage-100">{step.num}</span>
-      </div>
-      <h3 className="font-serif text-lg font-medium mb-3 text-sage-100 tracking-[-0.005em]">{step.title}</h3>
-      <p className="text-sage-600 leading-relaxed text-sm">{step.desc}</p>
+      <span
+        aria-hidden
+        className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05] group-hover:text-sage-100/[0.08] transition-colors"
+      >
+        {step.num}
+      </span>
+      <h3 className="font-serif text-lg font-medium mb-3 text-sage-100 tracking-[-0.005em] relative z-10 pt-10">{step.title}</h3>
+      <p className="text-sage-600 leading-relaxed text-sm relative z-10">{step.desc}</p>
     </div>
   );
 }
@@ -673,7 +676,7 @@ function HowItWorks() {
         </div>
 
         <div ref={cards.ref} className="relative grid md:grid-cols-3 gap-5">
-          <div className={`line-expand hidden md:block absolute top-[52px] left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent z-0 ${cards.visible ? "visible" : ""}`} />
+          <div className={`line-expand hidden md:block absolute top-12 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent z-0 ${cards.visible ? "visible" : ""}`} />
           {STEPS.map((s, i) => <StepCard key={s.num} step={s} index={i} visible={cards.visible} />)}
         </div>
       </div>
