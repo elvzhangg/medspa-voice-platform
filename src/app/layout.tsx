@@ -18,8 +18,19 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "VauxVoice — AI Receptionist for Med Spas",
-  description: "Never miss a call. VauxVoice answers 24/7, knows your services, and books appointments automatically.",
+  title: "VauxVoice — AI Clientele Specialist for Med Spas",
+  description: "Meet Vivienne, your AI Clientele Specialist for med spas. Every call answered, every client remembered, every booking captured — 24/7.",
+  openGraph: {
+    title: "VauxVoice — AI Clientele Specialist for Med Spas",
+    description: "Meet Vivienne, your AI Clientele Specialist for med spas. Every call answered, every client remembered, every booking captured — 24/7.",
+    siteName: "VauxVoice",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VauxVoice — AI Clientele Specialist for Med Spas",
+    description: "Meet Vivienne, your AI Clientele Specialist for med spas. Every call answered, every client remembered, every booking captured — 24/7.",
+  },
 };
 
 export default function RootLayout({
