@@ -762,10 +762,12 @@ function Features() {
               Features
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-              A thoughtful presence that <span className="italic">never steps away</span>.
-              <br /><span className="italic text-sage-600">Warm. Attentive. Always there.</span>
+            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em] leading-tight`} style={{ transitionDelay: "80ms" }}>
+              Built for the way med spas <span className="italic">actually</span> work.
             </h2>
+            <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-5 max-w-xl mx-auto text-lg`} style={{ transitionDelay: "160ms" }}>
+              Every feature, considered. Every detail, cared for.
+            </p>
           </div>
         </div>
 
