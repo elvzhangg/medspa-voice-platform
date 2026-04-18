@@ -634,23 +634,39 @@ const STEPS = [
 function StepCard({ step, index, visible }: {
   step: typeof STEPS[0]; index: number; visible: boolean;
 }) {
-  const tilt = useTilt(4);
   return (
     <div
-      ref={tilt.ref}
-      onMouseMove={tilt.onMouseMove}
-      onMouseLeave={tilt.onMouseLeave}
-      className={`reveal-up ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-8 z-10 relative overflow-hidden`}
-      style={{ transitionDelay: `${index * 130}ms` }}
+      className={`reveal-up ${visible ? "visible" : ""} z-10 relative`}
+      style={{ transitionDelay: `${index * 130}ms`, perspective: "1200px" }}
     >
-      <span
-        aria-hidden
-        className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05] group-hover:text-sage-100/[0.08] transition-colors"
+      <div
+        className="group relative w-full min-h-[200px] transition-transform duration-[700ms] [transform-style:preserve-3d] hover:[transform:rotateY(180deg)]"
       >
-        {step.num}
-      </span>
-      <h3 className="font-serif text-lg font-medium mb-3 text-sage-100 tracking-[-0.005em] relative z-10 pt-10">{step.title}</h3>
-      <p className="text-sage-600 leading-relaxed text-sm relative z-10">{step.desc}</p>
+        {/* Front */}
+        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col">
+          <span
+            aria-hidden
+            className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05] transition-colors"
+          >
+            {step.num}
+          </span>
+          <h3 className="font-serif text-lg font-medium text-sage-100 tracking-[-0.005em] relative z-10 pt-10">{step.title}</h3>
+          <div className="mt-auto flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-sage-500 relative z-10">
+            <span className="h-px w-6 bg-sage-600/40" />
+            <span>Hover to learn more</span>
+          </div>
+        </div>
+        {/* Back */}
+        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col justify-center">
+          <span
+            aria-hidden
+            className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
+          >
+            {step.num}
+          </span>
+          <p className="text-sage-300 leading-relaxed text-sm relative z-10">{step.desc}</p>
+        </div>
+      </div>
     </div>
   );
 }
