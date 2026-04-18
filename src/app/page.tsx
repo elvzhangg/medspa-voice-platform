@@ -631,38 +631,36 @@ const STEPS = [
   { num: "03", title: "She begins, gracefully.",              desc: "A dedicated number or your existing line — forwarded. Live in under 48 hours. Every call from that moment, cared for." },
 ];
 
-function StepCard({ step, index, visible }: {
+function StepCard({ step, index, visible, hovered, onHover }: {
   step: typeof STEPS[0]; index: number; visible: boolean;
+  hovered: number | null; onHover: (i: number | null) => void;
 }) {
+  const isActive = hovered === index;
+  const anyHovered = hovered !== null;
+  const dimmed = anyHovered && !isActive;
   return (
     <div
       className={`reveal-up ${visible ? "visible" : ""} z-10 relative min-w-0`}
-      style={{ transitionDelay: `${index * 130}ms`, perspective: "1200px" }}
+      style={{ transitionDelay: `${index * 130}ms` }}
     >
       <div
-        className="group relative w-full transition-transform duration-[600ms] ease-[cubic-bezier(0.4,0.0,0.2,1)] [transform-style:preserve-3d] hover:[transform:rotateY(180deg)] will-change-transform"
+        onMouseEnter={() => onHover(index)}
+        onMouseLeave={() => onHover(null)}
+        className={`glass-glow rounded-2xl p-10 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all duration-[500ms] ease-[cubic-bezier(0.4,0.0,0.2,1)] will-change-transform ${isActive ? "scale-[1.03]" : "scale-100"} ${dimmed ? "opacity-50" : "opacity-100"}`}
         style={{ height: 340 }}
       >
-        {/* Front */}
-        <div className="glass-glow rounded-2xl p-10 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col items-center justify-center text-center">
-          <span
-            aria-hidden
-            className="absolute bottom-3 right-6 font-serif italic text-[120px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
-          >
-            {step.num}
-          </span>
-          <h3 className="font-serif text-2xl font-medium text-sage-100 tracking-[-0.005em] relative z-10 max-w-[14ch]">{step.title}</h3>
-        </div>
-        {/* Back */}
-        <div className="glass-glow rounded-2xl p-10 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col items-center justify-center text-center">
-          <span
-            aria-hidden
-            className="absolute bottom-3 right-6 font-serif italic text-[120px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
-          >
-            {step.num}
-          </span>
-          <p className="text-sage-300 leading-relaxed text-[15px] relative z-10 max-w-[28ch]">{step.desc}</p>
-        </div>
+        <span
+          aria-hidden
+          className="absolute bottom-3 right-6 font-serif italic text-[120px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
+        >
+          {step.num}
+        </span>
+        <h3 className="font-serif text-2xl font-medium text-sage-100 tracking-[-0.005em] relative z-10 max-w-[14ch]">{step.title}</h3>
+        <p
+          className={`text-sage-300 leading-relaxed text-[15px] relative z-10 max-w-[24ch] mt-5 transition-all duration-[450ms] ease-[cubic-bezier(0.4,0.0,0.2,1)] ${isActive ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+        >
+          {step.desc}
+        </p>
       </div>
     </div>
   );
@@ -671,6 +669,7 @@ function StepCard({ step, index, visible }: {
 function HowItWorks() {
   const head  = useReveal();
   const cards = useReveal(0.1);
+  const [hovered, setHovered] = useState<number | null>(null);
   return (
     <section id="how-it-works" className="py-32 bg-transparent relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_80%,rgba(245,158,11,0.07),transparent)] pointer-events-none" />
@@ -690,7 +689,7 @@ function HowItWorks() {
 
         <div ref={cards.ref} className="relative grid md:grid-cols-3 gap-5 items-stretch auto-rows-fr">
           <div className={`line-expand hidden md:block absolute top-12 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent z-0 ${cards.visible ? "visible" : ""}`} />
-          {STEPS.map((s, i) => <StepCard key={s.num} step={s} index={i} visible={cards.visible} />)}
+          {STEPS.map((s, i) => <StepCard key={s.num} step={s} index={i} visible={cards.visible} hovered={hovered} onHover={setHovered} />)}
         </div>
       </div>
     </section>
