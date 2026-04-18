@@ -776,9 +776,6 @@ function FeatureGroupBlock({ group, offset }: { group: FeatureGroup; offset: num
           </span>
           <span className="h-px w-10 bg-sage-600/30" />
         </div>
-        <p className={`reveal-up ${head.visible ? "visible" : ""} font-serif italic font-medium text-[clamp(22px,2.4vw,32px)] text-sage-200 mt-4 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-          {group.tagline}
-        </p>
       </div>
       <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {group.items.map((f, i) => (
