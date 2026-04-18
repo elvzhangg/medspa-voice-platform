@@ -421,7 +421,7 @@ function Hero() {
         <p className="hero-line-2 text-[clamp(16px,1.6vw,20px)] text-sage-200 max-w-[62ch] mx-auto mb-4 leading-snug">
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
-        <p className="hero-line-2 text-[clamp(16px,1.6vw,20px)] text-sage-400 max-w-[62ch] mx-auto mb-10 leading-relaxed">
+        <p className="hero-line-2 text-[clamp(16px,1.6vw,20px)] text-sage-200 max-w-[62ch] mx-auto mb-10 leading-relaxed">
           Meet <span className="gradient-text font-medium" style={{ animation: "gradient-pan 6s ease infinite" }}>Vivienne</span> — she speaks your services fluently, books appointments,
           and cares for each client the way your best spa would. Around the clock.
         </p>
