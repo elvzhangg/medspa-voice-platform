@@ -581,7 +581,7 @@ function LogoMarquee() {
    Stats  (animated counters)
 ═══════════════════════════════════════════════════════════════════ */
 const STATS = [
-  { raw: "100%", num: 100, suffix: "%", label: "Calls answered" },
+  { raw: "99%",  num: 99,  suffix: "%", label: "Calls answered" },
   { raw: "<3s",  num: 0,   suffix: "",  label: "Greeted in" },
   { raw: "40%",  num: 40,  suffix: "%", label: "More bookings captured" },
   { raw: "3×",   num: 0,   suffix: "",  label: "Return visit rate" },
