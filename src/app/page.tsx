@@ -247,7 +247,7 @@ function Nav() {
             <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#nav-g)"/>
             <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
           </svg>
-          <span className="font-serif text-lg font-medium tracking-[0.08em] text-sage-100 group-hover:text-sage-200 transition-colors">
+          <span className="font-serif text-[clamp(22px,2.2vw,28px)] font-medium tracking-[0.08em] text-sage-100 group-hover:text-sage-200 transition-colors">
             Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
           </span>
         </Link>
