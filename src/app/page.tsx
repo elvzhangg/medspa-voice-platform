@@ -138,8 +138,10 @@ export default function HomePage() {
       <Hero />
       <LogoMarquee />
       <Stats />
+      <PlatformShowcase />
       <HowItWorks />
       <Features />
+      <Integrations />
       <Testimonials />
       <Pricing />
       <DemoSection />
@@ -826,6 +828,280 @@ function QuoteCard({ quote, index, visible }: {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Platform Showcase — demo video + 3 capability cards
+═══════════════════════════════════════════════════════════════════ */
+const PLATFORM_CAPS = [
+  {
+    icon: (
+      <FI>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="5" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      </FI>
+    ),
+    title: "Built for med spa precision",
+    desc: "Trained on conversations across injectables, laser, and skincare. Vivienne speaks your services, protocols, and pricing tiers out of the box — no phone-tree scripts.",
+  },
+  {
+    icon: (
+      <FI>
+        <path d="M20 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
+        <path d="M9 10h.01" />
+        <path d="M13 10h.01" />
+        <path d="M17 10h.01" />
+      </FI>
+    ),
+    title: "Personalize every client call",
+    desc: "Prior visits, preferred providers, last Botox date, numbing preferences, chart notes — Vivienne remembers, so every caller feels recognized from hello.",
+  },
+  {
+    icon: (
+      <FI>
+        <path d="M21 12a9 9 0 1 1-6.2-8.55" />
+        <path d="M21 4v5h-5" />
+        <path d="M12 7v5l3 2" />
+      </FI>
+    ),
+    title: "Orchestrate the full journey",
+    desc: "From consult booking to pre-care reminders, rebooking, and membership renewals — Vivienne handles every touchpoint of the client journey, 24/7.",
+  },
+];
+
+function VideoShowcase() {
+  const card = useReveal();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.muted = false;
+      v.currentTime = 0;
+      v.play().catch(() => {});
+      setPlaying(true);
+    } else {
+      v.pause();
+      setPlaying(false);
+    }
+  };
+  return (
+    <div
+      ref={card.ref}
+      className={`reveal-up ${card.visible ? "visible" : ""} relative rounded-[28px] overflow-hidden border border-sage-800/40 bg-gradient-to-br from-ink-900 to-em-950/40 shadow-2xl shadow-em-950/30`}
+    >
+      <div className="relative aspect-[21/10]">
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          autoPlay
+          loop
+          preload="auto"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          className="absolute inset-0 w-full h-full object-cover opacity-55"
+          src="/hero-video-2.mp4"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink-900/25 via-transparent to-ink-900/75" />
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+          <p className="text-[10px] font-bold text-sage-300 uppercase tracking-[0.3em]">
+            Watch Vivienne in action
+          </p>
+          <button
+            onClick={toggle}
+            aria-label={playing ? "Pause" : "Play"}
+            className="group relative w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center hover:scale-[1.06] transition-transform shadow-2xl"
+          >
+            {!playing && (
+              <span className="absolute inset-0 rounded-full border border-white/25 animate-ping pointer-events-none" />
+            )}
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="white"
+              className={playing ? "" : "ml-1"}
+            >
+              {playing ? (
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              ) : (
+                <path d="M8 5v14l11-7z" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlatformShowcase() {
+  const head = useReveal();
+  const cards = useReveal(0.1);
+  return (
+    <section className="py-28 bg-transparent relative overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[60%] h-[50%] bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.07),transparent_70%)] blur-3xl pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto px-6 relative">
+        <div ref={head.ref} className="text-center mb-14">
+          <span
+            className={`reveal-blur ${head.visible ? "visible" : ""} inline-block text-[10px] font-bold text-em-400 uppercase tracking-[0.3em] border border-em-900/50 bg-em-950/40 px-4 py-1.5 rounded-full mb-6`}
+          >
+            The Platform
+          </span>
+          <div
+            className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`}
+          />
+          <h2
+            className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em] leading-tight`}
+            style={{ transitionDelay: "80ms" }}
+          >
+            From the first ring to the <span className="italic">follow-up</span>.
+          </h2>
+          <p
+            className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`}
+            style={{ transitionDelay: "160ms" }}
+          >
+            One AI clientele specialist. Every moment of the client journey.
+          </p>
+        </div>
+
+        <VideoShowcase />
+
+        <div ref={cards.ref} className="grid md:grid-cols-3 gap-5 mt-8">
+          {PLATFORM_CAPS.map((cap, i) => (
+            <div
+              key={cap.title}
+              className={`reveal-up ${cards.visible ? "visible" : ""} glass-glow tilt rounded-2xl p-7 group`}
+              style={{ transitionDelay: `${i * 80}ms` }}
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center border border-em-900/50 bg-em-950/50 group-hover:border-em-500/50 group-hover:bg-em-900/80 transition-all duration-300 mb-5">
+                {cap.icon}
+              </div>
+              <h3 className="font-serif text-lg font-medium mb-2 text-sage-100 tracking-[-0.005em]">
+                {cap.title}
+              </h3>
+              <p className="text-sage-600 text-sm leading-relaxed group-hover:text-sage-400 transition-colors duration-300">
+                {cap.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent" />
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Integrations — hub + platform chips
+═══════════════════════════════════════════════════════════════════ */
+const INTEGRATIONS: { name: string; dot: string }[] = [
+  { name: "Acuity",      dot: "#F26522" },
+  { name: "Boulevard",   dot: "#7C6BFF" },
+  { name: "Mindbody",    dot: "#E2483F" },
+  { name: "Vagaro",      dot: "#3FAE49" },
+  { name: "Zenoti",      dot: "#0B7ED8" },
+  { name: "Square",      dot: "#A1A1A1" },
+  { name: "Fresha",      dot: "#1FC2B5" },
+  { name: "GlossGenius", dot: "#C8A15A" },
+  { name: "Jane",        dot: "#6B9B7A" },
+  { name: "SalonBiz",    dot: "#3A6BB7" },
+];
+
+function IntegrationChip({ item, delay, visible }: {
+  item: (typeof INTEGRATIONS)[number]; delay: number; visible: boolean;
+}) {
+  return (
+    <div
+      className={`reveal-up ${visible ? "visible" : ""} group rounded-xl px-4 py-3.5 bg-sage-900/30 border border-sage-800/40 backdrop-blur-sm flex items-center gap-2.5 hover:border-em-600/40 hover:bg-sage-900/50 hover:-translate-y-[1px] transition-all`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <span
+        className="h-2 w-2 rounded-full shrink-0"
+        style={{ background: item.dot, boxShadow: `0 0 10px ${item.dot}66` }}
+      />
+      <span className="text-sage-200 text-sm font-medium tracking-tight">{item.name}</span>
+    </div>
+  );
+}
+
+function Integrations() {
+  const head = useReveal();
+  const chips = useReveal(0.05);
+  return (
+    <section className="py-28 bg-transparent relative overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[55%] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_70%)] blur-3xl pointer-events-none" />
+
+      <div className="max-w-5xl mx-auto px-6 relative">
+        <div ref={head.ref} className="text-center mb-14">
+          <span
+            className={`reveal-blur ${head.visible ? "visible" : ""} inline-block text-[10px] font-bold text-em-400 uppercase tracking-[0.3em] border border-em-900/50 bg-em-950/40 px-4 py-1.5 rounded-full mb-6`}
+          >
+            Integrations
+          </span>
+          <div
+            className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`}
+          />
+          <h2
+            className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em] leading-tight`}
+            style={{ transitionDelay: "80ms" }}
+          >
+            Works with the <span className="italic">tools</span> you already use.
+          </h2>
+          <p
+            className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`}
+            style={{ transitionDelay: "160ms" }}
+          >
+            Deep integration across 10+ booking platforms — Vivienne slots in without a rip-and-replace.
+          </p>
+        </div>
+
+        <div ref={chips.ref} className="relative">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {INTEGRATIONS.slice(0, 5).map((item, i) => (
+              <IntegrationChip
+                key={item.name}
+                item={item}
+                delay={i * 50}
+                visible={chips.visible}
+              />
+            ))}
+          </div>
+
+          <div className="relative flex items-center justify-center py-10 md:py-14">
+            <div className="absolute inset-x-[15%] top-1/2 h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent" />
+            <div className="relative">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-em-500 to-em-700 border border-em-400/40 shadow-2xl shadow-em-950/40 flex items-center justify-center relative z-10">
+                <span className="font-serif text-4xl md:text-5xl font-medium text-white italic leading-none">V</span>
+              </div>
+              <span className="absolute inset-0 rounded-full border border-em-500/30 animate-ping pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {INTEGRATIONS.slice(5).map((item, i) => (
+              <IntegrationChip
+                key={item.name}
+                item={item}
+                delay={(i + 5) * 50}
+                visible={chips.visible}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent" />
+    </section>
   );
 }
 
