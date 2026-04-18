@@ -641,27 +641,27 @@ function StepCard({ step, index, visible }: {
     >
       <div
         className="group relative w-full transition-transform duration-[600ms] ease-[cubic-bezier(0.4,0.0,0.2,1)] [transform-style:preserve-3d] hover:[transform:rotateY(180deg)] will-change-transform"
-        style={{ height: 240 }}
+        style={{ height: 340 }}
       >
         {/* Front */}
-        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col justify-center">
+        <div className="glass-glow rounded-2xl p-10 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col items-center justify-center text-center">
           <span
             aria-hidden
-            className="absolute bottom-2 right-5 font-serif italic text-[96px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
+            className="absolute bottom-3 right-6 font-serif italic text-[120px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
           >
             {step.num}
           </span>
-          <h3 className="font-serif text-xl font-medium text-sage-100 tracking-[-0.005em] relative z-10">{step.title}</h3>
+          <h3 className="font-serif text-2xl font-medium text-sage-100 tracking-[-0.005em] relative z-10 max-w-[16ch]">{step.title}</h3>
         </div>
         {/* Back */}
-        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col justify-center">
+        <div className="glass-glow rounded-2xl p-10 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col items-center justify-center text-center">
           <span
             aria-hidden
-            className="absolute bottom-2 right-5 font-serif italic text-[96px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
+            className="absolute bottom-3 right-6 font-serif italic text-[120px] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
           >
             {step.num}
           </span>
-          <p className="text-sage-300 leading-relaxed text-sm relative z-10">{step.desc}</p>
+          <p className="text-sage-300 leading-relaxed text-[15px] relative z-10 max-w-[28ch]">{step.desc}</p>
         </div>
       </div>
     </div>
