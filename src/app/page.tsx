@@ -763,8 +763,8 @@ function Features() {
             </span>
             <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/35 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
             <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-              Everything your front desk does.
-              <br /><span className="italic text-sage-600">Without the front desk.</span>
+              A thoughtful presence that <span className="italic">never steps away</span>.
+              <br /><span className="italic text-sage-600">Warm. Attentive. Always there.</span>
             </h2>
           </div>
         </div>
