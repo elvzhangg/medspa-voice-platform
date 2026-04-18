@@ -706,20 +706,41 @@ function FI({ children }: { children: React.ReactNode }) {
   );
 }
 
-const FEATURES = [
-  { icon: <FI><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 6.5-6 7.4V18h-2v-1.6C7.5 15.5 5 12.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M10 17v4"/><path d="M14 17v4"/></FI>, title: "Deep Business Knowledge",      desc: "Trained on your exact services, pricing, packages, and policies. Answers questions like your best employee would.", wide: true },
-  { icon: <FI><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></FI>, title: "Appointment Booking", desc: "Collects patient info and schedules appointments directly. Integrates with your existing booking system.", wide: false },
-  { icon: <FI><path d="M2 12c1.5-3 3-4.5 4.5-4.5S9 9 10.5 12s3 4.5 4.5 4.5S18 15 19.5 12 21 7.5 22 7.5"/></FI>, title: "Natural Human Voice", desc: "Powered by ElevenLabs — callers can't tell it's AI. Choose from multiple voice profiles that match your brand.", wide: false },
-  { icon: <FI><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/></FI>, title: "Real-Time Dashboard", desc: "See every call, transcript, and outcome. Track missed calls, peak hours, and conversion rates.", wide: false },
-  { icon: <FI><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/><path d="M9 12l2 2 4-4"/></FI>, title: "HIPAA Considerations", desc: "Built with healthcare privacy in mind. No sensitive patient data stored. SOC 2 compliance roadmap.", wide: false },
-  { icon: <FI><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></FI>, title: "Instant Scalability", desc: "Handle 1 call or 1,000 simultaneous calls. No hold times, no voicemail — every caller gets answered.", wide: false },
-  { icon: <FI><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V7L6 11H4a1 1 0 0 0-1 1z"/><path d="M19 9c1.5 1 1.5 5 0 6"/><path d="M17 7c2.5 1.5 2.5 8.5 0 10"/></FI>, title: "Proactive Outbound Campaigns", desc: "Automatically reach out to patients for reminders, reactivation campaigns, and promotions via AI-powered calls and SMS.", wide: true },
-  { icon: <FI><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h2"/><path d="M10 15h4"/></FI>, title: "Billing & Payment Support", desc: "AI handles billing questions, shares payment options, and sends payment links — so no revenue slips through the cracks.", wide: false },
-  { icon: <FI><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M10.5 8h3"/><path d="M9.5 10l2 6"/><path d="M14.5 10l-2 6"/></FI>, title: "Referral Management", desc: "Track referral sources, reward loyal patients automatically, and grow your practice through word-of-mouth.", wide: false },
+type FeatureItem = { icon: React.ReactNode; title: string; desc: string };
+type FeatureGroup = { label: string; tagline: string; items: FeatureItem[] };
+
+const FEATURE_GROUPS: FeatureGroup[] = [
+  {
+    label: "Fluency",
+    tagline: "The art of every conversation.",
+    items: [
+      { icon: <FI><path d="M2 12c1.5-3 3-4.5 4.5-4.5S9 9 10.5 12s3 4.5 4.5 4.5S18 15 19.5 12 21 7.5 22 7.5"/></FI>, title: "Natural Human Voice", desc: "Powered by ElevenLabs — callers can't tell it's AI. Choose from multiple voice profiles that match your brand." },
+      { icon: <FI><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 6.5-6 7.4V18h-2v-1.6C7.5 15.5 5 12.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M10 17v4"/><path d="M14 17v4"/></FI>, title: "Deep Business Knowledge", desc: "Trained on your exact services, pricing, packages, and policies. Answers questions like your best employee would." },
+      { icon: <FI><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></FI>, title: "Appointment Booking", desc: "Collects patient info and schedules appointments directly. Integrates with your existing booking system." },
+    ],
+  },
+  {
+    label: "Intelligence",
+    tagline: "Everything that keeps her sharp.",
+    items: [
+      { icon: <FI><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/></FI>, title: "Real-Time Dashboard", desc: "See every call, transcript, and outcome. Track missed calls, peak hours, and conversion rates." },
+      { icon: <FI><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></FI>, title: "Instant Scalability", desc: "Handle 1 call or 1,000 simultaneous calls. No hold times, no voicemail — every caller gets answered." },
+      { icon: <FI><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/><path d="M9 12l2 2 4-4"/></FI>, title: "HIPAA Considerations", desc: "Built with healthcare privacy in mind. No sensitive patient data stored. SOC 2 compliance roadmap." },
+    ],
+  },
+  {
+    label: "Care, Extended",
+    tagline: "Because good service doesn't end when the call does.",
+    items: [
+      { icon: <FI><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V7L6 11H4a1 1 0 0 0-1 1z"/><path d="M19 9c1.5 1 1.5 5 0 6"/><path d="M17 7c2.5 1.5 2.5 8.5 0 10"/></FI>, title: "Proactive Outbound Campaigns", desc: "Automatically reach out to patients for reminders, reactivation campaigns, and promotions via AI-powered calls and SMS." },
+      { icon: <FI><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h2"/><path d="M10 15h4"/></FI>, title: "Billing & Payment Support", desc: "AI handles billing questions, shares payment options, and sends payment links — so no revenue slips through the cracks." },
+      { icon: <FI><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M10.5 8h3"/><path d="M9.5 10l2 6"/><path d="M14.5 10l-2 6"/></FI>, title: "Referral Management", desc: "Track referral sources, reward loyal patients automatically, and grow your practice through word-of-mouth." },
+    ],
+  },
 ];
 
-function BentoCard({ f, index, visible, horizontal = false }: {
-  f: typeof FEATURES[0]; index: number; visible: boolean; horizontal?: boolean;
+function BentoCard({ f, index, visible }: {
+  f: FeatureItem; index: number; visible: boolean;
 }) {
   const tilt = useTilt(4);
   const dir  = index % 3 === 0 ? "reveal-left" : index % 3 === 2 ? "reveal-right" : "reveal-up";
@@ -728,10 +749,10 @@ function BentoCard({ f, index, visible, horizontal = false }: {
       ref={tilt.ref}
       onMouseMove={tilt.onMouseMove}
       onMouseLeave={tilt.onMouseLeave}
-      className={`${dir} ${visible ? "visible" : ""} ${f.wide ? "md:col-span-2" : ""} glass-glow tilt rounded-2xl p-7 group ${horizontal ? "flex gap-6 items-start" : ""}`}
+      className={`${dir} ${visible ? "visible" : ""} glass-glow tilt rounded-2xl p-7 group`}
       style={{ transitionDelay: `${index * 55}ms` }}
     >
-      <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-em-900/50 bg-em-950/50 group-hover:border-em-500/50 group-hover:bg-em-900/80 transition-all duration-300 ${horizontal ? "" : "mb-4"}`}>
+      <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-em-900/50 bg-em-950/50 group-hover:border-em-500/50 group-hover:bg-em-900/80 transition-all duration-300 mb-4">
         {f.icon}
       </div>
       <div>
@@ -742,9 +763,34 @@ function BentoCard({ f, index, visible, horizontal = false }: {
   );
 }
 
+function FeatureGroupBlock({ group, offset }: { group: FeatureGroup; offset: number }) {
+  const head = useReveal(0.2);
+  const grid = useReveal(0.05);
+  return (
+    <div className="mt-24 first:mt-0">
+      <div ref={head.ref} className="text-center mb-10">
+        <div className={`flex items-center justify-center gap-4 ${head.visible ? "visible" : ""} reveal-blur`}>
+          <span className="h-px w-10 bg-sage-600/30" />
+          <span className="text-[11px] font-medium uppercase tracking-[0.32em] text-sage-500">
+            {group.label}
+          </span>
+          <span className="h-px w-10 bg-sage-600/30" />
+        </div>
+        <p className={`reveal-up ${head.visible ? "visible" : ""} font-serif italic font-medium text-[clamp(22px,2.4vw,32px)] text-sage-200 mt-4 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
+          {group.tagline}
+        </p>
+      </div>
+      <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {group.items.map((f, i) => (
+          <BentoCard key={f.title} f={f} index={offset + i} visible={grid.visible} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Features() {
   const head = useReveal();
-  const grid = useReveal(0.05);
   return (
     <section id="features" className="py-32 bg-transparent relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_50%_at_80%_30%,rgba(245,158,11,0.06),transparent)] pointer-events-none" />
@@ -756,7 +802,7 @@ function Features() {
         <div className="w-[380px] h-[380px] rounded-full blur-[80px] animate-aurora-b" style={{ background: "radial-gradient(circle, rgba(251,191,36,0.09), transparent 70%)" }} />
       </ParallaxLayer>
       <div className="max-w-6xl mx-auto px-6 relative">
-        <div className="text-center mb-20">
+        <div className="text-center mb-24">
           <div ref={head.ref}>
             <span className={`reveal-blur ${head.visible ? "visible" : ""} inline-block text-[10px] font-bold text-em-400 uppercase tracking-[0.3em] border border-em-900/50 bg-em-950/40 px-4 py-1.5 rounded-full mb-6`}>
               Features
@@ -771,16 +817,9 @@ function Features() {
           </div>
         </div>
 
-        <div ref={grid.ref} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <BentoCard f={FEATURES[0]} index={0} visible={grid.visible} horizontal />
-          <BentoCard f={FEATURES[1]} index={1} visible={grid.visible} />
-          {FEATURES.slice(2, 5).map((f, i) => <BentoCard key={f.title} f={f} index={i + 2} visible={grid.visible} />)}
-          <BentoCard f={FEATURES[5]} index={5} visible={grid.visible} />
-          <BentoCard f={FEATURES[6]} index={6} visible={grid.visible} horizontal />
-          <BentoCard f={FEATURES[7]} index={7} visible={grid.visible} />
-          <BentoCard f={FEATURES[8]} index={8} visible={grid.visible} />
-          <div className="hidden md:block" />
-        </div>
+        {FEATURE_GROUPS.map((group, gi) => (
+          <FeatureGroupBlock key={group.label} group={group} offset={gi * 3} />
+        ))}
       </div>
     </section>
   );
