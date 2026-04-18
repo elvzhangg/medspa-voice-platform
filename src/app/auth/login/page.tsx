@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,10 +31,14 @@ export default function LoginPage() {
       .eq("user_id", data.user.id)
       .maybeSingle();
 
+    // Hard navigation (not router.push) so the browser sends the freshly
+    // committed auth cookie with the first dashboard request. A client
+    // transition can race with the cookie write and render a blank page
+    // until manual refresh.
     if (tenantUser) {
-      router.push("/dashboard");
+      window.location.assign("/dashboard");
     } else {
-      router.push("/onboarding");
+      window.location.assign("/onboarding");
     }
   }
 
