@@ -1285,11 +1285,12 @@ function DemoSection() {
 
       <div ref={ref} className="relative max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-tight`}>
-            Your clients are already calling. <span className="italic">She&apos;s</span> ready when you are.
+          <h2 className={`reveal-tilt ${visible ? "visible" : ""} font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-[1.08]`}>
+            <span className="block text-[clamp(32px,4.5vw,58px)]">Your clients are already calling.</span>
+            <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">She&apos;s ready when you are.</span>
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
-            Get a personalized demo and start a free trial for your med spa.
+            A private demo, tailored to your spa. Vivienne is live in under 48 hours.
           </p>
         </div>
         <div className={`reveal-up ${visible ? "visible" : ""}`} style={{ transitionDelay: "200ms" }}>
@@ -1334,7 +1335,7 @@ function DemoForm() {
     <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 md:p-10 space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         {[
-          { label: "Your Name",        key: "name",          type: "text",  placeholder: "Jane Smith",       required: true  },
+          { label: "Name",             key: "name",          type: "text",  placeholder: "Jane Smith",       required: true  },
           { label: "Email",            key: "email",         type: "email", placeholder: "jane@medspa.com",  required: true  },
           { label: "Med Spa Name",     key: "business_name", type: "text",  placeholder: "Radiance Med Spa", required: true  },
           { label: "Phone (optional)", key: "phone",         type: "tel",   placeholder: "(555) 000-0000",   required: false },
@@ -1355,10 +1356,10 @@ function DemoForm() {
         type="submit" disabled={status === "loading"}
         className="w-full py-4 bg-em-600 text-sage-100 font-medium rounded-xl hover:bg-em-500 disabled:opacity-50 transition-all text-base mt-2 shadow-lg shadow-em-950/60 hover:shadow-em-900/60"
       >
-        {status === "loading" ? "Submitting..." : "Request Your Free Demo →"}
+        {status === "loading" ? "Submitting..." : "Book a private demo →"}
       </button>
       {status === "error" && <p className="text-red-400 text-sm text-center">Something went wrong. Please try again.</p>}
-      <p className="text-sage-800 text-[10px] text-center tracking-wide">No commitment · Free trial available · Setup in 48 hours</p>
+      <p className="text-sage-800 text-[10px] text-center tracking-wide">Private. Unhurried. Live in under 48 hours.</p>
     </form>
   );
 }
