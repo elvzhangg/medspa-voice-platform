@@ -1286,10 +1286,10 @@ function DemoSection() {
       <div ref={ref} className="relative max-w-2xl mx-auto px-6">
         <div className="text-center mb-12">
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-tight`}>
-            Ready to <span className="italic">never</span> miss a call again?
+            Your clients are already calling. <span className="italic">She&apos;s</span> ready when you are.
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
-            Get a personalized demo for your med spa. We&apos;ll have your AI receptionist ready in 48 hours.
+            Get a personalized demo and start a free trial for your med spa.
           </p>
         </div>
         <div className={`reveal-up ${visible ? "visible" : ""}`} style={{ transitionDelay: "200ms" }}>
