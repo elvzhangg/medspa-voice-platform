@@ -636,7 +636,7 @@ function StepCard({ step, index, visible }: {
 }) {
   return (
     <div
-      className={`reveal-up ${visible ? "visible" : ""} z-10 relative`}
+      className={`reveal-up ${visible ? "visible" : ""} z-10 relative min-w-0`}
       style={{ transitionDelay: `${index * 130}ms`, perspective: "1200px" }}
     >
       <div
@@ -651,7 +651,7 @@ function StepCard({ step, index, visible }: {
           >
             {step.num}
           </span>
-          <h3 className="font-serif text-2xl font-medium text-sage-100 tracking-[-0.005em] relative z-10 max-w-[16ch]">{step.title}</h3>
+          <h3 className="font-serif text-2xl font-medium text-sage-100 tracking-[-0.005em] relative z-10 max-w-[14ch]">{step.title}</h3>
         </div>
         {/* Back */}
         <div className="glass-glow rounded-2xl p-10 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col items-center justify-center text-center">
@@ -688,7 +688,7 @@ function HowItWorks() {
           </div>
         </div>
 
-        <div ref={cards.ref} className="relative grid md:grid-cols-3 gap-5">
+        <div ref={cards.ref} className="relative grid md:grid-cols-3 gap-5 items-stretch auto-rows-fr">
           <div className={`line-expand hidden md:block absolute top-12 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-em-600/20 to-transparent z-0 ${cards.visible ? "visible" : ""}`} />
           {STEPS.map((s, i) => <StepCard key={s.num} step={s} index={i} visible={cards.visible} />)}
         </div>
