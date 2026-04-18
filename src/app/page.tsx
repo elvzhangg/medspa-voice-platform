@@ -1064,7 +1064,7 @@ function Integrations() {
             className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`}
             style={{ transitionDelay: "160ms" }}
           >
-            Deep integration across 10+ booking platforms — Vivienne slots in without a rip-and-replace.
+            Deep integration across 10+ booking platforms — Vivienne works beautifully with the platforms your team already loves.
           </p>
         </div>
 
