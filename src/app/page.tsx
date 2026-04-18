@@ -640,21 +640,17 @@ function StepCard({ step, index, visible }: {
       style={{ transitionDelay: `${index * 130}ms`, perspective: "1200px" }}
     >
       <div
-        className="group relative w-full min-h-[200px] transition-transform duration-[700ms] [transform-style:preserve-3d] hover:[transform:rotateY(180deg)]"
+        className="group relative w-full h-[220px] transition-transform duration-[600ms] ease-[cubic-bezier(0.4,0.0,0.2,1)] [transform-style:preserve-3d] hover:[transform:rotateY(180deg)] will-change-transform"
       >
         {/* Front */}
-        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col">
+        <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] overflow-hidden flex flex-col justify-center">
           <span
             aria-hidden
-            className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05] transition-colors"
+            className="absolute top-4 right-6 font-serif italic text-[clamp(72px,8vw,120px)] font-medium leading-none select-none pointer-events-none text-sage-100/[0.05]"
           >
             {step.num}
           </span>
-          <h3 className="font-serif text-lg font-medium text-sage-100 tracking-[-0.005em] relative z-10 pt-10">{step.title}</h3>
-          <div className="mt-auto flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-sage-500 relative z-10">
-            <span className="h-px w-6 bg-sage-600/40" />
-            <span>Hover to learn more</span>
-          </div>
+          <h3 className="font-serif text-lg font-medium text-sage-100 tracking-[-0.005em] relative z-10">{step.title}</h3>
         </div>
         {/* Back */}
         <div className="glass-glow rounded-2xl p-8 absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-hidden flex flex-col justify-center">
