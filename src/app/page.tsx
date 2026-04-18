@@ -581,10 +581,10 @@ function LogoMarquee() {
    Stats  (animated counters)
 ═══════════════════════════════════════════════════════════════════ */
 const STATS = [
-  { raw: "98%",  num: 98, suffix: "%", label: "Call answer rate" },
-  { raw: "<1s",  num: 0,  suffix: "",  label: "Response time" },
-  { raw: "40%",  num: 40, suffix: "%", label: "More bookings" },
-  { raw: "24/7", num: 0,  suffix: "",  label: "Availability" },
+  { raw: "100%", num: 100, suffix: "%", label: "Calls answered" },
+  { raw: "<3s",  num: 0,   suffix: "",  label: "Greeted in" },
+  { raw: "40%",  num: 40,  suffix: "%", label: "More bookings captured" },
+  { raw: "3×",   num: 0,   suffix: "",  label: "Return visit rate" },
 ];
 
 function StatItem({ raw, num, suffix, label, delay, visible }: {
