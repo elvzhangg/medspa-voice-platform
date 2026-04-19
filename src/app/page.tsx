@@ -1286,7 +1286,7 @@ function DemoSection() {
         <div className="text-center mb-12">
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-[1.08]`}>
             <span className="block whitespace-nowrap text-[clamp(28px,4.2vw,52px)]">Your clients are already calling.</span>
-            <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">She&apos;s ready when you are.</span>
+            <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">Your Vivienne is ready when you are.</span>
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
             A private demo, tailored to your spa. Vivienne is live in under 48 hours.
