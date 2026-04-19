@@ -1282,17 +1282,17 @@ function DemoSection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_30%_30%_at_20%_20%,rgba(251,191,36,0.04),transparent)]" />
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/18 to-transparent" />
 
-      <div ref={ref} className="relative max-w-2xl mx-auto px-6">
+      <div ref={ref} className="relative max-w-3xl mx-auto px-6">
         <div className="text-center mb-12">
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-[1.08]`}>
-            <span className="block text-[clamp(32px,4.5vw,58px)]">Your clients are already calling.</span>
+            <span className="block whitespace-nowrap text-[clamp(28px,4.2vw,52px)]">Your clients are already calling.</span>
             <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">She&apos;s ready when you are.</span>
           </h2>
           <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
             A private demo, tailored to your spa. Vivienne is live in under 48 hours.
           </p>
         </div>
-        <div className={`reveal-up ${visible ? "visible" : ""}`} style={{ transitionDelay: "200ms" }}>
+        <div className={`reveal-up ${visible ? "visible" : ""} max-w-2xl mx-auto`} style={{ transitionDelay: "200ms" }}>
           <DemoForm />
         </div>
       </div>
