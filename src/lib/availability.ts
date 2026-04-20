@@ -1,5 +1,27 @@
 import { supabaseAdmin } from "./supabase";
 import { format, addMinutes, startOfDay, endOfDay, parseISO } from "date-fns";
+import { loadTenantIntegration } from "./integrations";
+
+/**
+ * Cache of ISO startTimes returned by the platform adapter, keyed by
+ * (tenantId, date, label). The AI reads back labels like "2:00 PM" to
+ * the caller; when they pick one we need to recover the exact ISO to
+ * pass into bookAppointment. Kept in-memory — fine for single-process,
+ * will need a shared store if we scale horizontally for long calls.
+ */
+const slotCache = new Map<string, { label: string; startTime: string }[]>();
+const cacheKey = (tenantId: string, date: string) => `${tenantId}|${date}`;
+
+export function resolveCachedSlot(
+  tenantId: string,
+  date: string,
+  label: string
+): string | null {
+  const arr = slotCache.get(cacheKey(tenantId, date));
+  if (!arr) return null;
+  const hit = arr.find((s) => s.label.toLowerCase() === label.toLowerCase());
+  return hit?.startTime ?? null;
+}
 
 export async function getAvailableSlots(
   tenantId: string,
@@ -7,6 +29,27 @@ export async function getAvailableSlots(
   service?: string,
   provider?: string
 ) {
+  // If the tenant is in direct_book mode and has a supported adapter,
+  // defer to the platform. If the call fails we fall through to the
+  // internal calendar-based availability so the AI never freezes.
+  try {
+    const integration = await loadTenantIntegration(tenantId);
+    if (integration) {
+      const slots = await integration.adapter.getAvailableSlots(integration.ctx, {
+        date,
+        service,
+        provider,
+      });
+      slotCache.set(
+        cacheKey(tenantId, date),
+        slots.map((s) => ({ label: s.label, startTime: s.startTime }))
+      );
+      return slots.map((s) => s.label);
+    }
+  } catch (err) {
+    console.error("DIRECT_BOOK_AVAILABILITY_ERR — falling back to internal:", err);
+  }
+
   // 1. Fetch staff members
   const staffQuery = supabaseAdmin
     .from("staff")

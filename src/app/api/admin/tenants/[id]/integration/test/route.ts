@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getAdapter } from "@/lib/integrations";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -84,7 +85,29 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ ok: false, error: errText }, { status: 400 });
   }
 
-  // Stub: mark as connected. Replace with real per-platform ping later.
+  // Ping the platform via its adapter when one is registered (Boulevard
+  // today). For platforms without an adapter yet, mark as connected on
+  // field-presence only — we'll upgrade as each adapter lands.
+  const adapter = getAdapter(integration.platform);
+  if (adapter) {
+    const testRes = await adapter.testConnection({
+      credentials: creds as Record<string, string | undefined>,
+      config: config as Record<string, string | undefined>,
+    });
+    if (!testRes.ok) {
+      const errText = testRes.detail || "Platform rejected credentials";
+      await supabaseAdmin
+        .from("tenant_integrations")
+        .update({ last_test_at: now, last_test_status: "error", last_error: errText })
+        .eq("tenant_id", id);
+      await supabaseAdmin
+        .from("tenants")
+        .update({ integration_status: "error", integration_last_error: errText })
+        .eq("id", id);
+      return NextResponse.json({ ok: false, error: errText }, { status: 400 });
+    }
+  }
+
   await supabaseAdmin
     .from("tenant_integrations")
     .update({ last_test_at: now, last_test_status: "ok", last_error: null })

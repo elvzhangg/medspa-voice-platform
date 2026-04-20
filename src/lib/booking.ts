@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "./supabase";
+import { loadTenantIntegration } from "./integrations";
+import { resolveCachedSlot } from "./availability";
 
 /**
  * Booking integration layer supporting 5 modes:
@@ -50,21 +52,41 @@ export async function bookAppointment(request: BookingRequest): Promise<BookingR
 
   let result: BookingResult;
 
-  switch (provider) {
-    case "vagaro":
-      result = await bookViaVagaro(request, tenant?.booking_config);
-      break;
-    case "acuity":
-      result = await bookViaAcuity(request, tenant?.booking_config);
-      break;
-    case "mindbody":
-      result = await bookViaMindbody(request, tenant?.booking_config);
-      break;
-    case "link":
-      result = await bookViaLink(request, tenant?.booking_config);
-      break;
-    default:
-      result = await bookInternal(request);
+  // Direct-book via platform adapter (Boulevard, Acuity when ported, etc.)
+  if (isDirectBook) {
+    result = await bookViaAdapter(request);
+    // If the adapter failed mid-flight, persist the request internally so
+    // staff can still see + confirm manually — AI never leaves the caller
+    // in limbo.
+    if (!result.success) {
+      console.warn("ADAPTER_BOOKING_FAILED — persisting internally as fallback");
+      const internal = await bookInternal(request);
+      if (internal.success) {
+        result = {
+          ...internal,
+          message:
+            "I've sent your request to our team — they'll confirm shortly. " +
+            "(Our booking system had a brief hiccup; your request is safe.)",
+        };
+      }
+    }
+  } else {
+    switch (provider) {
+      case "vagaro":
+        result = await bookViaVagaro(request, tenant?.booking_config);
+        break;
+      case "acuity":
+        result = await bookViaAcuity(request, tenant?.booking_config);
+        break;
+      case "mindbody":
+        result = await bookViaMindbody(request, tenant?.booking_config);
+        break;
+      case "link":
+        result = await bookViaLink(request, tenant?.booking_config);
+        break;
+      default:
+        result = await bookInternal(request);
+    }
   }
 
   // Staff-forward SMS: only when the tenant is in sms_fallback/hybrid mode (or
@@ -414,6 +436,86 @@ function normalizeSlotStart(date: string, time: string): Date | null {
   // Fallback: try Date() directly
   const d = new Date(`${date}T${time}`);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Direct-book via the platform adapter registered for this tenant.
+ * Reads the ISO startTime out of the in-memory slot cache populated by
+ * getAvailableSlots (same call that showed the slot to the caller), so
+ * we book the exact slot the caller confirmed instead of re-guessing.
+ */
+async function bookViaAdapter(request: BookingRequest): Promise<BookingResult> {
+  const integration = await loadTenantIntegration(request.tenantId);
+  if (!integration) {
+    return { success: false, message: "Integration not available." };
+  }
+
+  // Recover the ISO startTime for the label the caller agreed to. If the
+  // cache misses (e.g. server restarted), fall back to parsing the label
+  // against preferredDate as a best-effort.
+  let iso: string | null = null;
+  if (request.preferredDate && request.preferredTime) {
+    iso = resolveCachedSlot(request.tenantId, request.preferredDate, request.preferredTime);
+    if (!iso) {
+      const parsed = parseLooseDateTime(request.preferredDate, request.preferredTime);
+      if (parsed) iso = parsed;
+    }
+  }
+  if (!iso) {
+    return {
+      success: false,
+      message:
+        "I had trouble locking in that exact time. Let me re-check availability for you.",
+      slotUnavailable: true,
+    };
+  }
+
+  const res = await integration.adapter.bookAppointment(integration.ctx, {
+    service: request.service,
+    startTime: iso,
+    customerName: request.customerName,
+    customerPhone: request.customerPhone,
+    notes: request.referredBy ? `Referred by: ${request.referredBy}` : request.notes,
+  });
+
+  if (!res.ok) {
+    if (res.errorCode === "unavailable") {
+      return {
+        success: false,
+        slotUnavailable: true,
+        message:
+          "That slot just got taken while we were chatting — can I check another time for you?",
+      };
+    }
+    return { success: false, message: "I couldn't confirm that appointment just now." };
+  }
+
+  return {
+    success: true,
+    confirmationId: res.appointmentId,
+    message:
+      `Perfect — your ${request.service} appointment on ${request.preferredDate} at ` +
+      `${request.preferredTime} is confirmed. You'll receive a text confirmation at ${request.customerPhone}. ` +
+      `Anything else I can help with?`,
+  };
+}
+
+/**
+ * Best-effort parse of a loose "YYYY-MM-DD" + "2:00 PM" / "14:00" pair
+ * into a local ISO timestamp. Only used as a last resort when the slot
+ * cache misses — the canonical path is resolveCachedSlot.
+ */
+function parseLooseDateTime(date: string, time: string): string | null {
+  const t = time.trim().toUpperCase();
+  const m = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const mm = m[2] ? parseInt(m[2], 10) : 0;
+  const ampm = m[3];
+  if (ampm === "PM" && h < 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  const iso = `${date}T${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
+  return iso;
 }
 
 /**
