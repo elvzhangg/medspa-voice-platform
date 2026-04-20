@@ -104,12 +104,20 @@ export default function TenantDetailPage() {
           <p className="text-gray-500 text-sm mt-1 font-mono">{tenant.slug}</p>
         </div>
         {!editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Edit
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href={`/admin/tenants/${id}/integration`}
+              className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+            >
+              Booking integration
+            </Link>
+            <button
+              onClick={() => setEditing(true)}
+              className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Edit
+            </button>
+          </div>
         )}
       </div>
 

@@ -36,11 +36,17 @@ interface BookingResult {
 export async function bookAppointment(request: BookingRequest): Promise<BookingResult> {
   const { data: tenant } = await supabaseAdmin
     .from("tenants")
-    .select("id, name, booking_provider, booking_config, booking_forward_enabled, booking_forward_phones, booking_forward_sms_template, twilio_account_sid, twilio_auth_token, twilio_phone_number")
+    .select("id, name, booking_provider, booking_config, booking_forward_enabled, booking_forward_phones, booking_forward_sms_template, twilio_account_sid, twilio_auth_token, twilio_phone_number, integration_platform, integration_mode, integration_status")
     .eq("id", request.tenantId)
     .single();
 
-  const provider = tenant?.booking_provider || "internal";
+  // integration_mode is the new source of truth set by admin. Fall back to
+  // booking_provider (legacy) if no integration is configured yet.
+  const isDirectBook =
+    tenant?.integration_mode === "direct_book" && tenant?.integration_status === "connected";
+  const provider = isDirectBook
+    ? tenant?.integration_platform || "internal"
+    : tenant?.booking_provider || "internal";
 
   let result: BookingResult;
 
@@ -61,15 +67,21 @@ export async function bookAppointment(request: BookingRequest): Promise<BookingR
       result = await bookInternal(request);
   }
 
-  // Staff-forward notification: if enabled, SMS the designated staff phones
-  // regardless of booking provider so the right people are always in the loop.
-  if (result.success && tenant?.booking_forward_enabled && (tenant.booking_forward_phones ?? []).length > 0) {
+  // Staff-forward SMS: only when the tenant is in sms_fallback/hybrid mode (or
+  // legacy — no integration configured). Direct-book tenants don't need it
+  // because the booking was written straight into their platform.
+  const needsStaffForward =
+    !isDirectBook &&
+    tenant?.booking_forward_enabled &&
+    (tenant.booking_forward_phones ?? []).length > 0;
+  if (result.success && needsStaffForward) {
     await sendStaffForwardNotification(request, tenant, result.confirmationId);
   }
 
-  // Customer SMS confirmation — only when the request was successfully locked in.
+  // Customer SMS confirmation — language adapts to whether the booking was
+  // actually locked in (direct_book) or still pending staff confirmation.
   if (result.success && tenant) {
-    await sendCustomerConfirmation(request, tenant);
+    await sendCustomerConfirmation(request, tenant, isDirectBook);
   }
 
   return result;
@@ -82,7 +94,11 @@ export async function bookAppointment(request: BookingRequest): Promise<BookingR
  * The language is deliberately hedged ("request received", not "confirmed")
  * because staff still review before final confirmation.
  */
-async function sendCustomerConfirmation(request: BookingRequest, tenant: any): Promise<void> {
+async function sendCustomerConfirmation(
+  request: BookingRequest,
+  tenant: any,
+  confirmed: boolean = false,
+): Promise<void> {
   const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
   const authToken  = tenant.twilio_auth_token  || process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = tenant.twilio_phone_number || process.env.TWILIO_FROM_NUMBER;
@@ -97,7 +113,9 @@ async function sendCustomerConfirmation(request: BookingRequest, tenant: any): P
     ? `${request.preferredDate} at ${request.preferredTime}`
     : request.preferredDate || "soon";
 
-  const body = `Hi ${request.customerName.split(" ")[0]} — this is ${tenant.name}. We've received your request for ${request.service} on ${whenLine}. Our team will send a final confirmation shortly. Reply STOP to opt out.`;
+  const body = confirmed
+    ? `Hi ${request.customerName.split(" ")[0]} — this is ${tenant.name}. Your ${request.service} appointment on ${whenLine} is confirmed. See you then! Reply STOP to opt out.`
+    : `Hi ${request.customerName.split(" ")[0]} — this is ${tenant.name}. We've received your request for ${request.service} on ${whenLine}. Our team will send a final confirmation shortly. Reply STOP to opt out.`;
 
   const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;

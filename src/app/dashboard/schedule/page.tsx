@@ -10,6 +10,27 @@ interface SchedulingSettings {
   booking_forward_sms_template: string;
 }
 
+interface IntegrationState {
+  platform: string | null;
+  mode: "direct_book" | "hybrid" | "sms_fallback" | null;
+  status: "pending" | "connected" | "error" | "disabled";
+  connected_at: string | null;
+  last_error: string | null;
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  boulevard: "Boulevard",
+  acuity: "Acuity Scheduling",
+  mindbody: "Mindbody",
+  square: "Square Appointments",
+  zenoti: "Zenoti",
+  vagaro: "Vagaro",
+  jane: "Jane",
+  glossgenius: "GlossGenius",
+  fresha: "Fresha",
+  self_managed: "Self-managed calendar",
+};
+
 interface TwilioStatus {
   connected: boolean;
   account_sid_masked: string | null;
@@ -124,6 +145,9 @@ export default function SchedulingSystemPage() {
   const [requests, setRequests] = useState<ForwardedRequest[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Booking platform integration (admin-managed, tenant-visible)
+  const [integration, setIntegration] = useState<IntegrationState | null>(null);
+
   // Twilio connection
   const [twilio, setTwilio] = useState<TwilioStatus | null>(null);
   const [twilioForm, setTwilioForm] = useState({ account_sid: "", auth_token: "", phone_number: "" });
@@ -144,11 +168,17 @@ export default function SchedulingSystemPage() {
   const [showPreview, setShowPreview] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [settingsRes, requestsRes, twilioRes] = await Promise.all([
+    const [settingsRes, requestsRes, twilioRes, integrationRes] = await Promise.all([
       fetch("/api/settings/scheduling"),
       fetch("/api/bookings/forwarded"),
       fetch("/api/settings/twilio"),
+      fetch("/api/integrations/me"),
     ]);
+
+    if (integrationRes.ok) {
+      const data = await integrationRes.json();
+      setIntegration(data);
+    }
 
     if (settingsRes.ok) {
       const data = await settingsRes.json();
@@ -318,10 +348,92 @@ export default function SchedulingSystemPage() {
         </p>
       </div>
 
-      {/* ── Onboarding: 3-step Twilio + Forwarding setup ── */}
+      {/* ── Booking platform integration status ── */}
+      <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">
+          Booking Platform Integration
+        </p>
+
+        {!integration || integration.status === "pending" || !integration.platform ? (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full uppercase tracking-wider">
+                Pending setup
+              </span>
+              <span className="text-sm text-gray-500">No booking platform connected yet.</span>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              Tell us which scheduling platform your clinic uses (Boulevard, Acuity, Mindbody, Fresha, etc.)
+              and we'll wire up the integration on our side — you don't need to touch API keys. Once connected,
+              your AI can verify real-time availability and, on supported platforms, book appointments directly.
+            </p>
+            <a
+              href="mailto:founder@vauxvoice.com?subject=Booking%20platform%20integration"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-colors"
+            >
+              Email us at founder@vauxvoice.com
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </a>
+          </div>
+        ) : integration.status === "error" ? (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-black rounded-full uppercase tracking-wider">
+                Connection error
+              </span>
+              <span className="text-sm text-gray-700 font-semibold">
+                {integration.platform ? PLATFORM_LABELS[integration.platform] ?? integration.platform : "Platform"}
+              </span>
+            </div>
+            {integration.last_error && (
+              <p className="text-xs text-red-600 mb-3">{integration.last_error}</p>
+            )}
+            <p className="text-sm text-gray-600">
+              Something went wrong with your integration. Our team has been notified — or reach us at{" "}
+              <a href="mailto:founder@vauxvoice.com" className="text-indigo-600 font-semibold">
+                founder@vauxvoice.com
+              </a>.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider">
+                Connected
+              </span>
+              <span className="text-sm text-gray-800 font-semibold">
+                {PLATFORM_LABELS[integration.platform] ?? integration.platform}
+              </span>
+              <span className="text-gray-300">·</span>
+              <span className="text-xs text-gray-500">
+                {integration.mode === "direct_book"
+                  ? "Direct booking"
+                  : integration.mode === "hybrid"
+                  ? "Verify + SMS confirm"
+                  : "SMS to staff"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {integration.mode === "direct_book" &&
+                "Your AI can check real-time availability and write bookings directly into " +
+                  (PLATFORM_LABELS[integration.platform] ?? "your platform") +
+                  ". No manual confirmation needed."}
+              {integration.mode === "hybrid" &&
+                "Your AI confirms availability against your platform, then sends booking requests to your team via SMS for final lock-in."}
+              {integration.mode === "sms_fallback" &&
+                "Your AI collects booking details and sends them to your team via SMS. Your team confirms in your calendar."}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── SMS fallback setup (only relevant for hybrid / sms_fallback / unset modes) ── */}
+      {integration?.mode !== "direct_book" && (
       <div>
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">
-          Your AI Phone Line — Setup
+          {integration?.mode === "hybrid" ? "Staff SMS Confirmation" : "Your AI Phone Line — Setup"}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -772,6 +884,7 @@ export default function SchedulingSystemPage() {
         </div>
       </div>
 
+      )}
       {/* ── Forwarded Requests Log ── */}
       {requests.length > 0 && (
         <div>
