@@ -31,16 +31,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   self_managed: "Self-managed calendar",
 };
 
-interface TwilioStatus {
-  connected: boolean;
-  account_sid_masked: string | null;
-  phone_number: string | null;
-  auth_token_set: boolean;
-  connected_at: string | null;
-  last_test_at: string | null;
-  last_test_status: string | null;
-}
-
 interface ForwardedRequest {
   id: string;
   customer_name: string;
@@ -148,19 +138,6 @@ export default function SchedulingSystemPage() {
   // Booking platform integration (admin-managed, tenant-visible)
   const [integration, setIntegration] = useState<IntegrationState | null>(null);
 
-  // Twilio connection
-  const [twilio, setTwilio] = useState<TwilioStatus | null>(null);
-  const [twilioForm, setTwilioForm] = useState({ account_sid: "", auth_token: "", phone_number: "" });
-  const [twilioBusy, setTwilioBusy] = useState(false);
-  const [twilioError, setTwilioError] = useState("");
-  const [twilioMsg, setTwilioMsg] = useState("");
-  const [showTwilioForm, setShowTwilioForm] = useState(false);
-  const [testTarget, setTestTarget] = useState("");
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-
-  // Carrier forward instructions
-  const [carrier, setCarrier] = useState<"verizon" | "att" | "spectrum" | "ringcentral" | "other">("verizon");
-
   // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,10 +145,9 @@ export default function SchedulingSystemPage() {
   const [showPreview, setShowPreview] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [settingsRes, requestsRes, twilioRes, integrationRes] = await Promise.all([
+    const [settingsRes, requestsRes, integrationRes] = await Promise.all([
       fetch("/api/settings/scheduling"),
       fetch("/api/bookings/forwarded"),
-      fetch("/api/settings/twilio"),
       fetch("/api/integrations/me"),
     ]);
 
@@ -187,11 +163,6 @@ export default function SchedulingSystemPage() {
     if (requestsRes.ok) {
       const data = await requestsRes.json();
       setRequests(data);
-    }
-    if (twilioRes.ok) {
-      const data = await twilioRes.json();
-      setTwilio(data);
-      if (data.phone_number) setTestTarget(""); // leave test target empty; user chooses
     }
     setLoading(false);
   }, []);
@@ -239,100 +210,6 @@ export default function SchedulingSystemPage() {
   function insertToken(token: string) {
     setSettings((s) => ({ ...s, booking_forward_sms_template: s.booking_forward_sms_template + token }));
   }
-
-  // ── Twilio actions ──────────────────────────────────────────────────────────
-  async function saveTwilio() {
-    setTwilioBusy(true);
-    setTwilioError("");
-    setTwilioMsg("");
-    const res = await fetch("/api/settings/twilio", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(twilioForm),
-    });
-    const data = await res.json().catch(() => ({}));
-    setTwilioBusy(false);
-    if (!res.ok) {
-      setTwilioError(data.error || "Failed to save Twilio credentials.");
-      return;
-    }
-    setTwilioMsg("Connected! Your AI number is live.");
-    setTwilioForm({ account_sid: "", auth_token: "", phone_number: "" });
-    setShowTwilioForm(false);
-    const refresh = await fetch("/api/settings/twilio");
-    if (refresh.ok) setTwilio(await refresh.json());
-  }
-
-  async function disconnectTwilio() {
-    if (!confirm("Disconnect your Twilio account? The staff SMS forward will stop working until you reconnect.")) return;
-    setTwilioBusy(true);
-    await fetch("/api/settings/twilio", { method: "DELETE" });
-    setTwilioBusy(false);
-    const refresh = await fetch("/api/settings/twilio");
-    if (refresh.ok) setTwilio(await refresh.json());
-    setTwilioMsg("Disconnected.");
-  }
-
-  async function sendTestSms() {
-    setTestResult(null);
-    if (!testTarget.trim()) {
-      setTestResult({ ok: false, msg: "Enter a phone number to receive the test." });
-      return;
-    }
-    const digits = testTarget.replace(/\D/g, "");
-    const to = testTarget.startsWith("+") ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
-    const res = await fetch("/api/settings/twilio/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) setTestResult({ ok: true, msg: `Sent to ${to}. Check your phone.` });
-    else setTestResult({ ok: false, msg: data.error || "Test failed." });
-  }
-
-  const CARRIER_STEPS: Record<typeof carrier, { label: string; steps: string[] }> = {
-    verizon: {
-      label: "Verizon (landline or wireless)",
-      steps: [
-        "From your business phone, dial **72, then your AI number (e.g. *72 4155550199), then press send/call.",
-        "You'll hear two beeps confirming the forward is active.",
-        "To turn off later, dial *73 from the same phone.",
-      ],
-    },
-    att: {
-      label: "AT&T",
-      steps: [
-        "From your business phone, dial **21*, then your AI number, then #. Press send/call.",
-        "You'll hear a confirmation tone.",
-        "To disable, dial ##21# from the same phone.",
-      ],
-    },
-    spectrum: {
-      label: "Spectrum / Charter",
-      steps: [
-        "Log in to your Spectrum Business account online.",
-        "Go to Phone → Call Forwarding → 'Always'.",
-        "Enter your AI number and save.",
-      ],
-    },
-    ringcentral: {
-      label: "RingCentral / VoIP",
-      steps: [
-        "Log in to the RingCentral admin portal.",
-        "Settings → Call Handling → Call Forwarding.",
-        "Choose 'Always forward' and enter your AI number. Save.",
-      ],
-    },
-    other: {
-      label: "Other carrier",
-      steps: [
-        "Look up 'unconditional call forwarding' in your provider's support docs.",
-        "The dial code on most US carriers is *72 followed by the forward target.",
-        "If you're on a VoIP system, the setting is usually under 'Call Handling' or 'Forwarding'.",
-      ],
-    },
-  };
 
   if (loading) {
     return <div className="p-10 text-center text-gray-400 font-medium italic animate-pulse">Loading scheduling engine...</div>;
@@ -432,250 +309,6 @@ export default function SchedulingSystemPage() {
       {/* ── SMS fallback setup (only relevant for hybrid / sms_fallback / unset modes) ── */}
       {integration?.mode !== "direct_book" && (
       <>
-      <div>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">
-          {integration?.mode === "hybrid" ? "Staff SMS Confirmation" : "Your AI Phone Line — Setup"}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* ── Card 1: Connect Twilio ── */}
-          <div className={`relative rounded-3xl border shadow-sm p-6 flex flex-col ${
-            twilio?.connected ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200"
-          }`}>
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg font-black">1</div>
-              {twilio?.connected && (
-                <span className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-black rounded-full uppercase tracking-wider">Connected</span>
-              )}
-            </div>
-            <h3 className="text-base font-black text-gray-900 uppercase tracking-tight">Connect Twilio</h3>
-            <p className="text-xs text-gray-500 font-medium mt-1 mb-4">
-              Your Twilio number powers both the AI receptionist line and the staff SMS forward.
-            </p>
-
-            {twilio?.connected ? (
-              <div className="mt-auto space-y-2">
-                <div className="bg-white rounded-2xl px-3 py-2 border border-emerald-200">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AI Number</p>
-                  <p className="text-sm font-mono font-bold text-gray-800">{twilio.phone_number}</p>
-                </div>
-                <p className="text-[10px] text-gray-500 font-medium">
-                  SID: <span className="font-mono">{twilio.account_sid_masked}</span>
-                </p>
-                <button
-                  onClick={disconnectTwilio}
-                  disabled={twilioBusy}
-                  className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors mt-2"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <div className="mt-auto">
-                <button
-                  onClick={() => setShowTwilioForm((v) => !v)}
-                  className="w-full px-4 py-2.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl hover:bg-indigo-700 transition-colors"
-                >
-                  {showTwilioForm ? "Cancel" : "Connect Twilio"}
-                </button>
-                <a
-                  href="https://www.twilio.com/try-twilio"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-center text-[10px] font-bold text-indigo-600 hover:text-indigo-800 mt-2"
-                >
-                  Don&apos;t have Twilio? Sign up →
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* ── Card 2: Forward your line ── */}
-          <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-lg font-black">2</div>
-              <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase tracking-wider">1 min</span>
-            </div>
-            <h3 className="text-base font-black text-gray-900 uppercase tracking-tight">Forward Your Line</h3>
-            <p className="text-xs text-gray-500 font-medium mt-1 mb-4">
-              Route your existing business number to the AI. Takes effect in seconds, reversible anytime.
-            </p>
-
-            <div className="mt-auto">
-              <select
-                value={carrier}
-                onChange={(e) => setCarrier(e.target.value as typeof carrier)}
-                className="w-full px-3 py-2 rounded-2xl border border-gray-200 bg-gray-50 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="verizon">Verizon</option>
-                <option value="att">AT&amp;T</option>
-                <option value="spectrum">Spectrum / Charter</option>
-                <option value="ringcentral">RingCentral / VoIP</option>
-                <option value="other">Other carrier</option>
-              </select>
-
-              <ol className="mt-3 space-y-1.5 text-xs text-gray-600 leading-relaxed list-decimal list-inside">
-                {CARRIER_STEPS[carrier].steps.map((step, i) => (
-                  <li key={i} dangerouslySetInnerHTML={{
-                    __html: step.replace(/\*\*(.*?)\*\*/g, "<span class='font-mono font-bold text-gray-900 bg-amber-50 px-1 rounded'>$1</span>")
-                  }} />
-                ))}
-              </ol>
-
-              {twilio?.phone_number && (
-                <p className="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
-                  Forward to: <span className="font-mono font-bold text-gray-900">{twilio.phone_number}</span>
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* ── Card 3: Port your number ── */}
-          <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-lg font-black">3</div>
-              <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase tracking-wider">Optional</span>
-            </div>
-            <h3 className="text-base font-black text-gray-900 uppercase tracking-tight">Port Your Number</h3>
-            <p className="text-xs text-gray-500 font-medium mt-1 mb-4">
-              Later, move your original business number into Twilio so you don&apos;t need call forwarding at all.
-            </p>
-
-            <div className="mt-auto space-y-2">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">You&apos;ll need:</p>
-              <ul className="text-xs text-gray-600 space-y-1 leading-relaxed">
-                <li>• A recent phone bill (last 30 days)</li>
-                <li>• Account PIN from your current carrier</li>
-                <li>• Signed Letter of Authorization (LOA)</li>
-              </ul>
-              <a
-                href="https://console.twilio.com/us1/develop/phone-numbers/manage/port"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center px-4 py-2.5 bg-purple-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl hover:bg-purple-700 transition-colors mt-3"
-              >
-                Open Port Request →
-              </a>
-              <p className="text-[10px] text-gray-400 font-medium text-center">
-                Port takes 7–14 days. AI keeps working throughout.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Twilio credentials form (expandable under Card 1) */}
-        {showTwilioForm && !twilio?.connected && (
-          <div className="mt-4 bg-white rounded-3xl border border-indigo-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-start gap-4">
-              <span className="text-xl flex-shrink-0">🔐</span>
-              <div className="flex-1">
-                <p className="text-sm font-black text-gray-900">Paste your Twilio credentials</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Find these in{" "}
-                  <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold hover:underline">
-                    Twilio Console → Account Info
-                  </a>
-                  . We&apos;ll verify them with Twilio before saving.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account SID</label>
-                <input
-                  type="text"
-                  value={twilioForm.account_sid}
-                  onChange={(e) => setTwilioForm((f) => ({ ...f, account_sid: e.target.value }))}
-                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full mt-1 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Auth Token</label>
-                <input
-                  type="password"
-                  value={twilioForm.auth_token}
-                  onChange={(e) => setTwilioForm((f) => ({ ...f, auth_token: e.target.value }))}
-                  placeholder="••••••••••••••••••••••••••••••••"
-                  className="w-full mt-1 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your Twilio Phone Number (E.164)</label>
-                <input
-                  type="tel"
-                  value={twilioForm.phone_number}
-                  onChange={(e) => setTwilioForm((f) => ({ ...f, phone_number: e.target.value }))}
-                  placeholder="+14155550199"
-                  className="w-full mt-1 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-gray-400 mt-1 ml-1">
-                  The Twilio number that customers will call to reach your AI receptionist.
-                </p>
-              </div>
-            </div>
-
-            {twilioError && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700 font-medium">
-                {twilioError}
-              </div>
-            )}
-
-            <button
-              onClick={saveTwilio}
-              disabled={twilioBusy}
-              className="w-full px-4 py-3 bg-gray-900 text-white text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-gray-700 disabled:opacity-50 transition-colors"
-            >
-              {twilioBusy ? "Verifying with Twilio…" : "Verify & Connect"}
-            </button>
-          </div>
-        )}
-
-        {/* Test SMS block — only when connected */}
-        {twilio?.connected && (
-          <div className="mt-4 bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-start gap-4">
-              <span className="text-xl flex-shrink-0">🧪</span>
-              <div className="flex-1">
-                <p className="text-sm font-black text-gray-900">Send a test SMS</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Verify the forwarding pipeline works end-to-end. The test will arrive from {twilio.phone_number}.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-4">
-              <input
-                type="tel"
-                value={testTarget}
-                onChange={(e) => setTestTarget(e.target.value)}
-                placeholder="+1 (555) 000-0000"
-                className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <button
-                onClick={sendTestSms}
-                className="px-5 py-2.5 bg-emerald-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl hover:bg-emerald-700 transition-colors whitespace-nowrap"
-              >
-                Send Test
-              </button>
-            </div>
-
-            {testResult && (
-              <div className={`mt-3 px-4 py-2.5 rounded-2xl text-sm font-medium ${
-                testResult.ok ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
-              }`}>
-                {testResult.ok ? "✅ " : "⚠️ "}{testResult.msg}
-              </div>
-            )}
-          </div>
-        )}
-
-        {twilioMsg && !showTwilioForm && (
-          <p className="mt-3 text-xs font-bold text-emerald-700">{twilioMsg}</p>
-        )}
-      </div>
-
       {/* ── Provider status pill ── */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex items-center gap-5">
         <div className="w-14 h-14 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
