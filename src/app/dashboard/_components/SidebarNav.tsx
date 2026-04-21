@@ -132,13 +132,17 @@ export default function SidebarNav({ brandPrefix }: { brandPrefix: string }) {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
               isActive
-                ? "bg-[#fdf9ec] text-amber-800"
-                : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                ? "bg-zinc-50 text-zinc-900"
+                : "text-zinc-500 hover:bg-zinc-50/70 hover:text-zinc-800"
             }`}
           >
-            <span className={`transition-colors ${isActive ? "text-amber-600" : "text-gray-400"}`}>
+            {/* Gold indicator rail — shows only on the active item */}
+            {isActive && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-amber-500 rounded-r" />
+            )}
+            <span className={`transition-colors ${isActive ? "text-amber-600" : "text-zinc-400"}`}>
               {item.icon}
             </span>
             {item.label}

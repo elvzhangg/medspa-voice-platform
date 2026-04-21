@@ -173,25 +173,25 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Calendar</h1>
+          <h1 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter">Calendar</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={prev}
-            className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center"
+            className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center"
             aria-label="Previous month"
           >
             ‹
           </button>
           <button
             onClick={goToday}
-            className="px-3 h-9 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 transition-colors"
+            className="px-3 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-xs font-bold uppercase tracking-wider hover:bg-zinc-50 transition-colors"
           >
             Today
           </button>
           <button
             onClick={next}
-            className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center"
+            className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center"
             aria-label="Next month"
           >
             ›
@@ -199,33 +199,38 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Connect-your-platform banner — prominent CTA when no integration is connected */}
+      {/* Connect-your-platform banner — the one "night" moment on the page,
+          styled after the landing's Champagne Noir hero: near-black canvas,
+          warm amber glow, gold divider stroke. */}
       {integration && integration.status !== "connected" && (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-200 via-amber-200 to-amber-300 p-8 shadow-lg">
-          <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-          <div className="absolute -left-8 -bottom-16 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
+        <div className="relative overflow-hidden rounded-2xl bg-zinc-950 p-8 shadow-xl">
+          {/* Warm amber glows — mirrors the landing's hero ambient */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl" />
+          <div className="absolute -left-16 -bottom-20 w-72 h-72 bg-amber-400/10 rounded-full blur-3xl" />
+          {/* Thin gold divider beneath the title — signature Aman/landing detail */}
           <div className="relative flex items-start justify-between gap-6 flex-wrap">
             <div className="flex-1 min-w-[260px]">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 mb-4">
+                <span className="w-1 h-1 rounded-full bg-amber-400" />
+                <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-[0.25em]">
                   Not connected
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tight leading-tight">
+              <h2 className="font-serif text-3xl text-white leading-tight tracking-tight">
                 Connect your booking platform
               </h2>
-              <p className="text-sm text-white/80 mt-2 max-w-xl leading-relaxed">
+              <div className="h-px w-16 bg-gradient-to-r from-amber-400 to-transparent my-4" />
+              <p className="text-sm text-zinc-300 max-w-xl leading-relaxed">
                 Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
               </p>
             </div>
             <a
               href="mailto:founder@vauxvoice.com"
-              className="inline-flex items-center gap-2 px-5 py-3 bg-white text-amber-800 text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-[#fdf9ec] transition-colors shadow-sm shrink-0"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-white text-zinc-950 text-sm font-semibold rounded-xl hover:bg-amber-50 transition-colors shadow-sm shrink-0"
             >
               Email founder@vauxvoice.com
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </a>
           </div>
@@ -234,22 +239,22 @@ export default function CalendarPage() {
 
       {/* Sync status strip — read-only status for the connected booking platform */}
       {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-gray-200 rounded-2xl">
+        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="text-xs font-bold text-gray-800">
+          <span className="text-xs font-bold text-zinc-800">
             {PLATFORM_COLORS[integration.platform].label}
           </span>
-          <span className="text-[11px] text-gray-500">·</span>
-          <span className="text-[11px] text-gray-500">{formatSyncAgo(integration.last_synced_at)}</span>
+          <span className="text-[11px] text-zinc-500">·</span>
+          <span className="text-[11px] text-zinc-500">{formatSyncAgo(integration.last_synced_at)}</span>
         </div>
       )}
 
       {/* Month header + legend */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-black text-gray-900 tracking-tight">{monthLabel(cursor)}</h2>
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">{monthLabel(cursor)}</h2>
         {sourcesThisMonth.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             {sourcesThisMonth.map((s) => (
@@ -265,13 +270,13 @@ export default function CalendarPage() {
       </div>
 
       {/* Grid */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
         {/* Day-of-week header */}
-        <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
+        <div className="grid grid-cols-7 border-b border-zinc-100 bg-zinc-50">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <div
               key={d}
-              className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center"
+              className="px-3 py-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center"
             >
               {d}
             </div>
@@ -288,8 +293,8 @@ export default function CalendarPage() {
             return (
               <div
                 key={i}
-                className={`min-h-[112px] border-b border-r border-gray-100 p-1.5 ${
-                  inMonth ? "bg-white" : "bg-gray-50/60"
+                className={`min-h-[112px] border-b border-r border-zinc-100 p-1.5 ${
+                  inMonth ? "bg-white" : "bg-zinc-50/60"
                 } ${i % 7 === 6 ? "border-r-0" : ""} ${i >= 35 ? "border-b-0" : ""}`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -298,14 +303,14 @@ export default function CalendarPage() {
                       isToday
                         ? "bg-white text-amber-900 border border-amber-400 shadow-sm rounded-full w-6 h-6"
                         : inMonth
-                        ? "text-gray-700 w-6 h-6"
-                        : "text-gray-300 w-6 h-6"
+                        ? "text-zinc-700 w-6 h-6"
+                        : "text-zinc-300 w-6 h-6"
                     }`}
                   >
                     {d.getDate()}
                   </span>
                   {dayEvents.length > 3 && (
-                    <span className="text-[10px] text-gray-400 font-bold">
+                    <span className="text-[10px] text-zinc-400 font-bold">
                       +{dayEvents.length - 3}
                     </span>
                   )}
@@ -338,13 +343,13 @@ export default function CalendarPage() {
       </div>
 
       {loading && (
-        <p className="text-xs text-gray-400 italic text-center">Loading events…</p>
+        <p className="text-xs text-zinc-400 italic text-center">Loading events…</p>
       )}
 
       {events.length === 0 && !loading && (
-        <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm font-bold text-gray-700">No appointments for {monthLabel(cursor)}</p>
-          <p className="text-xs text-gray-500 mt-1">
+        <div className="bg-white rounded-3xl border border-dashed border-zinc-200 p-10 text-center">
+          <p className="text-sm font-bold text-zinc-700">No appointments for {monthLabel(cursor)}</p>
+          <p className="text-xs text-zinc-500 mt-1">
             Events booked by your AI receptionist — and those synced from your connected booking platform — will appear here.
           </p>
         </div>
@@ -362,16 +367,16 @@ export default function CalendarPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                   {monthKey(new Date(selected.start_time))} · {new Date(selected.start_time).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                 </p>
-                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mt-1">
+                <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mt-1">
                   {selected.title}
                 </h3>
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="text-gray-400 hover:text-gray-700 text-xl leading-none"
+                className="text-zinc-400 hover:text-zinc-700 text-xl leading-none"
                 aria-label="Close"
               >
                 ×
@@ -384,45 +389,45 @@ export default function CalendarPage() {
                   {eventColor(selected).label}
                 </span>
                 {selected.status !== "confirmed" && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-black rounded-full uppercase tracking-wider">
+                  <span className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] font-black rounded-full uppercase tracking-wider">
                     {selected.status}
                   </span>
                 )}
               </div>
 
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Time</p>
-                <p className="text-sm font-bold text-gray-800">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</p>
+                <p className="text-sm font-bold text-zinc-800">
                   {formatTime(selected.start_time)} – {formatTime(selected.end_time)}
                 </p>
               </div>
 
               {selected.customer_name && (
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</p>
-                  <p className="text-sm font-bold text-gray-800">{selected.customer_name}</p>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Customer</p>
+                  <p className="text-sm font-bold text-zinc-800">{selected.customer_name}</p>
                   {selected.customer_phone && (
-                    <p className="text-xs text-gray-500 font-mono">{selected.customer_phone}</p>
+                    <p className="text-xs text-zinc-500 font-mono">{selected.customer_phone}</p>
                   )}
                 </div>
               )}
 
               {selected.service_type && (
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service</p>
-                  <p className="text-sm font-bold text-gray-800">{selected.service_type}</p>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Service</p>
+                  <p className="text-sm font-bold text-zinc-800">{selected.service_type}</p>
                 </div>
               )}
 
               {selected.description && (
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Notes</p>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{selected.description}</p>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Notes</p>
+                  <p className="text-sm text-zinc-600 whitespace-pre-wrap">{selected.description}</p>
                 </div>
               )}
 
               {selected.last_synced_at && (
-                <p className="text-[10px] text-gray-400 pt-2 border-t border-gray-100">
+                <p className="text-[10px] text-zinc-400 pt-2 border-t border-zinc-100">
                   Synced from {selected.external_source} · {new Date(selected.last_synced_at).toLocaleString()}
                 </p>
               )}

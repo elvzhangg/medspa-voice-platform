@@ -88,13 +88,13 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     <div className="max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Campaign Management</h1>
-          <p className="text-sm text-gray-500">Upload leads and trigger automated outbound sequences.</p>
+          <h1 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter">Campaign Management</h1>
+          <p className="text-sm text-zinc-500">Upload leads and trigger automated outbound sequences.</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setIsUploading(true)}
-            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-50 shadow-sm"
+            className="px-4 py-2 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-lg hover:bg-zinc-50 shadow-sm"
           >
             Import CSV
           </button>
@@ -116,11 +116,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               type="file" 
               accept=".csv"
               onChange={e => setFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#fdf9ec] file:text-white hover:file:bg-[#fdf9ec] cursor-pointer"
+              className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#fdf9ec] file:text-white hover:file:bg-[#fdf9ec] cursor-pointer"
             />
             <div className="flex justify-center gap-2">
               <button type="submit" className="px-8 py-2 bg-white text-amber-900 border border-amber-400 shadow-sm rounded-lg font-bold">Upload leads</button>
-              <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-gray-500">Cancel</button>
+              <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-zinc-500">Cancel</button>
             </div>
             {uploadError && (
               <p className="text-sm text-red-600 mt-2">{uploadError}</p>
@@ -129,24 +129,24 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <thead className="bg-zinc-50 border-b border-zinc-100">
             <tr>
-              <th className="px-6 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Name</th>
-              <th className="px-6 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Phone</th>
-              <th className="px-6 py-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Status</th>
+              <th className="px-6 py-4 text-left font-black text-zinc-400 uppercase tracking-widest text-[10px]">Name</th>
+              <th className="px-6 py-4 text-left font-black text-zinc-400 uppercase tracking-widest text-[10px]">Phone</th>
+              <th className="px-6 py-4 text-left font-black text-zinc-400 uppercase tracking-widest text-[10px]">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-zinc-50">
             {leads.map(lead => (
-              <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 font-bold text-gray-900">{lead.first_name} {lead.last_name}</td>
-                <td className="px-6 py-4 text-gray-500">{lead.phone_number}</td>
+              <tr key={lead.id} className="hover:bg-zinc-50 transition-colors">
+                <td className="px-6 py-4 font-bold text-zinc-900">{lead.first_name} {lead.last_name}</td>
+                <td className="px-6 py-4 text-zinc-500">{lead.phone_number}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${
                     lead.status === 'booked' ? 'bg-emerald-100 text-emerald-700' : 
-                    lead.status === 'pending' ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-800'
+                    lead.status === 'pending' ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-100 text-amber-800'
                   }`}>
                     {lead.status}
                   </span>
@@ -155,7 +155,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             ))}
             {leads.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-20 text-center text-gray-400 font-medium italic">No leads in this campaign yet. Upload a CSV to get started!</td>
+                <td colSpan={3} className="px-6 py-20 text-center text-zinc-400 font-medium italic">No leads in this campaign yet. Upload a CSV to get started!</td>
               </tr>
             )}
           </tbody>

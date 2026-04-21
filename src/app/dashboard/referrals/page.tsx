@@ -23,7 +23,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 const SOURCE_STYLES: Record<string, string> = {
   phone: "bg-blue-100 text-blue-700",
-  manual: "bg-gray-100 text-gray-700",
+  manual: "bg-zinc-100 text-zinc-700",
   campaign: "bg-orange-100 text-orange-700",
 };
 
@@ -105,8 +105,8 @@ export default function ReferralsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Referral Management</h1>
-          <p className="text-gray-500 mt-1">Track patient referrals from your AI receptionist and manual entries</p>
+          <h1 className="font-serif text-3xl text-zinc-900">Referral Management</h1>
+          <p className="text-zinc-500 mt-1">Track patient referrals from your AI receptionist and manual entries</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -122,13 +122,13 @@ export default function ReferralsPage() {
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total", value: stats.total, color: "text-gray-900" },
+          { label: "Total", value: stats.total, color: "text-zinc-900" },
           { label: "Pending", value: stats.pending, color: "text-yellow-600" },
           { label: "Completed", value: stats.completed, color: "text-green-600" },
           { label: "Rewarded", value: stats.rewarded, color: "text-amber-700" },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{s.label}</p>
+          <div key={s.label} className="bg-white rounded-xl border border-zinc-200 p-5">
+            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">{s.label}</p>
             <p className={`text-3xl font-bold ${s.color}`}>{loading ? "—" : s.value}</p>
           </div>
         ))}
@@ -136,56 +136,56 @@ export default function ReferralsPage() {
 
       {/* Add referral form */}
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Add New Referral</h2>
+        <div className="bg-white rounded-xl border border-zinc-200 p-6 mb-6">
+          <h2 className="font-semibold text-zinc-900 mb-4">Add New Referral</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Referred By (Name)</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Referred By (Name)</label>
                 <input
                   type="text"
                   value={form.referred_by_name}
                   onChange={(e) => setForm({ ...form, referred_by_name: e.target.value })}
                   placeholder="Sarah Johnson"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Referrer Phone</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Referrer Phone</label>
                 <input
                   type="tel"
                   value={form.referred_by_phone}
                   onChange={(e) => setForm({ ...form, referred_by_phone: e.target.value })}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">New Patient (Name)</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">New Patient (Name)</label>
                 <input
                   type="text"
                   value={form.new_patient_name}
                   onChange={(e) => setForm({ ...form, new_patient_name: e.target.value })}
                   placeholder="Alex Smith"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">New Patient Phone</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">New Patient Phone</label>
                 <input
                   type="tel"
                   value={form.new_patient_phone}
                   onChange={(e) => setForm({ ...form, new_patient_phone: e.target.value })}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Source</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Source</label>
                 <select
                   value={form.source}
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="manual">Manual Entry</option>
                   <option value="phone">Phone Call</option>
@@ -193,13 +193,13 @@ export default function ReferralsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Notes</label>
                 <input
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   placeholder="Optional notes..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
             </div>
@@ -214,7 +214,7 @@ export default function ReferralsPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="text-sm text-gray-600 px-5 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="text-sm text-zinc-600 px-5 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
               >
                 Cancel
               </button>
@@ -224,18 +224,18 @@ export default function ReferralsPage() {
       )}
 
       {/* Referrals table */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">All Referrals</h2>
+      <div className="bg-white rounded-xl border border-zinc-200 p-6">
+        <h2 className="font-semibold text-zinc-900 mb-4">All Referrals</h2>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-zinc-400">Loading...</p>
         ) : referrals.length === 0 ? (
           <div className="text-center py-12">
-            <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-12 h-12 text-zinc-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <p className="text-sm font-medium text-gray-500 mb-1">No referrals yet</p>
-            <p className="text-xs text-gray-400 max-w-xs mx-auto">
+            <p className="text-sm font-medium text-zinc-500 mb-1">No referrals yet</p>
+            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
               Referrals will appear here when your AI receptionist logs them during calls, or when you add them manually.
             </p>
           </div>
@@ -243,37 +243,37 @@ export default function ReferralsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left font-medium text-gray-500 pb-3 pr-4">Referred By</th>
-                  <th className="text-left font-medium text-gray-500 pb-3 pr-4">New Patient</th>
-                  <th className="text-left font-medium text-gray-500 pb-3 pr-4">Source</th>
-                  <th className="text-left font-medium text-gray-500 pb-3 pr-4">Status</th>
-                  <th className="text-left font-medium text-gray-500 pb-3 pr-4">Date</th>
-                  <th className="text-left font-medium text-gray-500 pb-3">Actions</th>
+                <tr className="border-b border-zinc-100">
+                  <th className="text-left font-medium text-zinc-500 pb-3 pr-4">Referred By</th>
+                  <th className="text-left font-medium text-zinc-500 pb-3 pr-4">New Patient</th>
+                  <th className="text-left font-medium text-zinc-500 pb-3 pr-4">Source</th>
+                  <th className="text-left font-medium text-zinc-500 pb-3 pr-4">Status</th>
+                  <th className="text-left font-medium text-zinc-500 pb-3 pr-4">Date</th>
+                  <th className="text-left font-medium text-zinc-500 pb-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-zinc-50">
                 {referrals.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
+                  <tr key={r.id} className="hover:bg-zinc-50">
                     <td className="py-3 pr-4">
-                      <p className="font-medium text-gray-900">{r.referred_by_name || "—"}</p>
-                      {r.referred_by_phone && <p className="text-xs text-gray-400">{r.referred_by_phone}</p>}
+                      <p className="font-medium text-zinc-900">{r.referred_by_name || "—"}</p>
+                      {r.referred_by_phone && <p className="text-xs text-zinc-400">{r.referred_by_phone}</p>}
                     </td>
                     <td className="py-3 pr-4">
-                      <p className="font-medium text-gray-900">{r.new_patient_name || "—"}</p>
-                      {r.new_patient_phone && <p className="text-xs text-gray-400">{r.new_patient_phone}</p>}
+                      <p className="font-medium text-zinc-900">{r.new_patient_name || "—"}</p>
+                      {r.new_patient_phone && <p className="text-xs text-zinc-400">{r.new_patient_phone}</p>}
                     </td>
                     <td className="py-3 pr-4">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SOURCE_STYLES[r.source] || "bg-gray-100 text-gray-600"}`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SOURCE_STYLES[r.source] || "bg-zinc-100 text-zinc-600"}`}>
                         {r.source}
                       </span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[r.status] || "bg-gray-100 text-gray-600"}`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[r.status] || "bg-zinc-100 text-zinc-600"}`}>
                         {r.status}
                       </span>
                     </td>
-                    <td className="py-3 pr-4 text-gray-500">
+                    <td className="py-3 pr-4 text-zinc-500">
                       {new Date(r.created_at).toLocaleDateString()}
                     </td>
                     <td className="py-3">

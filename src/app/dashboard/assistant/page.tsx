@@ -156,11 +156,11 @@ export default function AssistantPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] -m-8">
       {/* Conversation list */}
-      <aside className="w-64 shrink-0 bg-white border-r border-gray-200 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100">
+      <aside className="w-64 shrink-0 bg-white border-r border-zinc-200 flex flex-col">
+        <div className="px-4 py-3 border-b border-zinc-100">
           <button
             onClick={newConversation}
-            className="w-full px-3 py-2 bg-[#fdf9ec] hover:bg-white text-amber-900 border border-amber-400 shadow-sm text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
+            className="w-full px-3 py-2 bg-zinc-950 hover:bg-zinc-900 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -170,7 +170,7 @@ export default function AssistantPage() {
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {conversations.length === 0 ? (
-            <p className="text-xs text-gray-400 italic text-center py-8 px-4">
+            <p className="text-xs text-zinc-400 italic text-center py-8 px-4">
               No conversations yet. Ask something to get started.
             </p>
           ) : (
@@ -182,7 +182,7 @@ export default function AssistantPage() {
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors ${
                       activeId === c.id
                         ? "bg-[#fdf9ec] text-amber-800 font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
+                        : "text-zinc-600 hover:bg-zinc-50"
                     }`}
                     title={c.title ?? "Untitled"}
                   >
@@ -196,7 +196,7 @@ export default function AssistantPage() {
       </aside>
 
       {/* Main panel */}
-      <main className="flex-1 flex flex-col bg-gray-50">
+      <main className="flex-1 flex flex-col bg-zinc-50">
         <div className="flex-1 overflow-y-auto px-8 py-8" ref={scrollRef}>
           {loadingConv ? (
             <div className="flex items-center justify-center py-24">
@@ -215,8 +215,8 @@ export default function AssistantPage() {
                 />
               ))}
               {sending && (
-                <div className="flex items-center gap-2 text-gray-400 text-sm italic">
-                  <div className="w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center gap-2 text-zinc-400 text-sm italic">
+                  <div className="w-3 h-3 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" />
                   Thinking…
                 </div>
               )}
@@ -225,7 +225,7 @@ export default function AssistantPage() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-gray-200 bg-white px-8 py-4">
+        <div className="border-t border-zinc-200 bg-white px-8 py-4">
           <div className="max-w-3xl mx-auto flex gap-3">
             <textarea
               value={input}
@@ -238,17 +238,17 @@ export default function AssistantPage() {
               }}
               rows={1}
               placeholder="Ask about a client, filter by tag, search across notes…"
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none text-sm resize-none"
+              className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none text-sm resize-none"
             />
             <button
               onClick={send}
               disabled={!input.trim() || sending}
-              className="px-5 py-3 bg-[#fdf9ec] hover:bg-[#fdf9ec] hover:border-amber-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+              className="px-5 py-3 bg-zinc-950 hover:bg-zinc-900 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
             >
               Send
             </button>
           </div>
-          <p className="text-[11px] text-gray-400 text-center mt-2 max-w-3xl mx-auto">
+          <p className="text-[11px] text-zinc-400 text-center mt-2 max-w-3xl mx-auto">
             Answers come from your clinic's own call history and client notes. Never invents.
           </p>
         </div>
@@ -260,13 +260,13 @@ export default function AssistantPage() {
 function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
   return (
     <div className="max-w-2xl mx-auto text-center pt-16">
-      <div className="w-14 h-14 bg-gradient-to-br from-amber-200 to-amber-300 rounded-2xl mx-auto mb-5 flex items-center justify-center">
-        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-14 h-14 bg-zinc-950 ring-1 ring-amber-400/50 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+        <svg className="w-7 h-7 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       </div>
-      <h2 className="text-xl font-bold text-gray-900 mb-1">Ask about your clients</h2>
-      <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+      <h2 className="font-serif text-2xl text-zinc-900 mb-2">Ask about your clients</h2>
+      <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
         Everything you remember, even the things only one of you remembered. Pulls from call transcripts, notes, and appointments.
       </p>
       <div className="grid grid-cols-2 gap-2 max-w-xl mx-auto">
@@ -274,7 +274,7 @@ function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
           <button
             key={s}
             onClick={() => onSuggestion(s)}
-            className="text-left px-4 py-3 bg-white border border-gray-200 hover:border-amber-300 hover:bg-[#fdf9ec]/40 rounded-xl text-sm text-gray-700 transition-colors"
+            className="text-left px-4 py-3 bg-white border border-zinc-200 hover:border-amber-300 hover:bg-[#fdf9ec]/40 rounded-xl text-sm text-zinc-700 transition-colors"
           >
             {s}
           </button>
@@ -298,7 +298,7 @@ function MessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-white text-amber-900 border border-amber-400 shadow-sm rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
+        <div className="bg-zinc-950 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
           {message.content}
         </div>
       </div>
@@ -307,16 +307,18 @@ function MessageBubble({
 
   return (
     <div className="flex gap-3">
-      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-amber-200 to-amber-300 rounded-full flex items-center justify-center text-white text-xs font-bold">
+      {/* AI avatar — charcoal disc with a gold ring, nodding to the
+          landing's champagne noir shimmer. */}
+      <div className="w-8 h-8 shrink-0 bg-zinc-950 ring-1 ring-amber-400/60 rounded-full flex items-center justify-center text-amber-300 text-[11px] font-semibold tracking-wider">
         AI
       </div>
       <div className="flex-1">
-        <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap">
+        <div className="bg-white border border-zinc-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-zinc-800 whitespace-pre-wrap shadow-sm">
           {message.content}
         </div>
         <div className="flex items-center gap-3 mt-2 px-2">
           {sources.length > 0 && (
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[11px] text-zinc-400">
               from {sources.length} client{sources.length === 1 ? "" : "s"}
               {sources.length <= 3 ? `: ${sources.map((s) => s.label).join(", ")}` : ""}
             </span>
@@ -327,7 +329,7 @@ function MessageBubble({
               className={`p-1 rounded transition-colors ${
                 rating === 1
                   ? "text-emerald-600 bg-emerald-50"
-                  : "text-gray-300 hover:text-emerald-500"
+                  : "text-zinc-300 hover:text-emerald-500"
               }`}
               aria-label="Thumbs up"
             >
@@ -338,7 +340,7 @@ function MessageBubble({
             <button
               onClick={() => onRate(message.id, -1)}
               className={`p-1 rounded transition-colors ${
-                rating === -1 ? "text-red-600 bg-red-50" : "text-gray-300 hover:text-red-500"
+                rating === -1 ? "text-red-600 bg-red-50" : "text-zinc-300 hover:text-red-500"
               }`}
               aria-label="Thumbs down"
             >

@@ -20,7 +20,7 @@ const CATEGORY_COLORS: Record<Category, string> = {
   billing: "bg-amber-100 text-amber-700",
   policies: "bg-orange-100 text-orange-700",
   faq: "bg-amber-100 text-amber-800",
-  general: "bg-gray-100 text-gray-600",
+  general: "bg-zinc-100 text-zinc-600",
 };
 
 interface EditForm {
@@ -108,8 +108,8 @@ export default function KnowledgeBasePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clinic Handbook</h1>
-          <p className="text-gray-500 mt-1">Manage what your AI receptionist knows</p>
+          <h1 className="font-serif text-3xl text-zinc-900">Clinic Handbook</h1>
+          <p className="text-zinc-500 mt-1">Manage what your AI receptionist knows</p>
         </div>
         <button
           onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}
@@ -122,26 +122,26 @@ export default function KnowledgeBasePage() {
       {/* Add Document Form */}
       {showAddForm && (
         <div className="bg-white rounded-xl border border-amber-200 p-6 mb-8 shadow-sm">
-          <h2 className="font-semibold text-gray-900 mb-4">New Document</h2>
+          <h2 className="font-semibold text-zinc-900 mb-4">New Document</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Title</label>
                 <input
                   type="text"
                   value={addForm.title}
                   onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                   placeholder="e.g. Botox Pricing"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Category</label>
                 <select
                   value={addForm.category}
                   onChange={(e) => setAddForm({ ...addForm, category: e.target.value as Category })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
@@ -150,12 +150,12 @@ export default function KnowledgeBasePage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Content</label>
               <textarea
                 value={addForm.content}
                 onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
                 rows={5}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
                 placeholder="Write the information your AI should know..."
                 required
               />
@@ -171,7 +171,7 @@ export default function KnowledgeBasePage() {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-zinc-200 text-zinc-700 rounded-lg text-sm hover:bg-zinc-50 transition-colors"
               >
                 Cancel
               </button>
@@ -188,8 +188,8 @@ export default function KnowledgeBasePage() {
       ) : docs.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-5xl mb-4">📚</p>
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No documents yet</h3>
-          <p className="text-gray-400 text-sm mb-6">
+          <h3 className="text-lg font-semibold text-zinc-700 mb-2">No documents yet</h3>
+          <p className="text-zinc-400 text-sm mb-6">
             Add your first document to train your AI receptionist.
           </p>
           <button
@@ -208,7 +208,7 @@ export default function KnowledgeBasePage() {
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${CATEGORY_COLORS[cat]}`}>
                     {cat.charAt(0).toUpperCase() + cat.slice(1)}
                   </span>
-                  <span className="text-xs text-gray-400">{byCategory[cat].length} doc{byCategory[cat].length !== 1 ? "s" : ""}</span>
+                  <span className="text-xs text-zinc-400">{byCategory[cat].length} doc{byCategory[cat].length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="space-y-3">
                   {byCategory[cat].map((doc) => (
@@ -234,7 +234,7 @@ export default function KnowledgeBasePage() {
           {uncategorized.length > 0 && (
             <section>
               <div className="flex items-center gap-2 mb-3">
-                <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-600">
                   Other
                 </span>
               </div>
@@ -299,21 +299,21 @@ function DocCard({
         <form onSubmit={onEditSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Title</label>
               <input
                 type="text"
                 value={editForm.title}
                 onChange={(e) => onEditFormChange({ ...editForm, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Category</label>
               <select
                 value={editForm.category}
                 onChange={(e) => onEditFormChange({ ...editForm, category: e.target.value as Category })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
@@ -322,12 +322,12 @@ function DocCard({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Content</label>
             <textarea
               value={editForm.content}
               onChange={(e) => onEditFormChange({ ...editForm, content: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+              className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
               required
             />
           </div>
@@ -342,7 +342,7 @@ function DocCard({
             <button
               type="button"
               onClick={onCancelEdit}
-              className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-zinc-200 text-zinc-700 rounded-lg text-sm hover:bg-zinc-50 transition-colors"
             >
               Cancel
             </button>
@@ -353,24 +353,24 @@ function DocCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
+    <div className="bg-white rounded-xl border border-zinc-200 p-5 hover:border-zinc-300 transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-gray-900 truncate">{doc.title}</h3>
+            <h3 className="font-medium text-zinc-900 truncate">{doc.title}</h3>
             <span className={`flex-shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
               {doc.category}
             </span>
           </div>
-          <p className="text-sm text-gray-500 line-clamp-2">{doc.content}</p>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-sm text-zinc-500 line-clamp-2">{doc.content}</p>
+          <p className="text-xs text-zinc-400 mt-2">
             Updated {new Date(doc.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={onEdit}
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium border border-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-50 transition-colors"
           >
             Edit
           </button>

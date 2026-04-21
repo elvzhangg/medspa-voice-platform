@@ -96,8 +96,8 @@ export default function ProvidersPage() {
     <div className="max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Providers</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="font-serif text-3xl text-zinc-900">Providers</h1>
+          <p className="text-sm text-zinc-500">
             Your AI reads these notes aloud when callers ask about providers or need a recommendation.
           </p>
         </div>
@@ -115,32 +115,32 @@ export default function ProvidersPage() {
           <form onSubmit={handleAddStaff} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               placeholder="Full Name"
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm"
+              className="px-4 py-2 border border-zinc-200 rounded-lg text-sm"
               value={newStaff.name}
               onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
               required
             />
             <input
               placeholder="Title (e.g. Nurse Injector)"
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm"
+              className="px-4 py-2 border border-zinc-200 rounded-lg text-sm"
               value={newStaff.title}
               onChange={(e) => setNewStaff({ ...newStaff, title: e.target.value })}
             />
             <input
               placeholder="Services (comma-separated)"
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm md:col-span-2"
+              className="px-4 py-2 border border-zinc-200 rounded-lg text-sm md:col-span-2"
               value={newStaff.servicesString}
               onChange={(e) => setNewStaff({ ...newStaff, servicesString: e.target.value })}
             />
             <input
               placeholder="Specialties (comma-separated, e.g. Botox, anxious clients)"
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm md:col-span-2"
+              className="px-4 py-2 border border-zinc-200 rounded-lg text-sm md:col-span-2"
               value={newStaff.specialtiesString}
               onChange={(e) => setNewStaff({ ...newStaff, specialtiesString: e.target.value })}
             />
             <textarea
               placeholder="AI notes — what should the AI say about this provider? e.g. 'Sarah is our most experienced Botox injector and is great with first-timers.'"
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm md:col-span-2 h-24 resize-none"
+              className="px-4 py-2 border border-zinc-200 rounded-lg text-sm md:col-span-2 h-24 resize-none"
               value={newStaff.ai_notes}
               onChange={(e) => setNewStaff({ ...newStaff, ai_notes: e.target.value })}
             />
@@ -148,7 +148,7 @@ export default function ProvidersPage() {
               <button
                 type="button"
                 onClick={() => setIsAdding(false)}
-                className="px-4 py-2 text-gray-500 text-sm"
+                className="px-4 py-2 text-zinc-500 text-sm"
               >
                 Cancel
               </button>
@@ -161,11 +161,11 @@ export default function ProvidersPage() {
       )}
 
       {loading ? (
-        <p className="text-gray-400">Loading providers…</p>
+        <p className="text-zinc-400">Loading providers…</p>
       ) : staff.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm font-bold text-gray-700">No providers yet</p>
-          <p className="text-xs text-gray-500 mt-1">
+        <div className="bg-white rounded-2xl border border-dashed border-zinc-200 p-10 text-center">
+          <p className="text-sm font-bold text-zinc-700">No providers yet</p>
+          <p className="text-xs text-zinc-500 mt-1">
             Add a provider to give the AI someone to recommend. If your clinic is connected to a booking platform, your roster will sync automatically.
           </p>
         </div>
@@ -220,7 +220,7 @@ function ProviderCard({
   return (
     <div
       className={`bg-white rounded-2xl border p-6 transition-all ${
-        member.active ? "border-gray-200" : "border-gray-100 opacity-60"
+        member.active ? "border-zinc-200" : "border-zinc-100 opacity-60"
       }`}
     >
       <div className="flex items-start gap-4 mb-4">
@@ -229,14 +229,14 @@ function ProviderCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-lg font-bold text-gray-900">{member.name}</h3>
+            <h3 className="text-lg font-bold text-zinc-900">{member.name}</h3>
             {isSynced && (
               <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
                 Synced from {platformLabel}
               </span>
             )}
             {!member.active && (
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-full uppercase tracking-wider">
+              <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-bold rounded-full uppercase tracking-wider">
                 Inactive
               </span>
             )}
@@ -247,7 +247,7 @@ function ProviderCard({
               {member.services.map((s) => (
                 <span
                   key={s}
-                  className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider"
+                  className="px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] uppercase font-bold tracking-wider"
                 >
                   {s}
                 </span>
@@ -258,14 +258,14 @@ function ProviderCard({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onPatch(member.id, { active: !member.active })}
-            className="text-xs font-semibold text-gray-500 hover:text-gray-800 px-3 py-1.5 border border-gray-200 rounded-lg transition-colors"
+            className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 px-3 py-1.5 border border-zinc-200 rounded-lg transition-colors"
           >
             {member.active ? "Deactivate" : "Activate"}
           </button>
           {!isSynced && (
             <button
               onClick={() => onDelete(member.id)}
-              className="text-gray-300 hover:text-red-500 transition-colors"
+              className="text-zinc-300 hover:text-red-500 transition-colors"
               aria-label="Delete"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,29 +283,29 @@ function ProviderCard({
 
       <div className="space-y-3 pl-16">
         <div>
-          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+          <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">
             Specialties (what callers should match them to)
           </label>
           <input
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm"
             placeholder="e.g. Botox, Juvederm, anxious clients"
             value={specialtiesString}
             onChange={(e) => setSpecialtiesString(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+          <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">
             AI notes
           </label>
           <textarea
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-20 resize-none"
+            className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm h-20 resize-none"
             placeholder="What should the AI say about this provider? e.g. 'Sarah is our most experienced Botox injector and is great with first-timers.'"
             value={aiNotes}
             onChange={(e) => setAiNotes(e.target.value)}
           />
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-zinc-400">
             {isSynced
               ? "Name, title, and services are synced from your booking platform and can't be edited here."
               : "Tenant-managed provider."}
@@ -313,7 +313,7 @@ function ProviderCard({
           <button
             onClick={saveEnrichment}
             disabled={savingNotes}
-            className="px-4 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-gray-700 disabled:opacity-50"
+            className="px-4 py-1.5 bg-zinc-950 text-white rounded-lg text-xs font-semibold hover:bg-zinc-900 disabled:opacity-50"
           >
             {savingNotes ? "Saving…" : notesSaved ? "Saved" : "Save"}
           </button>

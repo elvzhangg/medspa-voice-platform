@@ -28,11 +28,11 @@ function SectionCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-amber-200 shadow-sm shadow-amber-50" : "border-gray-200"}`}>
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+    <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-amber-200 shadow-sm shadow-amber-50" : "border-zinc-200"}`}>
+      <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100">
         <div>
-          <h2 className="font-semibold text-gray-900 text-sm">{title}</h2>
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+          <h2 className="font-semibold text-zinc-900 text-sm">{title}</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
         </div>
         <Toggle enabled={enabled} onChange={onToggle} />
       </div>
@@ -42,8 +42,8 @@ function SectionCard({
         </div>
       )}
       {!enabled && (
-        <div className="px-6 py-3 bg-gray-50/50">
-          <p className="text-xs text-gray-400 italic">Enable to configure options.</p>
+        <div className="px-6 py-3 bg-zinc-50/50">
+          <p className="text-xs text-zinc-400 italic">Enable to configure options.</p>
         </div>
       )}
     </div>
@@ -94,13 +94,13 @@ export default function MessagingPage() {
     setSettings((prev) => ({ ...prev, ...patch }));
   }
 
-  if (loading) return <div className="p-10 text-gray-400 text-sm">Loading messaging settings...</div>;
+  if (loading) return <div className="p-10 text-zinc-400 text-sm">Loading messaging settings...</div>;
 
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Messaging & SMS</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="font-serif text-3xl text-zinc-900 mb-1">Messaging & SMS</h1>
+        <p className="text-sm text-zinc-500">
           Configure automated texts sent to clients before and after their appointments.
         </p>
       </div>
@@ -115,21 +115,21 @@ export default function MessagingPage() {
           onToggle={() => set({ sms_confirmation_enabled: !settings.sms_confirmation_enabled })}
         >
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Confirmation Message
             </label>
             <textarea
               rows={3}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
               value={settings.sms_confirmation_message}
               onChange={(e) => set({ sms_confirmation_message: e.target.value })}
               placeholder="Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."
             />
-            <p className="text-[11px] text-gray-400 mt-1.5">
-              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Date]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Time]</code>
+            <p className="text-[11px] text-zinc-400 mt-1.5">
+              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Date]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Time]</code>
             </p>
           </div>
         </SectionCard>
@@ -142,13 +142,13 @@ export default function MessagingPage() {
           onToggle={() => set({ sms_reminders_enabled: !settings.sms_reminders_enabled })}
         >
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Send Reminder
             </label>
             <select
               value={settings.sms_reminder_hours}
               onChange={(e) => set({ sms_reminder_hours: parseInt(e.target.value) })}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
+              className="px-3 py-2 border border-zinc-200 rounded-lg bg-zinc-50 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
             >
               <option value={2}>2 hours before</option>
               <option value={12}>12 hours before</option>
@@ -157,21 +157,21 @@ export default function MessagingPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Custom Reminder Message
             </label>
             <textarea
               rows={3}
               placeholder="e.g. Reminder: You have an appointment at [Clinic] on [Date] at [Time]. Please avoid alcohol 24 hours prior."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
               value={settings.sms_reminder_template}
               onChange={(e) => set({ sms_reminder_template: e.target.value })}
             />
-            <p className="text-[11px] text-gray-400 mt-1.5">
-              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Date]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Time]</code>
+            <p className="text-[11px] text-zinc-400 mt-1.5">
+              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Date]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Time]</code>
             </p>
           </div>
         </SectionCard>
@@ -184,13 +184,13 @@ export default function MessagingPage() {
           onToggle={() => set({ sms_followup_enabled: !settings.sms_followup_enabled })}
         >
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Send Follow-Up
             </label>
             <select
               value={settings.sms_followup_hours}
               onChange={(e) => set({ sms_followup_hours: parseInt(e.target.value) })}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
+              className="px-3 py-2 border border-zinc-200 rounded-lg bg-zinc-50 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
             >
               <option value={2}>2 hours after appointment</option>
               <option value={24}>24 hours after appointment</option>
@@ -199,19 +199,19 @@ export default function MessagingPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Follow-Up Message
             </label>
             <textarea
               rows={4}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
               value={settings.sms_followup_message}
               onChange={(e) => set({ sms_followup_message: e.target.value })}
               placeholder="Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results..."
             />
-            <p className="text-[11px] text-gray-400 mt-1.5">
-              Available tokens: <code className="bg-gray-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-gray-100 px-1 rounded">[Clinic]</code>
+            <p className="text-[11px] text-zinc-400 mt-1.5">
+              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
+              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>
             </p>
           </div>
         </SectionCard>

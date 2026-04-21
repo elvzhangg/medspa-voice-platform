@@ -25,18 +25,18 @@ export default async function DashboardLayout({
   const brandPrefix = `/${tenant.slug}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-zinc-50 flex">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
+      <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-zinc-200 flex flex-col z-10 shadow-sm">
         {/* Brand header */}
-        <div className="px-5 py-5 border-b border-gray-100">
+        <div className="px-5 py-5 border-b border-zinc-100">
           <div className="flex items-center gap-1.5 mb-2">
-            <span className="block w-1.5 h-1.5 rounded-full bg-[#fdf9ec]" />
-            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-[0.2em]">
+            <span className="block w-1 h-1 rounded-full bg-amber-500" />
+            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-[0.25em]">
               AI Receptionist
             </span>
           </div>
-          <h2 className="font-bold text-gray-900 text-base leading-snug truncate">
+          <h2 className="font-serif text-lg text-zinc-900 leading-snug truncate">
             {tenant.name}
           </h2>
         </div>
@@ -45,7 +45,7 @@ export default async function DashboardLayout({
         <SidebarNav brandPrefix={brandPrefix} />
 
         {/* Footer */}
-        <div className="px-3 pb-4 pt-2 border-t border-gray-100">
+        <div className="px-3 pb-4 pt-2 border-t border-zinc-100">
           <SignOutButton />
         </div>
       </aside>

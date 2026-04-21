@@ -76,8 +76,8 @@ export default function ClientsPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Clients</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="font-serif text-3xl text-zinc-900 mb-1">Clients</h1>
+          <p className="text-sm text-zinc-500">
             Everyone who's called your AI receptionist, plus what we remember about them.
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function ClientsPage() {
           placeholder="Search name, phone, email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-72 px-3.5 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+          className="w-72 px-3.5 py-2 text-sm rounded-lg border border-zinc-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
         />
       </div>
 
@@ -95,43 +95,43 @@ export default function ClientsPage() {
           <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 text-center py-20">
-          <h3 className="text-base font-semibold text-gray-700 mb-1">
+        <div className="bg-white rounded-xl border border-zinc-200 text-center py-20">
+          <h3 className="text-base font-semibold text-zinc-700 mb-1">
             {clients.length === 0 ? "No clients yet" : "No matches"}
           </h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-zinc-400">
             {clients.length === 0
               ? "Client profiles are created automatically when callers reach your AI."
               : "Try a different search term."}
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100">
-              <tr className="bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Calls</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bookings</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Service</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Call</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</th>
+            <thead className="border-b border-zinc-100">
+              <tr className="bg-zinc-50">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Name</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Phone</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Calls</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Bookings</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Service</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Call</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tags</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-gray-50 hover:bg-[#fdf9ec]/40 cursor-pointer transition-colors"
+                  className="border-b border-zinc-50 hover:bg-[#fdf9ec]/40 cursor-pointer transition-colors"
                   onClick={() => setSelected(c)}
                 >
-                  <td className="px-5 py-3.5 font-medium text-gray-900">{displayName(c)}</td>
-                  <td className="px-5 py-3.5 text-gray-600 tabular-nums">{c.phone}</td>
-                  <td className="px-5 py-3.5 text-gray-600 tabular-nums">{c.total_calls}</td>
-                  <td className="px-5 py-3.5 text-gray-600 tabular-nums">{c.total_bookings}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{c.last_service || "—"}</td>
-                  <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{fmtDate(c.last_call_at)}</td>
+                  <td className="px-5 py-3.5 font-medium text-zinc-900">{displayName(c)}</td>
+                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.phone}</td>
+                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_calls}</td>
+                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_bookings}</td>
+                  <td className="px-5 py-3.5 text-zinc-500">{c.last_service || "—"}</td>
+                  <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">{fmtDate(c.last_call_at)}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-1 flex-wrap">
                       {(c.tags || []).slice(0, 3).map((t) => (
@@ -250,12 +250,12 @@ function ClientDrawer({
           <div className="p-6 space-y-6">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{displayName(profile)}</h2>
-                <p className="text-sm text-gray-500 tabular-nums">{profile.phone}</p>
+                <h2 className="text-xl font-bold text-zinc-900">{displayName(profile)}</h2>
+                <p className="text-sm text-zinc-500 tabular-nums">{profile.phone}</p>
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-zinc-400 hover:text-zinc-600 p-1"
                 aria-label="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,16 +273,17 @@ function ClientDrawer({
               />
             </div>
 
-            <section className="bg-gradient-to-br from-[#fdf9ec] to-amber-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest">
+            {/* Pre-appointment brief — styled like an engraved invitation:
+                cream paper, hairline gold rule, serif label. The card the
+                staff notices most, so it gets the most attention to detail. */}
+            <section className="bg-[#fdf9ec] border border-amber-300/70 rounded-xl p-5 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+              <div className="flex items-baseline gap-3 mb-3">
+                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-[0.25em]">
                   Before you see them
-                </h3>
+                </span>
                 {brief && !brief.cold_start && brief.source_call_ids.length > 0 && (
-                  <span className="ml-auto text-[10px] text-amber-500 font-medium">
+                  <span className="ml-auto text-[10px] text-zinc-400 font-medium italic">
                     from {brief.source_call_ids.length} past call
                     {brief.source_call_ids.length === 1 ? "" : "s"}
                   </span>
@@ -291,19 +292,19 @@ function ClientDrawer({
               {briefLoading ? (
                 <div className="flex items-center gap-2 py-2">
                   <div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-amber-500 italic">Reading their history…</span>
+                  <span className="text-xs text-zinc-500 italic">Reading their history…</span>
                 </div>
               ) : brief ? (
-                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                <p className="font-serif text-[15px] text-zinc-800 leading-relaxed whitespace-pre-wrap">
                   {brief.brief}
                 </p>
               ) : (
-                <p className="text-xs text-gray-400 italic">Couldn&apos;t load brief.</p>
+                <p className="text-xs text-zinc-400 italic">Couldn&apos;t load brief.</p>
               )}
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Identity</h3>
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Identity</h3>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="First name" value={form.first_name ?? ""} onChange={(v) => setForm({ ...form, first_name: v })} />
                 <Field label="Last name" value={form.last_name ?? ""} onChange={(v) => setForm({ ...form, last_name: v })} />
@@ -312,7 +313,7 @@ function ClientDrawer({
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Preferences</h3>
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Preferences</h3>
               <Field
                 label="Preferred provider"
                 value={form.preferred_provider ?? ""}
@@ -331,27 +332,27 @@ function ClientDrawer({
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Staff Notes & Tags</h3>
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Staff Notes & Tags</h3>
               <div>
-                <label className="text-[11px] text-gray-500 mb-1 block">Notes (visible to AI)</label>
+                <label className="text-[11px] text-zinc-500 mb-1 block">Notes (visible to AI)</label>
                 <textarea
                   value={form.staff_notes ?? ""}
                   onChange={(e) => setForm({ ...form, staff_notes: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none resize-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none resize-none"
                   placeholder="e.g. allergic to lidocaine, prefers texts over calls…"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-gray-500 mb-1 block">Tags (comma-separated)</label>
+                <label className="text-[11px] text-zinc-500 mb-1 block">Tags (comma-separated)</label>
                 <input
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
                   placeholder="VIP, new patient, Botox regular"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-zinc-700">
                 <input
                   type="checkbox"
                   checked={form.no_personalization ?? false}
@@ -362,17 +363,17 @@ function ClientDrawer({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Audit Log</h3>
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Audit Log</h3>
               {audit.length === 0 ? (
-                <p className="text-sm text-gray-400">No changes recorded yet.</p>
+                <p className="text-sm text-zinc-400">No changes recorded yet.</p>
               ) : (
                 <ul className="space-y-1.5 max-h-52 overflow-y-auto">
                   {audit.map((u, i) => (
-                    <li key={i} className="text-xs text-gray-600 border-l-2 border-amber-200 pl-3 py-0.5">
-                      <span className="font-semibold text-gray-700">{u.field}</span>:{" "}
-                      <span className="text-gray-400 line-through">{u.old_value || "∅"}</span> →{" "}
-                      <span className="text-gray-800">{u.new_value || "∅"}</span>
-                      <div className="text-[10px] text-gray-400 mt-0.5">
+                    <li key={i} className="text-xs text-zinc-600 border-l-2 border-amber-200 pl-3 py-0.5">
+                      <span className="font-semibold text-zinc-700">{u.field}</span>:{" "}
+                      <span className="text-zinc-400 line-through">{u.old_value || "∅"}</span> →{" "}
+                      <span className="text-zinc-800">{u.new_value || "∅"}</span>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">
                         {u.source} · {new Date(u.created_at).toLocaleString()}
                       </div>
                     </li>
@@ -391,7 +392,7 @@ function ClientDrawer({
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg"
+                className="px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 text-sm font-semibold rounded-lg"
               >
                 Cancel
               </button>
@@ -405,9 +406,9 @@ function ClientDrawer({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
-      <p className="text-lg font-bold text-gray-900 mt-0.5 tabular-nums">{value}</p>
+    <div className="bg-zinc-50 rounded-lg p-3">
+      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{label}</p>
+      <p className="text-lg font-bold text-zinc-900 mt-0.5 tabular-nums">{value}</p>
     </div>
   );
 }
@@ -423,11 +424,11 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-[11px] text-gray-500 mb-1 block">{label}</label>
+      <label className="text-[11px] text-zinc-500 mb-1 block">{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
       />
     </div>
   );
