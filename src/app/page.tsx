@@ -1285,7 +1285,7 @@ function DemoSection() {
       <div ref={ref} className="relative max-w-3xl mx-auto px-6">
         <div className="text-center">
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-[1.08]`}>
-            <span className="block whitespace-nowrap text-[clamp(28px,4.2vw,52px)]">Your clients are already calling.</span>
+            <span className="block whitespace-nowrap text-[clamp(28px,4.2vw,52px)]">Clients are already calling.</span>
             <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">Your Vivienne is ready when you are.</span>
           </h2>
           <div className={`reveal-up ${visible ? "visible" : ""} flex justify-center mt-10`} style={{ transitionDelay: "200ms" }}>
