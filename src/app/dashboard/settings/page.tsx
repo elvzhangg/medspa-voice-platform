@@ -261,7 +261,7 @@ export default function ClinicSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-zinc-900 text-white font-semibold rounded-lg hover:bg-zinc-800 shadow-sm transition-all disabled:opacity-50 text-sm"
+            className="px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 shadow-sm transition-all disabled:opacity-50 text-sm"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

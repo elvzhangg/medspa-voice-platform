@@ -31,7 +31,7 @@ export default async function DashboardLayout({
         {/* Brand header */}
         <div className="px-5 py-5 border-b border-gray-100">
           <div className="flex items-center gap-1.5 mb-2">
-            <span className="block w-1.5 h-1.5 rounded-full bg-zinc-900" />
+            <span className="block w-1.5 h-1.5 rounded-full bg-amber-600" />
             <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-[0.2em]">
               AI Receptionist
             </span>
