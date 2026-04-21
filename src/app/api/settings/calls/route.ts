@@ -20,12 +20,14 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { greeting_message, ai_voice_id, call_recording_enabled, voicemail_forwarding_number } = body;
+  // greeting_message is owned by /api/settings (clinic identity) — it's
+  // returned here for read-side backwards-compat but never written, so
+  // the AI Setup page can't overwrite it by accident from two sides.
+  const { ai_voice_id, call_recording_enabled, voicemail_forwarding_number } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
     .update({
-      greeting_message,
       ai_voice_id,
       call_recording_enabled,
       voicemail_forwarding_number,
