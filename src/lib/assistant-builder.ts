@@ -1,6 +1,7 @@
 import { Tenant, TransientAssistantConfig, VapiTool } from "@/types";
 import { searchKnowledgeBase, formatKBContext } from "./knowledge-base";
 import { lookupCaller, buildCallerContext, ClientProfile } from "./client-intelligence";
+import { isProfileStale, syncClientFromPlatformBackground } from "./client-sync";
 
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
@@ -17,6 +18,14 @@ export async function buildAssistantConfig(
   let callerProfile: ClientProfile | null = null;
   if (callerNumber) {
     callerProfile = await lookupCaller(tenant.id, callerNumber);
+
+    // Phase 2 sync — if the tenant is direct-book and this caller's cached
+    // platform history is stale or missing, refresh it in the background.
+    // The current call uses whatever we already have cached; the NEXT call
+    // will benefit from the refresh. Never awaited — don't block dial-in.
+    if (isProfileStale(callerProfile?.last_synced_at)) {
+      syncClientFromPlatformBackground(tenant.id, callerNumber);
+    }
   }
   const callerContext = buildCallerContext(callerProfile);
 

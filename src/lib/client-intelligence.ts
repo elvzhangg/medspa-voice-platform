@@ -38,6 +38,15 @@ export interface ClientProfile {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  // Phase 2 — booking-platform sync (nullable until first sync runs)
+  last_synced_at?: string | null;
+  sync_source?: string | null;
+  sync_error?: string | null;
+  lifetime_value_cents?: number | null;
+  platform_visit_count?: number | null;
+  platform_last_visit_at?: string | null;
+  favorite_service?: string | null;
+  favorite_staff?: string | null;
 }
 
 export interface CallHistoryEntry {
@@ -266,6 +275,17 @@ export function buildCallerContext(profile: ClientProfile | null): string {
         profile.total_bookings ? ` (${profile.total_bookings} booked)` : ""
       }`
     );
+  }
+  if (profile.platform_last_visit_at) {
+    const d = new Date(profile.platform_last_visit_at);
+    if (!Number.isNaN(d.getTime())) {
+      lines.push(`Last visit on record: ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`);
+    }
+  }
+  if (profile.favorite_service) lines.push(`Most-booked service: ${profile.favorite_service}`);
+  if (profile.favorite_staff) lines.push(`Most-booked with: ${profile.favorite_staff}`);
+  if (profile.platform_visit_count && profile.platform_visit_count > 0) {
+    lines.push(`Total visits on record: ${profile.platform_visit_count}`);
   }
   if (profile.last_service) lines.push(`Last service discussed: ${profile.last_service}`);
   if (profile.last_provider) lines.push(`Last provider: ${profile.last_provider}`);

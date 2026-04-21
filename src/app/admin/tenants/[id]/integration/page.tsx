@@ -10,6 +10,7 @@ type Platform =
   | "mindbody"
   | "square"
   | "zenoti"
+  | "wellnessliving"
   | "vagaro"
   | "jane"
   | "glossgenius"
@@ -24,6 +25,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   mindbody: "Mindbody",
   square: "Square Appointments",
   zenoti: "Zenoti",
+  wellnessliving: "WellnessLiving",
   vagaro: "Vagaro",
   jane: "Jane",
   glossgenius: "GlossGenius",
@@ -37,8 +39,9 @@ const DEFAULT_MODE: Record<Platform, Mode> = {
   mindbody: "direct_book",
   square: "direct_book",
   zenoti: "direct_book",
+  wellnessliving: "direct_book",
   vagaro: "hybrid",
-  jane: "sms_fallback",
+  jane: "hybrid",
   glossgenius: "sms_fallback",
   fresha: "sms_fallback",
   self_managed: "sms_fallback",
@@ -50,9 +53,9 @@ const FIELD_SPEC: Record<
   { credentials: string[]; config: string[]; help: string }
 > = {
   boulevard: {
-    credentials: ["business_id", "api_key"],
+    credentials: ["business_id", "api_key", "webhook_secret"],
     config: ["location_id"],
-    help: "Boulevard partner API. Requires 3-week approval. api_key comes from their Partners portal.",
+    help: "Boulevard partner API. Requires 3-week approval. api_key comes from their Partners portal. webhook_secret is optional — paste the HMAC secret from Boulevard's webhook setup so realtime calendar sync works.",
   },
   acuity: {
     credentials: ["user_id", "api_key"],
@@ -74,15 +77,20 @@ const FIELD_SPEC: Record<
     config: ["center_id"],
     help: "Zenoti enterprise API. Requires partner enablement.",
   },
+  wellnessliving: {
+    credentials: ["api_key", "app_id", "app_secret"],
+    config: ["business_id"],
+    help: "WellnessLiving Developer API — Account Executive must enable it on the plan. Use api_key if the tenant has one, otherwise app_id + app_secret for signed requests.",
+  },
   vagaro: {
     credentials: ["api_key"],
-    config: [],
-    help: "Vagaro typically read-only — hybrid mode (AI verifies availability, staff confirms via SMS).",
+    config: ["business_id"],
+    help: "Vagaro API is read-only. Runs in hybrid mode: AI verifies availability, staff confirms the booking via SMS.",
   },
   jane: {
-    credentials: [],
-    config: [],
-    help: "No public booking API. Runs in SMS fallback mode.",
+    credentials: ["api_key"],
+    config: ["clinic_id"],
+    help: "Jane Partner API — write scopes are gated, so we run hybrid: AI verifies availability, staff confirms via SMS.",
   },
   glossgenius: {
     credentials: [],
@@ -390,6 +398,26 @@ export default function AdminIntegrationPage() {
           )}
         </div>
       </div>
+
+      {/* Webhook listener URL — paste into the platform's webhook config
+          so they push appointment changes back to us in real time. */}
+      {integration && platform === "boulevard" && (
+        <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+            Realtime calendar sync
+          </h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Paste this URL into Boulevard&apos;s webhook settings so appointments booked
+            or cancelled in their UI flow back into the VauxVoice calendar automatically.
+            Pair it with the <span className="font-mono">webhook_secret</span> you set above
+            (Boulevard signs each request; we verify before accepting).
+          </p>
+          <div className="font-mono text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 break-all">
+            {typeof window !== "undefined" ? window.location.origin : ""}
+            /api/webhooks/platform/{platform}/{id}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

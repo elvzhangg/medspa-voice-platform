@@ -56,8 +56,18 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
       break;
     case "vagaro":
       if (!creds.api_key) missing.push("api_key");
+      if (!config.business_id) missing.push("config.business_id");
       break;
     case "jane":
+      if (!creds.api_key) missing.push("api_key");
+      if (!config.clinic_id) missing.push("config.clinic_id");
+      break;
+    case "wellnessliving":
+      if (!creds.api_key && !(creds.app_id && creds.app_secret)) {
+        missing.push("api_key or (app_id + app_secret)");
+      }
+      if (!config.business_id) missing.push("config.business_id");
+      break;
     case "glossgenius":
     case "fresha":
     case "self_managed":

@@ -1,5 +1,12 @@
 import type { BookingAdapter, AdapterContext } from "./types";
 import boulevard from "./boulevard";
+import acuity from "./acuity";
+import mindbody from "./mindbody";
+import square from "./square";
+import zenoti from "./zenoti";
+import vagaro from "./vagaro";
+import jane from "./jane";
+import wellnessliving from "./wellnessliving";
 import { supabaseAdmin } from "../supabase";
 
 /**
@@ -14,10 +21,13 @@ import { supabaseAdmin } from "../supabase";
  */
 const REGISTRY: Record<string, BookingAdapter | undefined> = {
   boulevard,
-  // acuity:   (pending — will port from booking.ts)
-  // mindbody: (pending)
-  // square:   (pending)
-  // zenoti:   (pending)
+  acuity,
+  mindbody,
+  square,
+  zenoti,
+  vagaro,        // hybrid: availability only
+  jane,          // hybrid: availability only
+  wellnessliving,
 };
 
 export function getAdapter(platform: string | null | undefined): BookingAdapter | null {
@@ -40,7 +50,13 @@ export async function loadTenantIntegration(
     .maybeSingle();
 
   if (!tenant) return null;
-  if (tenant.integration_mode !== "direct_book") return null;
+  // Both direct_book AND hybrid tenants use the adapter — direct_book
+  // for full read+write, hybrid for read-only availability. sms_fallback
+  // tenants skip the adapter entirely. booking.ts separately gates writes
+  // on integration_mode === "direct_book".
+  if (tenant.integration_mode !== "direct_book" && tenant.integration_mode !== "hybrid") {
+    return null;
+  }
   if (tenant.integration_status !== "connected") return null;
 
   const adapter = getAdapter(tenant.integration_platform);

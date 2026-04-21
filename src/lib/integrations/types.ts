@@ -53,11 +53,76 @@ export interface AdapterTestResult {
   businessName?: string;
 }
 
+export type AdapterWebhookEventType =
+  | "appointment.created"
+  | "appointment.updated"
+  | "appointment.cancelled"
+  | "appointment.rescheduled";
+
+export interface AdapterWebhookEvent {
+  signatureOk: boolean;
+  eventType: AdapterWebhookEventType;
+  /** Platform-side appointment id — used as external_id for upsert */
+  externalId: string;
+  startTime?: string;     // ISO — required for created/updated/rescheduled
+  endTime?: string;
+  serviceName?: string;
+  staffName?: string;
+  customerName?: string;
+  customerPhone?: string;
+  /** true when the event signals the appointment should be removed from our calendar */
+  cancelled?: boolean;
+}
+
+export interface AdapterClientVisit {
+  /** ISO date of the visit (completed appointment) */
+  date: string;
+  service?: string;
+  staff?: string;
+  /** Price in cents if the platform reports it */
+  priceCents?: number;
+  status?: string;
+}
+
+export interface AdapterClientHistory {
+  /** Platform-side client id — stashed in client_profiles.provider_refs */
+  clientId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  visits: AdapterClientVisit[];
+  /** Lifetime spend in cents, if computable */
+  lifetimeValueCents?: number;
+}
+
 export interface BookingAdapter {
   platform: string;
 
   /** Light auth + reachability check. Called by the admin "Test connection" button. */
   testConnection(ctx: AdapterContext): Promise<AdapterTestResult>;
+
+  /**
+   * Optional — parse and verify an inbound webhook from the platform.
+   * Route handler passes the raw request headers + body; the adapter is
+   * responsible for HMAC/signature verification using ctx.credentials
+   * (e.g. the webhook_secret the admin configured). Return null for
+   * events we don't care about (pings, unsupported event types).
+   */
+  parseWebhookEvent?(
+    ctx: AdapterContext,
+    args: { headers: Record<string, string>; rawBody: string }
+  ): Promise<AdapterWebhookEvent | null>;
+
+  /**
+   * Optional — pull a client's history (identity + past visits) by phone.
+   * Used by the client-sync job so returning callers can be greeted with
+   * "Want your usual laser with Dr. Sarah?". Return null if no match.
+   * Adapters may omit this if the platform's API doesn't surface history.
+   */
+  getClientHistory?(
+    ctx: AdapterContext,
+    args: { phone: string }
+  ): Promise<AdapterClientHistory | null>;
 
   /**
    * Query the platform for bookable slots on a given date.

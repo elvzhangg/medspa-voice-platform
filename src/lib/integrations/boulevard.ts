@@ -1,9 +1,12 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterWebhookEvent,
+  AdapterWebhookEventType,
   BookingAdapter,
 } from "./types";
 
@@ -152,6 +155,177 @@ const adapter: BookingAdapter = {
       staffName: t.staff ? `${t.staff.firstName} ${t.staff.lastName}` : undefined,
       serviceId: matchedService.id,
     }));
+  },
+
+  async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
+    // Boulevard signs webhooks with HMAC-SHA256 using the shared secret
+    // the admin stored in credentials.webhook_secret (set via the admin
+    // integration page). Header name per their docs: "Blvd-Signature".
+    const secret = ctx.credentials.webhook_secret;
+    const sigHeader = headers["blvd-signature"] || headers["x-blvd-signature"];
+    let signatureOk = false;
+    if (secret && sigHeader) {
+      try {
+        const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+        const a = Buffer.from(expected, "hex");
+        const b = Buffer.from(sigHeader.replace(/^sha256=/, ""), "hex");
+        signatureOk = a.length === b.length && timingSafeEqual(a, b);
+      } catch {
+        signatureOk = false;
+      }
+    }
+
+    let payload: {
+      event?: string;
+      type?: string;
+      data?: {
+        id?: string;
+        startAt?: string;
+        endAt?: string;
+        state?: string;
+        client?: { firstName?: string; lastName?: string; mobilePhone?: string };
+        bookableItems?: Array<{
+          service?: { name?: string };
+          staff?: { firstName?: string; lastName?: string };
+        }>;
+      };
+    };
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+
+    const rawType = (payload.event || payload.type || "").toLowerCase();
+    const externalId = payload.data?.id;
+    if (!externalId) return null;
+
+    // Normalize Boulevard event names to our neutral enum. Anything we
+    // don't recognize returns null so the route quietly 200s without
+    // touching calendar_events.
+    let eventType: AdapterWebhookEventType | null = null;
+    if (rawType.includes("cancel")) eventType = "appointment.cancelled";
+    else if (rawType.includes("reschedul")) eventType = "appointment.rescheduled";
+    else if (rawType.includes("create")) eventType = "appointment.created";
+    else if (rawType.includes("update")) eventType = "appointment.updated";
+    if (!eventType) return null;
+
+    const item = payload.data?.bookableItems?.[0];
+    const staffName = item?.staff
+      ? `${item.staff.firstName ?? ""} ${item.staff.lastName ?? ""}`.trim() || undefined
+      : undefined;
+    const customerName = payload.data?.client
+      ? `${payload.data.client.firstName ?? ""} ${payload.data.client.lastName ?? ""}`.trim() ||
+        undefined
+      : undefined;
+
+    return {
+      signatureOk,
+      eventType,
+      externalId,
+      startTime: payload.data?.startAt,
+      endTime: payload.data?.endAt,
+      serviceName: item?.service?.name,
+      staffName,
+      customerName,
+      customerPhone: payload.data?.client?.mobilePhone,
+      cancelled: eventType === "appointment.cancelled",
+    };
+  },
+
+  async getClientHistory(ctx, { phone }) {
+    // Find the client by phone, then pull their recent appointments.
+    // Field names below mirror Boulevard's public GraphQL schema; if they
+    // reject a query we log and return null so the caller never throws.
+    try {
+      const findQuery = `
+        query($phone: String!) {
+          clients(filter: { mobilePhone: $phone }, first: 1) {
+            edges { node { id firstName lastName email } }
+          }
+        }`;
+      const findRes = await graphql<{
+        clients: {
+          edges: Array<{
+            node: { id: string; firstName?: string; lastName?: string; email?: string };
+          }>;
+        };
+      }>(ctx, findQuery, { phone });
+      const node = findRes.data?.clients?.edges?.[0]?.node;
+      if (!node) return null;
+
+      const apptQuery = `
+        query($clientId: ID!) {
+          client(id: $clientId) {
+            appointments(first: 20, orderBy: { field: START_AT, direction: DESC }) {
+              edges {
+                node {
+                  id
+                  startAt
+                  state
+                  bookableItems {
+                    service { name }
+                    staff  { firstName lastName }
+                    price  { amount currency }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+      const apptRes = await graphql<{
+        client: {
+          appointments: {
+            edges: Array<{
+              node: {
+                id: string;
+                startAt: string;
+                state?: string;
+                bookableItems?: Array<{
+                  service?: { name?: string };
+                  staff?: { firstName?: string; lastName?: string };
+                  price?: { amount?: number; currency?: string };
+                }>;
+              };
+            }>;
+          };
+        };
+      }>(ctx, apptQuery, { clientId: node.id });
+
+      const edges = apptRes.data?.client?.appointments?.edges ?? [];
+      const visits = edges.map((e) => {
+        const n = e.node;
+        const item = n.bookableItems?.[0];
+        const staff = item?.staff
+          ? `${item.staff.firstName ?? ""} ${item.staff.lastName ?? ""}`.trim()
+          : undefined;
+        return {
+          date: n.startAt,
+          service: item?.service?.name,
+          staff,
+          priceCents:
+            typeof item?.price?.amount === "number"
+              ? Math.round(item.price.amount * 100)
+              : undefined,
+          status: n.state,
+        };
+      });
+      const lifetimeValueCents = visits
+        .filter((v) => /COMPLETED|CLOSED|PAID/i.test(v.status || ""))
+        .reduce((sum, v) => sum + (v.priceCents ?? 0), 0);
+
+      return {
+        clientId: node.id,
+        firstName: node.firstName,
+        lastName: node.lastName,
+        email: node.email,
+        visits,
+        lifetimeValueCents: lifetimeValueCents || undefined,
+      };
+    } catch (err) {
+      console.warn("BOULEVARD_HISTORY_ERR:", err);
+      return null;
+    }
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {
