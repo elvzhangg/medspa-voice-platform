@@ -160,7 +160,7 @@ export default function AssistantPage() {
         <div className="px-4 py-3 border-b border-gray-100">
           <button
             onClick={newConversation}
-            className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
+            className="w-full px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -181,7 +181,7 @@ export default function AssistantPage() {
                     onClick={() => loadConversation(c.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors ${
                       activeId === c.id
-                        ? "bg-indigo-50 text-indigo-700 font-medium"
+                        ? "bg-amber-50 text-amber-800 font-medium"
                         : "text-gray-600 hover:bg-gray-50"
                     }`}
                     title={c.title ?? "Untitled"}
@@ -200,7 +200,7 @@ export default function AssistantPage() {
         <div className="flex-1 overflow-y-auto px-8 py-8" ref={scrollRef}>
           {loadingConv ? (
             <div className="flex items-center justify-center py-24">
-              <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : messages.length === 0 ? (
             <EmptyState onSuggestion={(s) => setInput(s)} />
@@ -238,12 +238,12 @@ export default function AssistantPage() {
               }}
               rows={1}
               placeholder="Ask about a client, filter by tag, search across notes…"
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-sm resize-none"
+              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none text-sm resize-none"
             />
             <button
               onClick={send}
               disabled={!input.trim() || sending}
-              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+              className="px-5 py-3 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
             >
               Send
             </button>
@@ -260,7 +260,7 @@ export default function AssistantPage() {
 function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
   return (
     <div className="max-w-2xl mx-auto text-center pt-16">
-      <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl mx-auto mb-5 flex items-center justify-center">
+      <div className="w-14 h-14 bg-gradient-to-br from-zinc-900 to-amber-600 rounded-2xl mx-auto mb-5 flex items-center justify-center">
         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
@@ -274,7 +274,7 @@ function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
           <button
             key={s}
             onClick={() => onSuggestion(s)}
-            className="text-left px-4 py-3 bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/40 rounded-xl text-sm text-gray-700 transition-colors"
+            className="text-left px-4 py-3 bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50/40 rounded-xl text-sm text-gray-700 transition-colors"
           >
             {s}
           </button>
@@ -298,7 +298,7 @@ function MessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
+        <div className="bg-zinc-900 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
           {message.content}
         </div>
       </div>
@@ -307,7 +307,7 @@ function MessageBubble({
 
   return (
     <div className="flex gap-3">
-      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-zinc-900 to-amber-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
         AI
       </div>
       <div className="flex-1">

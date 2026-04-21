@@ -23,12 +23,12 @@ const PLATFORM_COLORS: Record<string, { bg: string; text: string; label: string 
   acuity: { bg: "bg-gray-900", text: "text-white", label: "Acuity" },
   mindbody: { bg: "bg-sky-100", text: "text-sky-800", label: "Mindbody" },
   square: { bg: "bg-emerald-100", text: "text-emerald-800", label: "Square" },
-  zenoti: { bg: "bg-purple-100", text: "text-purple-800", label: "Zenoti" },
+  zenoti: { bg: "bg-amber-100", text: "text-amber-800", label: "Zenoti" },
   vagaro: { bg: "bg-orange-100", text: "text-orange-800", label: "Vagaro" },
   jane: { bg: "bg-teal-100", text: "text-teal-800", label: "Jane" },
   wellnessliving: { bg: "bg-lime-100", text: "text-lime-800", label: "WellnessLiving" },
 };
-const AI_COLOR = { bg: "bg-indigo-100", text: "text-indigo-800", label: "AI booked" };
+const AI_COLOR = { bg: "bg-amber-100", text: "text-amber-900", label: "AI booked" };
 
 interface IntegrationStatus {
   platform: string | null;
@@ -201,7 +201,7 @@ export default function CalendarPage() {
 
       {/* Connect-your-platform banner — prominent CTA when no integration is connected */}
       {integration && integration.status !== "connected" && (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-8 shadow-lg">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-amber-600 to-amber-600 p-8 shadow-lg">
           <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
           <div className="absolute -left-8 -bottom-16 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
           <div className="relative flex items-start justify-between gap-6 flex-wrap">
@@ -221,7 +221,7 @@ export default function CalendarPage() {
             </div>
             <a
               href="mailto:founder@vauxvoice.com"
-              className="inline-flex items-center gap-2 px-5 py-3 bg-white text-indigo-700 text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-indigo-50 transition-colors shadow-sm shrink-0"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-white text-amber-800 text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-amber-50 transition-colors shadow-sm shrink-0"
             >
               Email founder@vauxvoice.com
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,7 +296,7 @@ export default function CalendarPage() {
                   <span
                     className={`inline-flex items-center justify-center text-xs font-bold ${
                       isToday
-                        ? "bg-indigo-600 text-white rounded-full w-6 h-6"
+                        ? "bg-zinc-900 text-white rounded-full w-6 h-6"
                         : inMonth
                         ? "text-gray-700 w-6 h-6"
                         : "text-gray-300 w-6 h-6"
@@ -318,7 +318,7 @@ export default function CalendarPage() {
                       <button
                         key={ev.id}
                         onClick={() => setSelected(ev)}
-                        className={`w-full text-left px-2 py-1 rounded-lg ${c.bg} ${c.text} text-[11px] font-semibold truncate hover:ring-2 hover:ring-offset-1 hover:ring-indigo-300 transition ${
+                        className={`w-full text-left px-2 py-1 rounded-lg ${c.bg} ${c.text} text-[11px] font-semibold truncate hover:ring-2 hover:ring-offset-1 hover:ring-amber-300 transition ${
                           cancelled ? "line-through opacity-60" : ""
                         }`}
                         title={`${formatTime(ev.start_time)} · ${ev.title}`}

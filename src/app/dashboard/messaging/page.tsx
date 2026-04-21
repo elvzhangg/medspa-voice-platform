@@ -28,7 +28,7 @@ function SectionCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-indigo-200 shadow-sm shadow-indigo-50" : "border-gray-200"}`}>
+    <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-amber-300 shadow-sm shadow-amber-50" : "border-gray-200"}`}>
       <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
         <div>
           <h2 className="font-semibold text-gray-900 text-sm">{title}</h2>
@@ -120,7 +120,7 @@ export default function MessagingPage() {
             </label>
             <textarea
               rows={3}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all resize-none"
               value={settings.sms_confirmation_message}
               onChange={(e) => set({ sms_confirmation_message: e.target.value })}
               placeholder="Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."
@@ -148,7 +148,7 @@ export default function MessagingPage() {
             <select
               value={settings.sms_reminder_hours}
               onChange={(e) => set({ sms_reminder_hours: parseInt(e.target.value) })}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
             >
               <option value={2}>2 hours before</option>
               <option value={12}>12 hours before</option>
@@ -163,7 +163,7 @@ export default function MessagingPage() {
             <textarea
               rows={3}
               placeholder="e.g. Reminder: You have an appointment at [Clinic] on [Date] at [Time]. Please avoid alcohol 24 hours prior."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all resize-none"
               value={settings.sms_reminder_template}
               onChange={(e) => set({ sms_reminder_template: e.target.value })}
             />
@@ -190,7 +190,7 @@ export default function MessagingPage() {
             <select
               value={settings.sms_followup_hours}
               onChange={(e) => set({ sms_followup_hours: parseInt(e.target.value) })}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
             >
               <option value={2}>2 hours after appointment</option>
               <option value={24}>24 hours after appointment</option>
@@ -204,7 +204,7 @@ export default function MessagingPage() {
             </label>
             <textarea
               rows={4}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all resize-none"
               value={settings.sms_followup_message}
               onChange={(e) => set({ sms_followup_message: e.target.value })}
               placeholder="Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results..."
@@ -228,7 +228,7 @@ export default function MessagingPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50 text-sm"
+            className="px-6 py-2.5 bg-zinc-900 text-white font-semibold rounded-lg hover:bg-zinc-800 shadow-sm transition-all disabled:opacity-50 text-sm"
           >
             {saving ? "Saving..." : "Save Messaging Preferences"}
           </button>

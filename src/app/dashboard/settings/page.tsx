@@ -98,7 +98,7 @@ export default function ClinicSetupPage() {
           title="Clinic Identity"
           subtitle="Who your AI says it represents."
           icon={
-            <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           }
@@ -108,7 +108,7 @@ export default function ClinicSetupPage() {
               type="text"
               value={identity.name}
               onChange={(e) => setIdentity({ ...identity, name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm"
             />
           </Field>
           <Field
@@ -119,7 +119,7 @@ export default function ClinicSetupPage() {
               rows={3}
               value={identity.directions_parking_info}
               onChange={(e) => setIdentity({ ...identity, directions_parking_info: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm resize-none"
               placeholder="e.g. We're at 123 Main St, on the 2nd floor. Free parking in the lot behind the building."
             />
           </Field>
@@ -129,7 +129,7 @@ export default function ClinicSetupPage() {
           title="Voice & Personality"
           subtitle="How your AI sounds and what it prioritizes."
           icon={
-            <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
           }
@@ -138,7 +138,7 @@ export default function ClinicSetupPage() {
             <select
               value={calls.ai_voice_id}
               onChange={(e) => setCalls({ ...calls, ai_voice_id: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm"
             >
               <option value="rachel">Rachel — Professional, warm</option>
               <option value="drew">Drew — Medical, direct</option>
@@ -153,7 +153,7 @@ export default function ClinicSetupPage() {
               rows={3}
               value={identity.greeting_message}
               onChange={(e) => setIdentity({ ...identity, greeting_message: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm resize-none"
               placeholder="Thank you for calling [Clinic]! I'm your AI receptionist. How can I help you today?"
             />
           </Field>
@@ -165,7 +165,7 @@ export default function ClinicSetupPage() {
               rows={5}
               value={identity.system_prompt_override}
               onChange={(e) => setIdentity({ ...identity, system_prompt_override: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm resize-none font-mono"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm resize-none font-mono"
               placeholder={`e.g.\n- Always emphasize our free consultation offer\n- Upsell our monthly membership plan to new callers\n- Do not discuss competitor pricing`}
             />
           </Field>
@@ -174,7 +174,7 @@ export default function ClinicSetupPage() {
         <Section
           title="Live Transfer"
           icon={
-            <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           }
@@ -188,7 +188,7 @@ export default function ClinicSetupPage() {
               placeholder="+1 (555) 000-0000"
               value={calls.voicemail_forwarding_number}
               onChange={(e) => setCalls({ ...calls, voicemail_forwarding_number: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm"
             />
           </Field>
         </Section>
@@ -197,7 +197,7 @@ export default function ClinicSetupPage() {
           title="Booking & Billing"
           subtitle="Rules the AI follows when securing an appointment or discussing payment."
           icon={
-            <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           }
@@ -229,7 +229,7 @@ export default function ClinicSetupPage() {
                     onChange={(e) =>
                       setIdentity({ ...identity, deposit_amount: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-32 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                    className="w-32 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm"
                   />
                 </div>
               )}
@@ -243,7 +243,7 @@ export default function ClinicSetupPage() {
               rows={4}
               value={identity.payment_policy_notes}
               onChange={(e) => setIdentity({ ...identity, payment_policy_notes: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all text-sm resize-none"
               placeholder={`e.g.\n- Mention CareCredit and Cherry financing for treatments over $500\n- Deposits are refundable with 24h notice\n- We accept HSA/FSA cards`}
             />
           </Field>
@@ -261,7 +261,7 @@ export default function ClinicSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50 text-sm"
+            className="px-6 py-2.5 bg-zinc-900 text-white font-semibold rounded-lg hover:bg-zinc-800 shadow-sm transition-all disabled:opacity-50 text-sm"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

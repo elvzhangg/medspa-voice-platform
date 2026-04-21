@@ -30,8 +30,8 @@ export default function CallRow({ call }: { call: CallLog }) {
       >
         <td className="px-5 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-indigo-50 rounded-full flex items-center justify-center shrink-0">
-              <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-7 h-7 bg-amber-50 rounded-full flex items-center justify-center shrink-0">
+              <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
             </div>
@@ -75,7 +75,7 @@ export default function CallRow({ call }: { call: CallLog }) {
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-indigo-50/60 border-b border-indigo-100">
+        <tr className="bg-amber-50/60 border-b border-amber-200">
           <td colSpan={5} className="px-5 py-5">
             <div className="space-y-4 max-w-3xl">
               {call.summary && (
@@ -91,7 +91,7 @@ export default function CallRow({ call }: { call: CallLog }) {
                   <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                     Transcript
                   </p>
-                  <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-white rounded-lg border border-indigo-100 p-4 max-h-52 overflow-y-auto font-sans leading-relaxed">
+                  <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-white rounded-lg border border-amber-200 p-4 max-h-52 overflow-y-auto font-sans leading-relaxed">
                     {call.transcript}
                   </pre>
                 </div>

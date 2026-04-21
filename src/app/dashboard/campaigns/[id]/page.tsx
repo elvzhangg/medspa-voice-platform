@@ -100,7 +100,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           </button>
           <button 
             onClick={triggerCalls}
-            className="px-6 py-2 bg-indigo-600 text-white font-black rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-100 uppercase tracking-widest text-xs"
+            className="px-6 py-2 bg-zinc-900 text-white font-black rounded-lg hover:bg-zinc-800 shadow-lg shadow-amber-100 uppercase tracking-widest text-xs"
           >
             🚀 Start sequence
           </button>
@@ -108,18 +108,18 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {isUploading && (
-        <div className="mb-8 bg-indigo-50 p-8 rounded-2xl border-2 border-dashed border-indigo-200 text-center">
-          <h2 className="text-lg font-bold text-indigo-900 mb-2">Upload Lead List (CSV)</h2>
-          <p className="text-xs text-indigo-600 mb-6 font-medium">Format: first_name, last_name, phone_number</p>
+        <div className="mb-8 bg-amber-50 p-8 rounded-2xl border-2 border-dashed border-amber-300 text-center">
+          <h2 className="text-lg font-bold text-amber-900 mb-2">Upload Lead List (CSV)</h2>
+          <p className="text-xs text-amber-700 mb-6 font-medium">Format: first_name, last_name, phone_number</p>
           <form onSubmit={handleUpload} className="space-y-4">
             <input 
               type="file" 
               accept=".csv"
               onChange={e => setFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-zinc-900 file:text-white hover:file:bg-zinc-800 cursor-pointer"
             />
             <div className="flex justify-center gap-2">
-              <button type="submit" className="px-8 py-2 bg-indigo-600 text-white rounded-lg font-bold">Upload leads</button>
+              <button type="submit" className="px-8 py-2 bg-zinc-900 text-white rounded-lg font-bold">Upload leads</button>
               <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-gray-500">Cancel</button>
             </div>
             {uploadError && (
@@ -146,7 +146,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${
                     lead.status === 'booked' ? 'bg-emerald-100 text-emerald-700' : 
-                    lead.status === 'pending' ? 'bg-gray-100 text-gray-500' : 'bg-indigo-100 text-indigo-700'
+                    lead.status === 'pending' ? 'bg-gray-100 text-gray-500' : 'bg-amber-100 text-amber-800'
                   }`}>
                     {lead.status}
                   </span>

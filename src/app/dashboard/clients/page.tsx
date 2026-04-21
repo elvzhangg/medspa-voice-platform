@@ -86,13 +86,13 @@ export default function ClientsPage() {
           placeholder="Search name, phone, email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-72 px-3.5 py-2 text-sm rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+          className="w-72 px-3.5 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
         />
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 text-center py-20">
@@ -123,7 +123,7 @@ export default function ClientsPage() {
               {filtered.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-gray-50 hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                  className="border-b border-gray-50 hover:bg-amber-50/40 cursor-pointer transition-colors"
                   onClick={() => setSelected(c)}
                 >
                   <td className="px-5 py-3.5 font-medium text-gray-900">{displayName(c)}</td>
@@ -137,7 +137,7 @@ export default function ClientsPage() {
                       {(c.tags || []).slice(0, 3).map((t) => (
                         <span
                           key={t}
-                          className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] rounded-full"
+                          className="px-2 py-0.5 bg-amber-50 text-amber-800 text-[11px] rounded-full"
                         >
                           {t}
                         </span>
@@ -244,7 +244,7 @@ function ClientDrawer({
       <div className="w-[520px] bg-white shadow-2xl overflow-y-auto">
         {!profile ? (
           <div className="flex items-center justify-center h-full">
-            <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <div className="p-6 space-y-6">
@@ -273,16 +273,16 @@ function ClientDrawer({
               />
             </div>
 
-            <section className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-4">
+            <section className="bg-gradient-to-br from-amber-50 to-amber-50 border border-amber-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                <h3 className="text-xs font-bold text-indigo-900 uppercase tracking-widest">
+                <h3 className="text-xs font-bold text-amber-900 uppercase tracking-widest">
                   Before you see them
                 </h3>
                 {brief && !brief.cold_start && brief.source_call_ids.length > 0 && (
-                  <span className="ml-auto text-[10px] text-indigo-400 font-medium">
+                  <span className="ml-auto text-[10px] text-amber-500 font-medium">
                     from {brief.source_call_ids.length} past call
                     {brief.source_call_ids.length === 1 ? "" : "s"}
                   </span>
@@ -290,8 +290,8 @@ function ClientDrawer({
               </div>
               {briefLoading ? (
                 <div className="flex items-center gap-2 py-2">
-                  <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-indigo-400 italic">Reading their history…</span>
+                  <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-amber-500 italic">Reading their history…</span>
                 </div>
               ) : brief ? (
                 <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
@@ -338,7 +338,7 @@ function ClientDrawer({
                   value={form.staff_notes ?? ""}
                   onChange={(e) => setForm({ ...form, staff_notes: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none resize-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none resize-none"
                   placeholder="e.g. allergic to lidocaine, prefers texts over calls…"
                 />
               </div>
@@ -347,7 +347,7 @@ function ClientDrawer({
                 <input
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
                   placeholder="VIP, new patient, Botox regular"
                 />
               </div>
@@ -368,7 +368,7 @@ function ClientDrawer({
               ) : (
                 <ul className="space-y-1.5 max-h-52 overflow-y-auto">
                   {audit.map((u, i) => (
-                    <li key={i} className="text-xs text-gray-600 border-l-2 border-indigo-100 pl-3 py-0.5">
+                    <li key={i} className="text-xs text-gray-600 border-l-2 border-amber-200 pl-3 py-0.5">
                       <span className="font-semibold text-gray-700">{u.field}</span>:{" "}
                       <span className="text-gray-400 line-through">{u.old_value || "∅"}</span> →{" "}
                       <span className="text-gray-800">{u.new_value || "∅"}</span>
@@ -385,7 +385,7 @@ function ClientDrawer({
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
@@ -427,7 +427,7 @@ function Field({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
       />
     </div>
   );

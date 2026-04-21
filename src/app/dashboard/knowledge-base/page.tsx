@@ -19,7 +19,7 @@ const CATEGORY_COLORS: Record<Category, string> = {
   pricing: "bg-green-100 text-green-700",
   billing: "bg-amber-100 text-amber-700",
   policies: "bg-orange-100 text-orange-700",
-  faq: "bg-purple-100 text-purple-700",
+  faq: "bg-amber-100 text-amber-700",
   general: "bg-gray-100 text-gray-600",
 };
 
@@ -113,7 +113,7 @@ export default function KnowledgeBasePage() {
         </div>
         <button
           onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+          className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
         >
           + Add Document
         </button>
@@ -121,7 +121,7 @@ export default function KnowledgeBasePage() {
 
       {/* Add Document Form */}
       {showAddForm && (
-        <div className="bg-white rounded-xl border border-indigo-200 p-6 mb-8 shadow-sm">
+        <div className="bg-white rounded-xl border border-amber-300 p-6 mb-8 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-4">New Document</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -131,7 +131,7 @@ export default function KnowledgeBasePage() {
                   type="text"
                   value={addForm.title}
                   onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   placeholder="e.g. Botox Pricing"
                   required
                 />
@@ -141,7 +141,7 @@ export default function KnowledgeBasePage() {
                 <select
                   value={addForm.category}
                   onChange={(e) => setAddForm({ ...addForm, category: e.target.value as Category })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
@@ -155,7 +155,7 @@ export default function KnowledgeBasePage() {
                 value={addForm.content}
                 onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
                 rows={5}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
                 placeholder="Write the information your AI should know..."
                 required
               />
@@ -164,7 +164,7 @@ export default function KnowledgeBasePage() {
               <button
                 type="submit"
                 disabled={addSaving}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors"
               >
                 {addSaving ? "Saving..." : "Save Document"}
               </button>
@@ -183,7 +183,7 @@ export default function KnowledgeBasePage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : docs.length === 0 ? (
         <div className="text-center py-20">
@@ -194,7 +194,7 @@ export default function KnowledgeBasePage() {
           </p>
           <button
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
           >
             + Add your first document
           </button>
@@ -295,7 +295,7 @@ function DocCard({
 
   if (isEditing) {
     return (
-      <div className="bg-white rounded-xl border border-indigo-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-amber-300 p-5 shadow-sm">
         <form onSubmit={onEditSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -304,7 +304,7 @@ function DocCard({
                 type="text"
                 value={editForm.title}
                 onChange={(e) => onEditFormChange({ ...editForm, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 required
               />
             </div>
@@ -313,7 +313,7 @@ function DocCard({
               <select
                 value={editForm.category}
                 onChange={(e) => onEditFormChange({ ...editForm, category: e.target.value as Category })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
@@ -327,7 +327,7 @@ function DocCard({
               value={editForm.content}
               onChange={(e) => onEditFormChange({ ...editForm, content: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               required
             />
           </div>
@@ -335,7 +335,7 @@ function DocCard({
             <button
               type="submit"
               disabled={editSaving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors"
             >
               {editSaving ? "Saving..." : "Save Changes"}
             </button>

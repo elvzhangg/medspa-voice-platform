@@ -134,11 +134,11 @@ export default function SidebarNav({ brandPrefix }: { brandPrefix: string }) {
             href={item.href}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
               isActive
-                ? "bg-indigo-50 text-indigo-700"
+                ? "bg-amber-50 text-amber-800"
                 : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
             }`}
           >
-            <span className={`transition-colors ${isActive ? "text-indigo-500" : "text-gray-400"}`}>
+            <span className={`transition-colors ${isActive ? "text-amber-600" : "text-gray-400"}`}>
               {item.icon}
             </span>
             {item.label}

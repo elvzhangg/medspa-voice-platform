@@ -55,24 +55,24 @@ export default function CampaignsPage() {
         </div>
         <button 
           onClick={() => setIsCreating(true)}
-          className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 flex items-center gap-2"
+          className="px-4 py-2 bg-zinc-900 text-white font-bold rounded-lg hover:bg-zinc-800 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
         >
           <span>+</span> New Campaign
         </button>
       </div>
 
       {isCreating && (
-        <div className="mb-8 bg-white p-6 rounded-xl border-2 border-indigo-100 shadow-sm">
+        <div className="mb-8 bg-white p-6 rounded-xl border-2 border-amber-200 shadow-sm">
           <h2 className="text-lg font-bold mb-4">Create Campaign</h2>
           <form onSubmit={handleCreate} className="flex gap-4">
             <input 
               placeholder="Campaign Name (e.g. Lip Flip Follow-up)" 
-              className="flex-1 px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
               value={newCampaignName}
               onChange={e => setNewCampaignName(e.target.value)}
               required
             />
-            <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold">Create</button>
+            <button type="submit" className="px-6 py-2 bg-zinc-900 text-white rounded-lg font-bold">Create</button>
             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-500">Cancel</button>
           </form>
         </div>
@@ -82,10 +82,10 @@ export default function CampaignsPage() {
         <p className="text-gray-400">Loading campaigns...</p>
       ) : campaigns.length === 0 ? (
         <div className="bg-white p-16 rounded-xl border border-gray-200 text-center">
-          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+          <div className="w-16 h-16 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">No campaigns found</h3>
           <p className="text-gray-500 text-sm mb-6">Create your first outbound campaign to start automating your follow-ups.</p>
-          <button onClick={() => setIsCreating(true)} className="text-indigo-600 font-bold hover:underline">Start a campaign →</button>
+          <button onClick={() => setIsCreating(true)} className="text-amber-700 font-bold hover:underline">Start a campaign →</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -112,13 +112,13 @@ export default function CampaignsPage() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Booked</p>
-                    <p className="text-xl font-black text-indigo-600">{cp.successful_bookings}</p>
+                    <p className="text-xl font-black text-amber-700">{cp.successful_bookings}</p>
                   </div>
                 </div>
 
                 <Link
                   href={`/dashboard/campaigns/${cp.id}`}
-                  className="block w-full text-center py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100"
+                  className="block w-full text-center py-2 bg-zinc-900 text-white rounded-lg text-sm font-bold hover:bg-zinc-800 transition-all shadow-sm shadow-amber-100"
                 >
                   Open Campaign
                 </Link>

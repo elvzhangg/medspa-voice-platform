@@ -18,7 +18,7 @@ interface Referral {
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   completed: "bg-green-100 text-green-700",
-  rewarded: "bg-purple-100 text-purple-700",
+  rewarded: "bg-amber-100 text-amber-700",
 };
 
 const SOURCE_STYLES: Record<string, string> = {
@@ -110,7 +110,7 @@ export default function ReferralsPage() {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2 bg-zinc-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -125,7 +125,7 @@ export default function ReferralsPage() {
           { label: "Total", value: stats.total, color: "text-gray-900" },
           { label: "Pending", value: stats.pending, color: "text-yellow-600" },
           { label: "Completed", value: stats.completed, color: "text-green-600" },
-          { label: "Rewarded", value: stats.rewarded, color: "text-purple-600" },
+          { label: "Rewarded", value: stats.rewarded, color: "text-amber-600" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{s.label}</p>
@@ -147,7 +147,7 @@ export default function ReferralsPage() {
                   value={form.referred_by_name}
                   onChange={(e) => setForm({ ...form, referred_by_name: e.target.value })}
                   placeholder="Sarah Johnson"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
@@ -157,7 +157,7 @@ export default function ReferralsPage() {
                   value={form.referred_by_phone}
                   onChange={(e) => setForm({ ...form, referred_by_phone: e.target.value })}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
@@ -167,7 +167,7 @@ export default function ReferralsPage() {
                   value={form.new_patient_name}
                   onChange={(e) => setForm({ ...form, new_patient_name: e.target.value })}
                   placeholder="Alex Smith"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
@@ -177,7 +177,7 @@ export default function ReferralsPage() {
                   value={form.new_patient_phone}
                   onChange={(e) => setForm({ ...form, new_patient_phone: e.target.value })}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
@@ -185,7 +185,7 @@ export default function ReferralsPage() {
                 <select
                   value={form.source}
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="manual">Manual Entry</option>
                   <option value="phone">Phone Call</option>
@@ -199,7 +199,7 @@ export default function ReferralsPage() {
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   placeholder="Optional notes..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function ReferralsPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-indigo-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="bg-zinc-900 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-50"
               >
                 {submitting ? "Saving..." : "Save Referral"}
               </button>
@@ -289,7 +289,7 @@ export default function ReferralsPage() {
                         {r.status === "completed" && (
                           <button
                             onClick={() => updateStatus(r.id, "rewarded")}
-                            className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                            className="text-xs text-amber-600 hover:text-amber-700 font-medium"
                           >
                             Reward
                           </button>

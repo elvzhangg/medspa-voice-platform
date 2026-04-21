@@ -103,14 +103,14 @@ export default function ProvidersPage() {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 flex items-center gap-2"
+          className="px-4 py-2 bg-zinc-900 text-white font-bold rounded-lg hover:bg-zinc-800 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
         >
           <span>+</span> Add Provider
         </button>
       </div>
 
       {isAdding && (
-        <div className="mb-8 bg-white p-6 rounded-xl border-2 border-indigo-100 shadow-sm">
+        <div className="mb-8 bg-white p-6 rounded-xl border-2 border-amber-200 shadow-sm">
           <h2 className="text-lg font-bold mb-4">New Provider</h2>
           <form onSubmit={handleAddStaff} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
@@ -152,7 +152,7 @@ export default function ProvidersPage() {
               >
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm">
+              <button type="submit" className="px-6 py-2 bg-zinc-900 text-white rounded-lg font-bold text-sm">
                 Save Provider
               </button>
             </div>
@@ -224,7 +224,7 @@ function ProviderCard({
       }`}
     >
       <div className="flex items-start gap-4 mb-4">
-        <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
+        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-700 font-bold text-lg shrink-0">
           {member.name.charAt(0)}
         </div>
         <div className="flex-1 min-w-0">
@@ -241,7 +241,7 @@ function ProviderCard({
               </span>
             )}
           </div>
-          {member.title && <p className="text-sm text-indigo-600 font-medium">{member.title}</p>}
+          {member.title && <p className="text-sm text-amber-700 font-medium">{member.title}</p>}
           {member.services && member.services.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {member.services.map((s) => (

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { CHAT_TOOL_DEFINITIONS, runTool, type ToolSource } from "./chat-tools";
+
+type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 /**
  * Staff chat engine — one loop that lets the LLM choose tools, grounded
