@@ -92,7 +92,7 @@ export default function ClientsPage() {
 
  {loading ? (
  <div className="flex items-center justify-center py-24">
- <div className="w-5 h-5 border-2 border-stone-700 border-t-transparent rounded-full animate-spin" />
+ <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
  </div>
  ) : filtered.length === 0 ? (
  <div className="bg-white rounded-xl border border-gray-200 text-center py-20">
@@ -244,7 +244,7 @@ function ClientDrawer({
  <div className="w-[520px] bg-white shadow-2xl overflow-y-auto">
  {!profile ? (
  <div className="flex items-center justify-center h-full">
- <div className="w-5 h-5 border-2 border-stone-700 border-t-transparent rounded-full animate-spin" />
+ <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
  </div>
  ) : (
  <div className="p-6 space-y-6">
@@ -385,7 +385,7 @@ function ClientDrawer({
  <button
  onClick={save}
  disabled={saving}
- className="flex-1 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+ className="flex-1 px-4 py-2.5 bg-amber-400 hover:bg-amber-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
  >
  {saving ?"Saving…" :"Save changes"}
  </button>

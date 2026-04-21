@@ -100,7 +100,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
  </button>
  <button 
  onClick={triggerCalls}
- className="px-6 py-2 bg-stone-700 text-white font-semibold rounded-lg hover:bg-stone-600 shadow-lg shadow-amber-100 text-xs"
+ className="px-6 py-2 bg-amber-400 text-amber-900 font-semibold rounded-lg hover:bg-amber-500 shadow-lg shadow-amber-100 text-xs"
  >
  🚀 Start sequence
  </button>
@@ -116,10 +116,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
  type="file" 
  accept=".csv"
  onChange={e => setFile(e.target.files?.[0] || null)}
- className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-700 file:text-white hover:file:bg-stone-700 cursor-pointer"
+ className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-400 file:text-white hover:file:bg-amber-400 cursor-pointer"
  />
  <div className="flex justify-center gap-2">
- <button type="submit" className="px-8 py-2 bg-stone-700 text-white rounded-lg font-bold">Upload leads</button>
+ <button type="submit" className="px-8 py-2 bg-amber-400 text-amber-900 rounded-lg font-bold">Upload leads</button>
  <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-gray-500">Cancel</button>
  </div>
  {uploadError && (

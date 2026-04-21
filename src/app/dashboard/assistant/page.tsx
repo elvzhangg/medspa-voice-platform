@@ -160,7 +160,7 @@ export default function AssistantPage() {
  <div className="px-4 py-3 border-b border-gray-100">
  <button
  onClick={newConversation}
- className="w-full px-3 py-2 bg-stone-700 hover:bg-stone-600 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
+ className="w-full px-3 py-2 bg-amber-400 hover:bg-amber-500 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
  >
  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -200,7 +200,7 @@ export default function AssistantPage() {
  <div className="flex-1 overflow-y-auto px-8 py-8" ref={scrollRef}>
  {loadingConv ? (
  <div className="flex items-center justify-center py-24">
- <div className="w-5 h-5 border-2 border-stone-700 border-t-transparent rounded-full animate-spin" />
+ <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
  </div>
  ) : messages.length === 0 ? (
  <EmptyState onSuggestion={(s) => setInput(s)} />
@@ -243,7 +243,7 @@ export default function AssistantPage() {
  <button
  onClick={send}
  disabled={!input.trim() || sending}
- className="px-5 py-3 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+ className="px-5 py-3 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
  >
  Send
  </button>
@@ -260,7 +260,7 @@ export default function AssistantPage() {
 function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
  return (
  <div className="max-w-2xl mx-auto text-center pt-16">
- <div className="w-14 h-14 bg-gradient-to-br from-stone-700 to-stone-700 rounded-2xl mx-auto mb-5 flex items-center justify-center">
+ <div className="w-14 h-14 bg-gradient-to-br from-amber-300 to-amber-500 rounded-2xl mx-auto mb-5 flex items-center justify-center">
  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
  </svg>
@@ -298,7 +298,7 @@ function MessageBubble({
  if (message.role ==="user") {
  return (
  <div className="flex justify-end">
- <div className="bg-stone-700 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
+ <div className="bg-amber-400 text-amber-900 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
  {message.content}
  </div>
  </div>
@@ -307,7 +307,7 @@ function MessageBubble({
 
  return (
  <div className="flex gap-3">
- <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-stone-700 to-stone-700 rounded-full flex items-center justify-center text-white text-xs font-bold">
+ <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
  AI
  </div>
  <div className="flex-1">
