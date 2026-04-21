@@ -394,13 +394,16 @@ export async function runTool(
   args: Record<string, unknown>
 ): Promise<{ result: unknown; sources: ToolSource[]; error?: string }> {
   try {
+    // Cast via unknown — the OpenAI tool runtime hands us a free-shape
+    // Record and the model is responsible for populating the right fields.
+    // Each tool implementation validates its own required inputs.
     switch (name) {
       case "get_client_context":
-        return await getClientContext(tenantId, args as GetClientContextArgs);
+        return await getClientContext(tenantId, args as unknown as GetClientContextArgs);
       case "filter_clients":
-        return await filterClients(tenantId, args as FilterClientsArgs);
+        return await filterClients(tenantId, args as unknown as FilterClientsArgs);
       case "search_clients_by_keyword":
-        return await searchClientsByKeyword(tenantId, args as SearchClientsArgs);
+        return await searchClientsByKeyword(tenantId, args as unknown as SearchClientsArgs);
       default:
         return {
           result: null,
