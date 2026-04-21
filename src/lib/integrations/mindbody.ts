@@ -7,6 +7,7 @@ import type {
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -176,6 +177,47 @@ const adapter: BookingAdapter = {
       staffId: it.Staff?.Id ? String(it.Staff.Id) : staffId ? String(staffId) : undefined,
       staffName: it.Staff?.Name,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    // /staff/staff returns active staff for the site (scoped to LocationId
+    // when supplied). Mindbody also has /staff/staffpermissions but we
+    // don't need that detail — just name + title.
+    const locationId = ctx.config.location_id;
+    const path = locationId
+      ? `/staff/staff?LocationId=${encodeURIComponent(locationId)}&Limit=200`
+      : "/staff/staff?Limit=200";
+
+    interface MbStaffRow {
+      Id: number;
+      FirstName?: string;
+      LastName?: string;
+      Name?: string;
+      Bio?: string;
+      AlwaysAllowDoubleBooking?: boolean;
+      IsIndependentContractor?: boolean;
+      Active?: boolean;
+      /** Mindbody returns a JobTitles array per staffer */
+      JobTitles?: Array<{ Name?: string }>;
+    }
+    const res = await mbFetch<{ StaffMembers?: MbStaffRow[] }>(ctx, path);
+    const rows = res?.StaffMembers ?? [];
+
+    return rows
+      .map((s) => {
+        const name =
+          s.Name?.trim() ||
+          `${s.FirstName ?? ""} ${s.LastName ?? ""}`.trim();
+        if (!name) return null;
+        const title = s.JobTitles?.[0]?.Name;
+        return {
+          externalId: String(s.Id),
+          name,
+          title,
+          active: s.Active !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {

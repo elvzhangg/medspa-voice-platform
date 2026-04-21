@@ -7,6 +7,7 @@ import type {
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -158,6 +159,47 @@ const adapter: BookingAdapter = {
       serviceId: bookingId,
       staffId: therapistId,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const centerId = ctx.config.center_id;
+    if (!centerId) return [];
+
+    interface ZenotiTherapistRow {
+      id: string;
+      display_name?: string;
+      first_name?: string;
+      last_name?: string;
+      designation?: string;     // Zenoti's term for job title
+      is_active?: boolean;
+      job_title?: string;
+      services?: Array<{ name?: string }>;
+    }
+    const res = await zFetch<{ therapists?: ZenotiTherapistRow[] }>(
+      ctx,
+      `/centers/${centerId}/therapists?size=200`
+    );
+    const rows = res?.therapists ?? [];
+
+    return rows
+      .map((t) => {
+        const name =
+          t.display_name?.trim() ||
+          `${t.first_name ?? ""} ${t.last_name ?? ""}`.trim();
+        if (!name) return null;
+        const title = t.job_title || t.designation;
+        const services = t.services
+          ?.map((s) => s.name)
+          .filter((n): n is string => Boolean(n));
+        return {
+          externalId: t.id,
+          name,
+          title,
+          services: services?.length ? services : undefined,
+          active: t.is_active !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {

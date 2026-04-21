@@ -7,6 +7,7 @@ import type {
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -140,6 +141,20 @@ const adapter: BookingAdapter = {
       startTime: t.time,
       serviceId: String(matchedType.id),
       staffId: t.calendarID ? String(t.calendarID) : calendarID ? String(calendarID) : undefined,
+    }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    // Acuity models providers as "calendars" — one per staff member.
+    // /calendars returns id, name, email; working hours aren't exposed
+    // via the public API at the calendar level, so we leave workingHours
+    // undefined and rely on tenant-entered hours in our staff table.
+    const calendars = await acuityFetch<AcuityCalendar[]>(ctx, "/calendars");
+    if (!Array.isArray(calendars)) return [];
+    return calendars.map((c) => ({
+      externalId: String(c.id),
+      name: c.name,
+      active: true,
     }));
   },
 

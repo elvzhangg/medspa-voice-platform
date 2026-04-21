@@ -7,6 +7,7 @@ import type {
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -231,6 +232,78 @@ const adapter: BookingAdapter = {
       customerPhone: payload.data?.client?.mobilePhone,
       cancelled: eventType === "appointment.cancelled",
     };
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const locationId = ctx.config.location_id;
+    if (!locationId) return [];
+
+    // Boulevard Staff query — firstName/lastName + jobTitle, plus the
+    // services they can perform and a weekly schedule block. Field names
+    // mirror their public GraphQL SDL; if a field is missing from a given
+    // tenant's schema we simply leave it undefined (sync handles partials).
+    const q = `
+      query($locationId: ID!) {
+        staff(locationId: $locationId, first: 200) {
+          edges {
+            node {
+              id
+              firstName
+              lastName
+              jobTitle
+              active
+              services(first: 100) { edges { node { name } } }
+              schedule {
+                monday    { openTime closeTime }
+                tuesday   { openTime closeTime }
+                wednesday { openTime closeTime }
+                thursday  { openTime closeTime }
+                friday    { openTime closeTime }
+                saturday  { openTime closeTime }
+                sunday    { openTime closeTime }
+              }
+            }
+          }
+        }
+      }`;
+    type StaffNode = {
+      id: string;
+      firstName?: string;
+      lastName?: string;
+      jobTitle?: string;
+      active?: boolean;
+      services?: { edges: Array<{ node: { name?: string } }> };
+      schedule?: Record<string, { openTime?: string; closeTime?: string } | null>;
+    };
+    const res = await graphql<{ staff: { edges: Array<{ node: StaffNode }> } }>(ctx, q, { locationId });
+    if (res.errors?.length) {
+      throw new Error("Boulevard staff query: " + res.errors.map((e) => e.message).join("; "));
+    }
+    const edges = res.data?.staff?.edges ?? [];
+
+    return edges
+      .map(({ node: s }) => {
+        const name = `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim();
+        if (!name) return null;
+        const services = s.services?.edges
+          ?.map((e) => e.node.name)
+          .filter((n): n is string => Boolean(n));
+        const workingHours: Record<string, { open: string; close: string }> = {};
+        for (const [day, block] of Object.entries(s.schedule ?? {})) {
+          if (block?.openTime && block?.closeTime) {
+            workingHours[day] = { open: block.openTime, close: block.closeTime };
+          }
+        }
+        return {
+          externalId: s.id,
+          name,
+          title: s.jobTitle,
+          services: services?.length ? services : undefined,
+          workingHours: Object.keys(workingHours).length ? workingHours : undefined,
+          active: s.active !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async getClientHistory(ctx, { phone }) {

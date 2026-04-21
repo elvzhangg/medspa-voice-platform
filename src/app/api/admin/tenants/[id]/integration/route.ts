@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { syncProvidersForTenant } from "@/lib/provider-sync";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -113,6 +114,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       console.error("INTEGRATION_UPSERT_ERR:", iErr);
       return NextResponse.json({ error: "Failed to save integration" }, { status: 500 });
     }
+  }
+
+  // Fire-and-forget roster sync when the admin flips status to 'connected'.
+  // Don't block the response — initial sync can take a few seconds against
+  // a platform with many staff. Errors are logged by provider-sync itself.
+  if (status === "connected") {
+    void syncProvidersForTenant(id).catch((err) => {
+      console.error("PROVIDER_SYNC_ON_CONNECT_ERR:", id, err);
+    });
   }
 
   return NextResponse.json({ ok: true });

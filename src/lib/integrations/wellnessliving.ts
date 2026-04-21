@@ -5,6 +5,7 @@ import type {
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -151,6 +152,40 @@ const adapter: BookingAdapter = {
       serviceId: svc.id,
       staffId: s.staff_id || staffId,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const businessId = ctx.config.business_id;
+    if (!businessId) return [];
+
+    interface WlStaffRow {
+      id: string;
+      first_name?: string;
+      last_name?: string;
+      display_name?: string;
+      title?: string;
+      is_active?: boolean;
+    }
+    const res = await wlFetch<{ staff?: WlStaffRow[] }>(
+      ctx,
+      `/business/${businessId}/staff`
+    );
+    const rows = res?.staff ?? [];
+
+    return rows
+      .map((s) => {
+        const name =
+          s.display_name?.trim() ||
+          `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim();
+        if (!name) return null;
+        return {
+          externalId: s.id,
+          name,
+          title: s.title,
+          active: s.is_active !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {

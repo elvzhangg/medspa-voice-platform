@@ -4,6 +4,7 @@ import type {
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -142,6 +143,40 @@ const adapter: BookingAdapter = {
       serviceId: svc.id,
       staffId: o.staffId || staffId,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const businessId = ctx.config.business_id;
+    if (!businessId) return [];
+
+    interface VagaroStaffRow {
+      id: string;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+      title?: string;
+      isActive?: boolean;
+    }
+    const res = await vgFetch<{ staff?: VagaroStaffRow[] }>(
+      ctx,
+      `/businesses/${businessId}/staff`
+    );
+    const rows = res?.staff ?? [];
+
+    return rows
+      .map((s) => {
+        const name =
+          s.displayName?.trim() ||
+          `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim();
+        if (!name) return null;
+        return {
+          externalId: s.id,
+          name,
+          title: s.title,
+          active: s.isActive !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async bookAppointment(_ctx, _input: AdapterBookingInput): Promise<AdapterBookingResult> {

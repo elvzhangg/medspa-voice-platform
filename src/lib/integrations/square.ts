@@ -7,6 +7,7 @@ import type {
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -179,6 +180,52 @@ const adapter: BookingAdapter = {
       serviceId: variation.id,
       staffId: a.appointment_segments?.[0]?.team_member_id,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const locationId = ctx.config.location_id;
+    if (!locationId) return [];
+
+    // /team-members/search returns active + (optionally) inactive members.
+    // We filter to ACTIVE here — inactive team members are typically
+    // former staff and shouldn't clutter the AI's roster.
+    interface SqTeamMemberRow {
+      id: string;
+      given_name?: string;
+      family_name?: string;
+      display_name?: string;
+      is_owner?: boolean;
+      status?: "ACTIVE" | "INACTIVE";
+      /** Square stores per-location assignments + job titles under assigned_locations */
+      assigned_locations?: { location_ids?: string[] };
+    }
+    const res = await sqFetch<{ team_members?: SqTeamMemberRow[] }>(ctx, "/team-members/search", {
+      method: "POST",
+      body: JSON.stringify({
+        query: {
+          filter: {
+            location_ids: [locationId],
+            status: "ACTIVE",
+          },
+        },
+        limit: 200,
+      }),
+    });
+    const members = res?.team_members ?? [];
+
+    return members
+      .map((m) => {
+        const name =
+          m.display_name?.trim() ||
+          `${m.given_name ?? ""} ${m.family_name ?? ""}`.trim();
+        if (!name) return null;
+        return {
+          externalId: m.id,
+          name,
+          active: m.status !== "INACTIVE",
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {

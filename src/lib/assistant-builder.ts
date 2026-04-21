@@ -2,6 +2,72 @@ import { Tenant, TransientAssistantConfig, VapiTool } from "@/types";
 import { searchKnowledgeBase, formatKBContext } from "./knowledge-base";
 import { lookupCaller, buildCallerContext, ClientProfile } from "./client-intelligence";
 import { isProfileStale, syncClientFromPlatformBackground } from "./client-sync";
+import { supabaseAdmin } from "./supabase";
+
+const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAY_LABELS: Record<string, string> = {
+  monday: "Mon", tuesday: "Tue", wednesday: "Wed",
+  thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun",
+};
+
+interface StaffRow {
+  name: string;
+  title: string | null;
+  services: string[] | null;
+  specialties: string[] | null;
+  ai_notes: string | null;
+  working_hours: Record<string, { open: string; close: string }> | null;
+}
+
+/**
+ * Fetch the tenant's active roster and format it as a system-prompt block.
+ * Returns empty string when the tenant has no staff configured — the AI
+ * then falls back to the generic "ask the caller" flow.
+ */
+async function buildProviderRoster(tenantId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("staff")
+    .select("name, title, services, specialties, ai_notes, working_hours")
+    .eq("tenant_id", tenantId)
+    .eq("active", true)
+    .order("name");
+
+  const rows = (data ?? []) as StaffRow[];
+  if (rows.length === 0) return "";
+
+  const lines = rows.map((s) => {
+    const parts: string[] = [`- ${s.name}`];
+    if (s.title) parts.push(` — ${s.title}`);
+
+    // Specialty tags get inline emphasis, services roll into the sentence.
+    const tags = s.specialties?.filter(Boolean) ?? [];
+    if (tags.length) parts.push(` (specializes in ${tags.join(", ")})`);
+
+    // Collapse working_hours into a compact "Mon–Thu 9–5, Sat 10–2" style string.
+    const hours = s.working_hours;
+    if (hours) {
+      const segments: string[] = [];
+      for (const day of DAY_ORDER) {
+        const block = hours[day];
+        if (block?.open && block?.close) {
+          segments.push(`${DAY_LABELS[day]} ${block.open}–${block.close}`);
+        }
+      }
+      if (segments.length) parts.push(`. Works ${segments.join(", ")}`);
+    }
+
+    if (s.ai_notes?.trim()) parts.push(`. ${s.ai_notes.trim()}`);
+
+    return parts.join("");
+  });
+
+  return `
+## Providers at this clinic
+${lines.join("\n")}
+
+When callers ask "who works there?" or "who do you have for [service]?", answer using the roster above. Match callers to providers based on specialty and notes when helpful (e.g. suggest a provider who specializes in what they need). Only filter availability by a specific provider via get_available_slots when the caller names one.
+`;
+}
 
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
@@ -35,7 +101,12 @@ export async function buildAssistantConfig(
     firstMessage = `Hi ${callerProfile.first_name}, welcome back to ${tenant.name}! How can I help you today?`;
   }
 
-  const systemPrompt = buildSystemPrompt(tenant, "", callerContext);
+  // Fetch the active staff roster — injected into the system prompt so the
+  // AI can introduce providers, answer "who's here?", and steer callers
+  // toward specialists based on ai_notes/specialties.
+  const providerRoster = await buildProviderRoster(tenant.id);
+
+  const systemPrompt = buildSystemPrompt(tenant, "", callerContext, providerRoster);
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
   const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
@@ -212,7 +283,12 @@ export async function buildAssistantConfig(
   };
 }
 
-function buildSystemPrompt(tenant: Tenant, kbContext: string, callerContext: string = ""): string {
+function buildSystemPrompt(
+  tenant: Tenant,
+  kbContext: string,
+  callerContext: string = "",
+  providerRoster: string = ""
+): string {
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -298,7 +374,7 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 
 ## Current Time
 ${timeStr} (Pacific Time)
-${callerContext}
+${callerContext}${providerRoster}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}

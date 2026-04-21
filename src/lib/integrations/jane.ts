@@ -4,6 +4,7 @@ import type {
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterProvider,
   BookingAdapter,
 } from "./types";
 
@@ -140,6 +141,40 @@ const adapter: BookingAdapter = {
       serviceId: treatment.id,
       staffId: o.practitioner_id || practitionerId,
     }));
+  },
+
+  async listProviders(ctx): Promise<AdapterProvider[]> {
+    const clinicId = ctx.config.clinic_id;
+    if (!clinicId) return [];
+
+    interface JanePractitionerRow {
+      id: string;
+      first_name?: string;
+      last_name?: string;
+      full_name?: string;
+      title?: string;
+      is_active?: boolean;
+    }
+    const res = await janeFetch<{ practitioners?: JanePractitionerRow[] }>(
+      ctx,
+      `/clinics/${clinicId}/practitioners`
+    );
+    const rows = res?.practitioners ?? [];
+
+    return rows
+      .map((p) => {
+        const name =
+          p.full_name?.trim() ||
+          `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+        if (!name) return null;
+        return {
+          externalId: p.id,
+          name,
+          title: p.title,
+          active: p.is_active !== false,
+        } as AdapterProvider;
+      })
+      .filter((p): p is AdapterProvider => p !== null);
   },
 
   async bookAppointment(_ctx, _input: AdapterBookingInput): Promise<AdapterBookingResult> {

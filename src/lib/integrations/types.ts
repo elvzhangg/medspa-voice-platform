@@ -95,6 +95,30 @@ export interface AdapterClientHistory {
   lifetimeValueCents?: number;
 }
 
+/**
+ * Provider/staff record pulled from a booking platform. Used by the
+ * periodic roster sync to keep our `staff` table current — tenant-authored
+ * ai_notes + specialties are layered on top and never overwritten.
+ */
+export interface AdapterProvider {
+  /** Platform-side staff identifier — the upsert key */
+  externalId: string;
+  /** Full display name */
+  name: string;
+  /** Role/title, e.g. "Nurse Injector", "Aesthetician". Optional — not all platforms carry it. */
+  title?: string;
+  /** Services this provider performs (platform-sourced). Free-text list. */
+  services?: string[];
+  /**
+   * Weekly working hours keyed by lowercase day name. Shape mirrors our
+   * `staff.working_hours` JSONB default so a sync can upsert directly.
+   * Only include days the provider works — missing = off that day.
+   */
+  workingHours?: Record<string, { open: string; close: string }>;
+  /** False when the platform reports the staff as disabled/terminated. */
+  active?: boolean;
+}
+
 export interface BookingAdapter {
   platform: string;
 
@@ -123,6 +147,18 @@ export interface BookingAdapter {
     ctx: AdapterContext,
     args: { phone: string }
   ): Promise<AdapterClientHistory | null>;
+
+  /**
+   * Optional — list every provider/staff member at the tenant's location.
+   * Called by provider-sync on (a) admin flipping status to 'connected'
+   * and (b) the daily cron. Adapters that don't expose a staff endpoint
+   * may omit this — the sync will skip them and the tenant falls back to
+   * manual roster entry in the dashboard.
+   *
+   * Must throw on auth/network failure so the sync marks the attempt
+   * failed rather than silently wiping the roster.
+   */
+  listProviders?(ctx: AdapterContext): Promise<AdapterProvider[]>;
 
   /**
    * Query the platform for bookable slots on a given date.
