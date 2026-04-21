@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 
 interface Lead {
   id: string;
@@ -14,34 +14,51 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUploading, setIsCreating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  async function fetchLeads() {
+  const fetchLeads = useCallback(async () => {
     const res = await fetch(`/api/campaigns/${id}/leads`);
     if (res.ok) {
       const data = await res.json();
       setLeads(data.leads || []);
     }
     setLoading(false);
-  }
+  }, [id]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
+    setUploadError(null);
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n").slice(1); // skip header
-      const newLeads = lines.map(line => {
-        const [first, last, phone] = line.split(",");
-        return { first_name: first, last_name: last, phone_number: phone };
-      }).filter(l => l.phone_number);
+      const text = (event.target?.result as string) ?? "";
+      const rows = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (rows.length < 2) {
+        setUploadError("CSV looks empty — expected a header row plus at least one lead.");
+        return;
+      }
+
+      const newLeads = rows.slice(1).flatMap((line) => {
+        const [first, last, phone] = line.split(",").map((c) => c.trim());
+        if (!phone) return [];
+        return [{ first_name: first ?? "", last_name: last ?? "", phone_number: phone }];
+      });
+
+      if (newLeads.length === 0) {
+        setUploadError("No rows had a phone number. Expected columns: first_name, last_name, phone_number.");
+        return;
+      }
 
       const res = await fetch(`/api/campaigns/${id}/leads`, {
         method: "POST",
@@ -50,8 +67,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       });
 
       if (res.ok) {
-        setIsCreating(false);
+        setIsUploading(false);
+        setFile(null);
         fetchLeads();
+      } else {
+        setUploadError("Upload failed. Please try again.");
       }
     };
     reader.readAsText(file);
@@ -72,8 +92,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-sm text-gray-500">Upload leads and trigger automated outbound sequences.</p>
         </div>
         <div className="flex gap-2">
-          <button 
-            onClick={() => setIsCreating(true)}
+          <button
+            onClick={() => setIsUploading(true)}
             className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-50 shadow-sm"
           >
             Import CSV
@@ -100,8 +120,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             />
             <div className="flex justify-center gap-2">
               <button type="submit" className="px-8 py-2 bg-indigo-600 text-white rounded-lg font-bold">Upload leads</button>
-              <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-500">Cancel</button>
+              <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-gray-500">Cancel</button>
             </div>
+            {uploadError && (
+              <p className="text-sm text-red-600 mt-2">{uploadError}</p>
+            )}
           </form>
         </div>
       )}

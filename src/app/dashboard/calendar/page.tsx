@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDismiss } from "../_components/useDismiss";
 
 interface CalEvent {
   id: string;
@@ -60,6 +61,9 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CalEvent | null>(null);
+
+  const closeSelected = useCallback(() => setSelected(null), []);
+  useDismiss(selected !== null, closeSelected);
 
   const loadMonth = useCallback(async (anchor: Date) => {
     setLoading(true);

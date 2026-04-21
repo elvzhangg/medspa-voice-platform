@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface Campaign {
   id: string;
@@ -84,7 +85,7 @@ export default function CampaignsPage() {
           <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">No campaigns found</h3>
           <p className="text-gray-500 text-sm mb-6">Create your first outbound campaign to start automating your follow-ups.</p>
-          <button onClick={() => setIsCreating(true)} className="text-indigo-600 font-bold hover:underline">Start a campaign \u2192</button>
+          <button onClick={() => setIsCreating(true)} className="text-indigo-600 font-bold hover:underline">Start a campaign →</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,10 +116,12 @@ export default function CampaignsPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button className="flex-1 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-100 transition-all">Manage Leads</button>
-                  <button className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100">Start Calling</button>
-                </div>
+                <Link
+                  href={`/dashboard/campaigns/${cp.id}`}
+                  className="block w-full text-center py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100"
+                >
+                  Open Campaign
+                </Link>
               </div>
             </div>
           ))}

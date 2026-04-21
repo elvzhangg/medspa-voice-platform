@@ -100,9 +100,7 @@ export default function KnowledgeBasePage() {
     return acc;
   }, {} as Record<Category, KBDoc[]>);
 
-  // Also catch any docs with unknown categories
-  const knownCategoryIds = new Set(docs.filter(d => CATEGORIES.includes(d.category as Category)).map(d => d.id));
-  const uncategorized = docs.filter(d => !knownCategoryIds.has(d.id));
+  const uncategorized = docs.filter((d) => !CATEGORIES.includes(d.category as Category));
 
   return (
     <div>

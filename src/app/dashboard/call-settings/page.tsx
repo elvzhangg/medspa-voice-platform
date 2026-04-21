@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Toggle from "../_components/Toggle";
 
 interface CallSettings {
   greeting_message: string;
@@ -90,13 +91,11 @@ export default function CallSettingsPage() {
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Record all calls</label>
                 <div className="flex items-center gap-3 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSettings({...settings, call_recording_enabled: !settings.call_recording_enabled})}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${settings.call_recording_enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.call_recording_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
+                  <Toggle
+                    enabled={settings.call_recording_enabled}
+                    onChange={() => setSettings({ ...settings, call_recording_enabled: !settings.call_recording_enabled })}
+                    ariaLabel="Record all calls"
+                  />
                   <span className="text-xs font-bold text-gray-500">{settings.call_recording_enabled ? "ON" : "OFF"}</span>
                 </div>
               </div>

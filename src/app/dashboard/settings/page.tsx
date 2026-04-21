@@ -7,8 +7,6 @@ interface TenantSettings {
   greeting_message: string;
   system_prompt_override: string;
   deposit_amount: number;
-  booking_provider: "internal" | "vagaro" | "acuity" | "mindbody" | "link";
-  booking_config: any;
 }
 
 export default function SettingsPage() {
@@ -17,8 +15,6 @@ export default function SettingsPage() {
     greeting_message: "",
     system_prompt_override: "",
     deposit_amount: 0,
-    booking_provider: "internal",
-    booking_config: {},
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

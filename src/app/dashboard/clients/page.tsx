@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useDismiss } from "../_components/useDismiss";
 
 interface Client {
   id: string;
@@ -177,6 +178,8 @@ function ClientDrawer({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Client>>({});
   const [tagsInput, setTagsInput] = useState("");
+
+  useDismiss(true, onClose);
 
   useEffect(() => {
     let mounted = true;
