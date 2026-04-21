@@ -201,7 +201,7 @@ export default function CalendarPage() {
 
  {/* Connect-your-platform banner — prominent CTA when no integration is connected */}
  {integration && integration.status !=="connected" && (
- <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-amber-500 p-8 shadow-lg">
+ <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-amber-100 p-8 shadow-lg">
  <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
  <div className="absolute -left-8 -bottom-16 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
  <div className="relative flex items-start justify-between gap-6 flex-wrap">
@@ -296,7 +296,7 @@ export default function CalendarPage() {
  <span
  className={`inline-flex items-center justify-center text-xs font-bold ${
  isToday
- ?"bg-amber-400 text-amber-900 rounded-full w-6 h-6"
+ ?"bg-amber-50 text-amber-900 border border-amber-300 rounded-full w-6 h-6"
  : inMonth
  ?"text-gray-700 w-6 h-6"
  :"text-gray-300 w-6 h-6"

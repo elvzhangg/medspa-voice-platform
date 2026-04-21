@@ -113,7 +113,7 @@ export default function KnowledgeBasePage() {
  </div>
  <button
  onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}
- className="px-4 py-2 bg-amber-400 text-amber-900 rounded-lg text-sm font-medium hover:bg-amber-500 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 transition-colors"
  >
  + Add Document
  </button>
@@ -164,7 +164,7 @@ export default function KnowledgeBasePage() {
  <button
  type="submit"
  disabled={addSaving}
- className="px-4 py-2 bg-amber-400 text-amber-900 rounded-lg text-sm font-medium hover:bg-amber-500 disabled:opacity-50 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 disabled:opacity-50 transition-colors"
  >
  {addSaving ?"Saving..." :"Save Document"}
  </button>
@@ -194,7 +194,7 @@ export default function KnowledgeBasePage() {
  </p>
  <button
  onClick={() => setShowAddForm(true)}
- className="px-4 py-2 bg-amber-400 text-amber-900 rounded-lg text-sm font-medium hover:bg-amber-500 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 transition-colors"
  >
  + Add your first document
  </button>
@@ -335,7 +335,7 @@ function DocCard({
  <button
  type="submit"
  disabled={editSaving}
- className="px-4 py-2 bg-amber-400 text-amber-900 rounded-lg text-sm font-medium hover:bg-amber-500 disabled:opacity-50 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 disabled:opacity-50 transition-colors"
  >
  {editSaving ?"Saving..." :"Save Changes"}
  </button>

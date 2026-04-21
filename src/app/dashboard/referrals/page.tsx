@@ -110,7 +110,7 @@ export default function ReferralsPage() {
  </div>
  <button
  onClick={() => setShowForm(!showForm)}
- className="flex items-center gap-2 bg-amber-400 text-amber-900 text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-500 transition-colors"
+ className="flex items-center gap-2 bg-amber-50 text-amber-900 border border-amber-300 text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-100 border border-amber-400 transition-colors"
  >
  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -207,7 +207,7 @@ export default function ReferralsPage() {
  <button
  type="submit"
  disabled={submitting}
- className="bg-amber-400 text-amber-900 text-sm font-medium px-5 py-2 rounded-lg hover:bg-amber-500 transition-colors disabled:opacity-50"
+ className="bg-amber-50 text-amber-900 border border-amber-300 text-sm font-medium px-5 py-2 rounded-lg hover:bg-amber-100 border border-amber-400 transition-colors disabled:opacity-50"
  >
  {submitting ?"Saving..." :"Save Referral"}
  </button>

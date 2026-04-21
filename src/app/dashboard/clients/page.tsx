@@ -385,7 +385,7 @@ function ClientDrawer({
  <button
  onClick={save}
  disabled={saving}
- className="flex-1 px-4 py-2.5 bg-amber-400 hover:bg-amber-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+ className="flex-1 px-4 py-2.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 border border-amber-400 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
  >
  {saving ?"Saving…" :"Save changes"}
  </button>
