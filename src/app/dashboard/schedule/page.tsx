@@ -85,24 +85,6 @@ function renderPreview(template: string): string {
   return out;
 }
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-        enabled ? "bg-indigo-600" : "bg-gray-200"
-      }`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-          enabled ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
 function formatDateTime(date: string | null, time: string | null): string {
   if (!date && !time) return "Flexible";
   if (date && time) return `${date} at ${time}`;
@@ -172,14 +154,20 @@ export default function SchedulingSystemPage() {
   async function handleSave() {
     setSaving(true);
     setSaved(false);
+    // Force booking_forward_enabled based on integration mode — the toggle is gone;
+    // hybrid & sms_fallback modes require forwarding to be on, direct_book doesn't use it.
+    const forwardEnabled =
+      integration?.mode === "hybrid" || integration?.mode === "sms_fallback";
+    const payload = { ...settings, booking_forward_enabled: forwardEnabled };
     const res = await fetch("/api/settings/scheduling", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
     if (res.ok) {
       setSaved(true);
+      setSettings((s) => ({ ...s, booking_forward_enabled: forwardEnabled }));
       setTimeout(() => setSaved(false), 3000);
     }
   }
@@ -306,58 +294,39 @@ export default function SchedulingSystemPage() {
         )}
       </div>
 
-      {/* ── SMS fallback setup (only relevant for hybrid / sms_fallback / unset modes) ── */}
-      {integration?.mode !== "direct_book" && (
-      <>
-      {/* ── Provider status pill ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex items-center gap-5">
-        <div className="w-14 h-14 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
-          📅
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Current Booking Mode</p>
-          <p className="text-lg font-black text-gray-900 uppercase tracking-tight mt-0.5">
-            {settings.booking_forward_enabled ? "Staff Notification Forwarding" : "AI Internal Calendar"}
-          </p>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {settings.booking_forward_enabled
-              ? "AI collects details, then your team gets an instant SMS to confirm."
-              : "AI books directly to your internal calendar. Enable forwarding below to loop in your team."}
-          </p>
-        </div>
-        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex-shrink-0 ${
-          settings.booking_forward_enabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-        }`}>
-          {settings.booking_forward_enabled ? "Active" : "Off"}
-        </div>
-      </div>
-
-      {/* ── Staff Notification Forwarding ── */}
+      {/* ── Staff Notification Forwarding (required for hybrid & sms_fallback) ── */}
+      {(integration?.mode === "hybrid" || integration?.mode === "sms_fallback") && (
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Section header */}
-        <div className="px-8 pt-8 pb-6 border-b border-gray-100 flex items-start justify-between gap-6">
-          <div>
-            <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Staff Notification Forwarding</h2>
-            <p className="text-sm text-gray-500 mt-1 max-w-lg">
-              When a caller requests an appointment, the AI captures their info and
-              instantly texts your designated team members so they can confirm directly.
-              Works with any booking system — no API integration required.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 flex-shrink-0 mt-1">
-            <span className={`text-sm font-bold ${settings.booking_forward_enabled ? "text-indigo-600" : "text-gray-400"}`}>
-              {settings.booking_forward_enabled ? "On" : "Off"}
+        <div className="px-8 pt-8 pb-6 border-b border-gray-100">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Staff Notification Forwarding</h2>
+              <p className="text-sm text-gray-500 mt-1 max-w-lg">
+                {integration.mode === "hybrid"
+                  ? "Your AI verifies availability against your booking platform, then texts your team with the booking request to lock in."
+                  : "Your AI captures booking details and texts your team so they can confirm directly in your booking system."}
+              </p>
+            </div>
+            <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full uppercase tracking-wider flex-shrink-0">
+              Required
             </span>
-            <Toggle
-              enabled={settings.booking_forward_enabled}
-              onChange={() => setSettings((s) => ({ ...s, booking_forward_enabled: !s.booking_forward_enabled }))}
-            />
           </div>
+
+          {settings.booking_forward_phones.length === 0 && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-3">
+              <span className="text-lg flex-shrink-0">⚠️</span>
+              <div>
+                <p className="text-sm font-bold text-amber-900">Add at least one staff number below</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Without a notification number, booking requests from callers will be lost.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Expandable config — only shown when enabled */}
-        {settings.booking_forward_enabled && (
-          <div className="px-8 py-8 space-y-8">
+        <div className="px-8 py-8 space-y-8">
 
             {/* ── Staff phone numbers ── */}
             <div>
@@ -477,7 +446,6 @@ export default function SchedulingSystemPage() {
               </div>
             </div>
           </div>
-        )}
 
         {/* Save button */}
         <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
@@ -497,27 +465,6 @@ export default function SchedulingSystemPage() {
           </button>
         </div>
       </div>
-
-      {/* ── Direct Integrations (read-only) ── */}
-      <div>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Direct Booking Integrations</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 opacity-60 grayscale-[0.4]">
-          {[
-            { letter: "V", bg: "bg-orange-50", text: "text-orange-600", name: "Vagaro" },
-            { letter: "A", bg: "bg-black", text: "text-white", name: "Acuity" },
-            { letter: "M", bg: "bg-sky-50", text: "text-sky-600", name: "Mindbody" },
-          ].map(({ letter, bg, text, name }) => (
-            <div key={name} className="p-6 rounded-3xl border border-gray-100 bg-white flex items-center gap-4">
-              <div className={`w-10 h-10 ${bg} ${text} rounded-xl flex items-center justify-center text-lg font-black`}>{letter}</div>
-              <div>
-                <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{name}</p>
-                <p className="text-xs text-gray-400 font-medium">Contact us to activate</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      </>
       )}
       {/* ── Forwarded Requests Log ── */}
       {requests.length > 0 && (
