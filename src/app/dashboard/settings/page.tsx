@@ -7,6 +7,7 @@ interface IdentitySettings {
   name: string;
   greeting_message: string;
   system_prompt_override: string;
+  deposit_enabled: boolean;
   deposit_amount: number;
   payment_policy_notes: string;
   directions_parking_info: string;
@@ -14,7 +15,6 @@ interface IdentitySettings {
 
 interface CallSettings {
   ai_voice_id: string;
-  call_recording_enabled: boolean;
   voicemail_forwarding_number: string;
 }
 
@@ -23,13 +23,13 @@ export default function ClinicSetupPage() {
     name: "",
     greeting_message: "",
     system_prompt_override: "",
+    deposit_enabled: false,
     deposit_amount: 0,
     payment_policy_notes: "",
     directions_parking_info: "",
   });
   const [calls, setCalls] = useState<CallSettings>({
     ai_voice_id: "rachel",
-    call_recording_enabled: true,
     voicemail_forwarding_number: "",
   });
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,6 @@ export default function ClinicSetupPage() {
       const data = await cRes.json();
       setCalls({
         ai_voice_id: data.ai_voice_id ?? "rachel",
-        call_recording_enabled: data.call_recording_enabled ?? true,
         voicemail_forwarding_number: data.voicemail_forwarding_number ?? "",
       });
     }
@@ -173,28 +172,13 @@ export default function ClinicSetupPage() {
         </Section>
 
         <Section
-          title="Call Handling"
-          subtitle="What happens during and after a call."
+          title="Live Transfer"
           icon={
             <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           }
         >
-          <Field label="Record all calls">
-            <div className="flex items-center gap-3">
-              <Toggle
-                enabled={calls.call_recording_enabled}
-                onChange={() =>
-                  setCalls({ ...calls, call_recording_enabled: !calls.call_recording_enabled })
-                }
-                ariaLabel="Record all calls"
-              />
-              <span className="text-xs font-bold text-gray-500">
-                {calls.call_recording_enabled ? "ON" : "OFF"}
-              </span>
-            </div>
-          </Field>
           <Field
             label="Live Transfer Number"
             hint="When a caller asks to speak to a human, the AI transfers them here. Leave blank to disable."
@@ -220,19 +204,35 @@ export default function ClinicSetupPage() {
         >
           <Field
             label="Booking Deposit"
-            hint="Collected via Stripe when a booking is confirmed. Set to 0 to disable deposits."
+            hint="When on, the AI offers to text a payment link for the amount to secure the booking."
           >
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500 font-medium">$</span>
-              <input
-                type="number"
-                min={0}
-                value={identity.deposit_amount}
-                onChange={(e) =>
-                  setIdentity({ ...identity, deposit_amount: parseFloat(e.target.value) || 0 })
-                }
-                className="w-32 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
-              />
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Toggle
+                  enabled={identity.deposit_enabled}
+                  onChange={() =>
+                    setIdentity({ ...identity, deposit_enabled: !identity.deposit_enabled })
+                  }
+                  ariaLabel="Enable booking deposit"
+                />
+                <span className="text-xs font-bold text-gray-500">
+                  {identity.deposit_enabled ? "ON" : "OFF"}
+                </span>
+              </div>
+              {identity.deposit_enabled && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 font-medium">$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={identity.deposit_amount}
+                    onChange={(e) =>
+                      setIdentity({ ...identity, deposit_amount: parseFloat(e.target.value) || 0 })
+                    }
+                    className="w-32 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                  />
+                </div>
+              )}
             </div>
           </Field>
           <Field

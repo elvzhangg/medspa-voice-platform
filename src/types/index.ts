@@ -27,7 +27,6 @@ export interface Tenant {
   twilio_last_test_at?: string;
   twilio_last_test_status?: string;
   ai_voice_id?: string;
-  call_recording_enabled?: boolean;
   voicemail_forwarding_number?: string;
   created_at: string;
   updated_at: string;

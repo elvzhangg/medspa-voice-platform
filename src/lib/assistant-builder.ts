@@ -358,8 +358,12 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 `;
 
   let depositInstruction = "";
-  if (tenant.booking_config && (tenant.booking_config as any).deposit_amount) {
-    const amount = (tenant.booking_config as any).deposit_amount;
+  const bookingConfig = tenant.booking_config as any;
+  // Tenant must explicitly toggle deposits on in Clinic Setup; a nonzero
+  // amount alone isn't enough — this lets a tenant pause deposits without
+  // wiping their configured amount.
+  if (bookingConfig?.deposit_enabled && bookingConfig?.deposit_amount) {
+    const amount = bookingConfig.deposit_amount;
     depositInstruction = `- MANDATORY: For all new consultations or appointments, you MUST offer to text a secure payment link for a $${amount} deposit to secure the spot. Say something like: "To secure your appointment, we collect a $${amount} deposit which goes toward your treatment. Can I text a secure payment link to this number now?"
 - If they agree to the deposit, immediately use the 'create_payment_link' tool with amount ${amount} and description "Consultation Deposit".`;
   }
