@@ -76,10 +76,7 @@ export default function ClientsPage() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-zinc-900 mb-1">Clients</h1>
-          <p className="text-sm text-zinc-500">
-            Everyone who's called your AI receptionist, plus what we remember about them.
-          </p>
+          <h1 className="font-serif text-3xl text-zinc-900">Clients</h1>
         </div>
         <input
           type="search"

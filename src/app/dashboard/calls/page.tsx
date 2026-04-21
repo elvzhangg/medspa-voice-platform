@@ -18,8 +18,7 @@ export default async function CallLogsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-serif text-3xl text-zinc-900 mb-1">Call Logs</h1>
-        <p className="text-sm text-zinc-500">Recent calls handled by your AI receptionist</p>
+        <h1 className="font-serif text-3xl text-zinc-900">Call Logs</h1>
       </div>
 
       {calls.length === 0 ? (

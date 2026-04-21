@@ -87,10 +87,7 @@ export default function ClinicSetupPage() {
   return (
     <div className="max-w-3xl pb-24">
       <div className="mb-8">
-        <h1 className="font-serif text-3xl text-zinc-900 mb-1">Clinic Setup</h1>
-        <p className="text-sm text-zinc-500">
-          Everything that shapes how your AI receptionist talks and handles calls — in one place.
-        </p>
+        <h1 className="font-serif text-3xl text-zinc-900">Clinic Setup</h1>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
