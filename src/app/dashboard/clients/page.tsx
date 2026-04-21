@@ -109,7 +109,7 @@ export default function ClientsPage() {
  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
  <table className="w-full text-sm">
  <thead className="border-b border-gray-100">
- <tr className="bg-gray-50">
+ <tr className="bg-[#fdf9ec]">
  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500">Name</th>
  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500">Phone</th>
  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500">Calls</th>
@@ -385,13 +385,13 @@ function ClientDrawer({
  <button
  onClick={save}
  disabled={saving}
- className="flex-1 px-4 py-2.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 border border-amber-400 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+ className="flex-1 px-4 py-2.5 bg-white border border-amber-200 hover:bg-[#fdf9ec] border border-amber-300 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
  >
  {saving ?"Saving…" :"Save changes"}
  </button>
  <button
  onClick={onClose}
- className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg"
+ className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-[#fdf9ec] text-gray-700 text-sm font-semibold rounded-lg"
  >
  Cancel
  </button>
@@ -405,7 +405,7 @@ function ClientDrawer({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
  return (
- <div className="bg-gray-50 rounded-lg p-3">
+ <div className="bg-[#fdf9ec] rounded-lg p-3">
  <p className="text-xs font-medium text-gray-500">{label}</p>
  <p className="text-lg font-bold text-gray-900 mt-0.5 tabular-nums">{value}</p>
  </div>

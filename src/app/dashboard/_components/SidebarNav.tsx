@@ -135,7 +135,7 @@ export default function SidebarNav({ brandPrefix }: { brandPrefix: string }) {
  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
  isActive
  ?"bg-amber-50 text-amber-800"
- :"text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+ :"text-gray-500 hover:bg-[#fdf9ec] hover:text-gray-800"
  }`}
  >
  <span className={`transition-colors ${isActive ?"text-amber-600" :"text-gray-400"}`}>

@@ -103,7 +103,7 @@ export default function ProvidersPage() {
  </div>
  <button
  onClick={() => setIsAdding(true)}
- className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 font-bold rounded-lg hover:bg-amber-100 border border-amber-400 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
+ className="px-4 py-2 bg-white text-amber-900 border border-amber-200 font-bold rounded-lg hover:bg-[#fdf9ec] border border-amber-300 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
  >
  <span>+</span> Add Provider
  </button>
@@ -152,7 +152,7 @@ export default function ProvidersPage() {
  >
  Cancel
  </button>
- <button type="submit" className="px-6 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg font-bold text-sm">
+ <button type="submit" className="px-6 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg font-bold text-sm">
  Save Provider
  </button>
  </div>
@@ -313,7 +313,7 @@ function ProviderCard({
  <button
  onClick={saveEnrichment}
  disabled={savingNotes}
- className="px-4 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold hover:bg-amber-100 border border-amber-400 disabled:opacity-50"
+ className="px-4 py-1.5 bg-white text-amber-900 border border-amber-200 rounded-lg text-xs font-semibold hover:bg-[#fdf9ec] border border-amber-300 disabled:opacity-50"
  >
  {savingNotes ?"Saving…" : notesSaved ?"Saved" :"Save"}
  </button>
