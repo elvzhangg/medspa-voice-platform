@@ -1381,8 +1381,8 @@ function Footer() {
             <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
               <defs>
                 <linearGradient id="f-g" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#6ee7b7"/>
-                  <stop offset="100%" stopColor="#34d399"/>
+                  <stop offset="0%" stopColor="#f59e0b"/>
+                  <stop offset="100%" stopColor="#09090b"/>
                 </linearGradient>
               </defs>
               <rect x="1"  y="10" width="5" height="12" rx="2.5" fill="url(#f-g)"/>
@@ -1390,7 +1390,7 @@ function Footer() {
               <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#f-g)"/>
               <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#f-g)"/>
             </svg>
-            <span className="font-serif font-medium tracking-[0.08em] text-lg text-sage-200">
+            <span className="font-serif font-medium tracking-[0.08em] text-lg text-sage-100">
               Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
             </span>
           </div>
