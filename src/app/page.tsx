@@ -1297,8 +1297,8 @@ function DemoSection() {
               <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5">→</span>
             </Link>
           </div>
-          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg mt-8`} style={{ transitionDelay: "280ms" }}>
-            Tailored to your spa. Live in under 48 hours.
+          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-500 text-[13px] tracking-[0.18em] uppercase mt-8`} style={{ transitionDelay: "280ms" }}>
+            Tailored to your spa · Live in under 48 hours
           </p>
         </div>
       </div>
