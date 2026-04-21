@@ -10,13 +10,14 @@ interface KBDoc {
   updated_at: string;
 }
 
-type Category = "services" | "pricing" | "policies" | "faq" | "general";
+type Category = "services" | "pricing" | "billing" | "policies" | "faq" | "general";
 
-const CATEGORIES: Category[] = ["services", "pricing", "policies", "faq", "general"];
+const CATEGORIES: Category[] = ["services", "pricing", "billing", "policies", "faq", "general"];
 
 const CATEGORY_COLORS: Record<Category, string> = {
   services: "bg-blue-100 text-blue-700",
   pricing: "bg-green-100 text-green-700",
+  billing: "bg-amber-100 text-amber-700",
   policies: "bg-orange-100 text-orange-700",
   faq: "bg-purple-100 text-purple-700",
   general: "bg-gray-100 text-gray-600",
@@ -107,7 +108,7 @@ export default function KnowledgeBasePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Knowledge Base</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Clinic Handbook</h1>
           <p className="text-gray-500 mt-1">Manage what your AI receptionist knows</p>
         </div>
         <button

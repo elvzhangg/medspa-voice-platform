@@ -8,6 +8,7 @@ interface IdentitySettings {
   greeting_message: string;
   system_prompt_override: string;
   deposit_amount: number;
+  payment_policy_notes: string;
   directions_parking_info: string;
 }
 
@@ -17,12 +18,13 @@ interface CallSettings {
   voicemail_forwarding_number: string;
 }
 
-export default function VoiceConfigurationsPage() {
+export default function ClinicSetupPage() {
   const [identity, setIdentity] = useState<IdentitySettings>({
     name: "",
     greeting_message: "",
     system_prompt_override: "",
     deposit_amount: 0,
+    payment_policy_notes: "",
     directions_parking_info: "",
   });
   const [calls, setCalls] = useState<CallSettings>({
@@ -80,13 +82,13 @@ export default function VoiceConfigurationsPage() {
   }
 
   if (loading) {
-    return <div className="p-10 text-center text-gray-400 text-sm">Loading voice configurations…</div>;
+    return <div className="p-10 text-center text-gray-400 text-sm">Loading clinic setup…</div>;
   }
 
   return (
     <div className="max-w-3xl pb-24">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Voice Configurations</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Clinic Setup</h1>
         <p className="text-sm text-gray-500">
           Everything that shapes how your AI receptionist talks and handles calls — in one place.
         </p>
@@ -208,8 +210,8 @@ export default function VoiceConfigurationsPage() {
         </Section>
 
         <Section
-          title="Booking & Payments"
-          subtitle="Rules the AI follows when securing an appointment."
+          title="Booking & Billing"
+          subtitle="Rules the AI follows when securing an appointment or discussing payment."
           icon={
             <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -232,6 +234,18 @@ export default function VoiceConfigurationsPage() {
                 className="w-32 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm"
               />
             </div>
+          </Field>
+          <Field
+            label="Payment & Financing Notes"
+            hint="Short rules the AI applies when callers ask about cost. Longer policies (refunds, detailed pricing) belong in Clinic Handbook."
+          >
+            <textarea
+              rows={4}
+              value={identity.payment_policy_notes}
+              onChange={(e) => setIdentity({ ...identity, payment_policy_notes: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm resize-none"
+              placeholder={`e.g.\n- Mention CareCredit and Cherry financing for treatments over $500\n- Deposits are refundable with 24h notice\n- We accept HSA/FSA cards`}
+            />
           </Field>
         </Section>
 

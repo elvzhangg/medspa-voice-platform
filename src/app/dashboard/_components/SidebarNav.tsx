@@ -32,7 +32,7 @@ function makeItems(base: string): NavItem[] {
       ),
     },
     {
-      label: "Knowledge Base",
+      label: "Clinic Handbook",
       href: `${base}/knowledge-base`,
       icon: (
         <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,15 +68,6 @@ function makeItems(base: string): NavItem[] {
       ),
     },
     {
-      label: "Billing Support",
-      href: `${base}/billing`,
-      icon: (
-        <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-      ),
-    },
-    {
       label: "Referrals",
       href: `${base}/referrals`,
       icon: (
@@ -104,7 +95,7 @@ function makeItems(base: string): NavItem[] {
       ),
     },
     {
-      label: "Voice Configurations",
+      label: "Clinic Setup",
       href: `${base}/settings`,
       icon: (
         <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -11,6 +11,7 @@ export async function GET() {
     greeting_message: tenant.greeting_message,
     system_prompt_override: tenant.system_prompt_override,
     deposit_amount: tenant.booking_config?.deposit_amount || 0,
+    payment_policy_notes: tenant.booking_config?.payment_policy_notes || "",
     directions_parking_info: tenant.directions_parking_info || "",
   });
 }
@@ -20,7 +21,14 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, greeting_message, system_prompt_override, deposit_amount, directions_parking_info } = body;
+  const {
+    name,
+    greeting_message,
+    system_prompt_override,
+    deposit_amount,
+    payment_policy_notes,
+    directions_parking_info,
+  } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
@@ -32,6 +40,7 @@ export async function POST(req: Request) {
       booking_config: {
         ...tenant.booking_config,
         deposit_amount,
+        payment_policy_notes,
       },
     })
     .eq("id", tenant.id);
