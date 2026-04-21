@@ -6,6 +6,7 @@ import { bookAppointment, updateBookingPreferences } from "@/lib/booking";
 import { createPaymentLink } from "@/lib/payments";
 import { getAvailableSlots } from "@/lib/availability";
 import { supabaseAdmin } from "@/lib/supabase";
+import { regenerateClientSummary } from "@/lib/client-brief";
 import {
   updateClientProfile,
   logCallOutcome,
@@ -522,6 +523,21 @@ async function handleEndOfCallReport(message: Record<string, unknown>) {
           service,
           provider,
         });
+
+        // Fire-and-forget: regenerate the client's rolling summary now
+        // that this call's transcript is captured. The next call + the
+        // staff brief endpoint both read from client_profiles.summary,
+        // so keeping it current after each interaction is the contract.
+        // Errors are logged inside regenerateClientSummary, not bubbled.
+        const { data: clientRow } = await supabaseAdmin
+          .from("client_profiles")
+          .select("id")
+          .eq("tenant_id", tenant.id)
+          .eq("phone", callerNumber)
+          .maybeSingle();
+        if (clientRow?.id) {
+          void regenerateClientSummary(tenant.id, clientRow.id);
+        }
       } catch (e) {
         console.error("CLIENT_PROFILE_CALL_LOG_ERR:", e);
       }

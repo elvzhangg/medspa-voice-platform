@@ -164,6 +164,13 @@ export default function ClientsPage() {
   );
 }
 
+interface BriefData {
+  brief: string;
+  cold_start: boolean;
+  source_call_ids: string[];
+  generated_at: string;
+}
+
 function ClientDrawer({
   clientId,
   onClose,
@@ -178,6 +185,8 @@ function ClientDrawer({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Client>>({});
   const [tagsInput, setTagsInput] = useState("");
+  const [brief, setBrief] = useState<BriefData | null>(null);
+  const [briefLoading, setBriefLoading] = useState(true);
 
   useDismiss(true, onClose);
 
@@ -193,6 +202,19 @@ function ClientDrawer({
         setTagsInput((data.profile.tags || []).join(", "));
       }
     })();
+
+    // Load brief in parallel — it's slower (~1-2s LLM hop), don't block
+    // the drawer from opening.
+    setBriefLoading(true);
+    setBrief(null);
+    (async () => {
+      const res = await fetch(`/api/clients/${clientId}/brief`);
+      if (res.ok && mounted) {
+        setBrief(await res.json());
+      }
+      if (mounted) setBriefLoading(false);
+    })();
+
     return () => {
       mounted = false;
     };
@@ -250,6 +272,35 @@ function ClientDrawer({
                 value={profile.last_call_at ? fmtDate(profile.last_call_at) : "—"}
               />
             </div>
+
+            <section className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <h3 className="text-xs font-bold text-indigo-900 uppercase tracking-widest">
+                  Before you see them
+                </h3>
+                {brief && !brief.cold_start && brief.source_call_ids.length > 0 && (
+                  <span className="ml-auto text-[10px] text-indigo-400 font-medium">
+                    from {brief.source_call_ids.length} past call
+                    {brief.source_call_ids.length === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+              {briefLoading ? (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-indigo-400 italic">Reading their history…</span>
+                </div>
+              ) : brief ? (
+                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {brief.brief}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400 italic">Couldn&apos;t load brief.</p>
+              )}
+            </section>
 
             <section className="space-y-3">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Identity</h3>
