@@ -66,10 +66,7 @@ export default async function DashboardPage() {
     <div>
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="font-serif text-3xl text-zinc-900 mb-1">Overview</h1>
-        <p className="text-sm text-zinc-500">
-          Here&apos;s how {tenant.name} is performing.
-        </p>
+        <h1 className="font-serif text-3xl text-zinc-900">Overview</h1>
       </div>
 
       {/* Stats */}
