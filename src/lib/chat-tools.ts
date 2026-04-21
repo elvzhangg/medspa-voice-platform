@@ -303,6 +303,255 @@ export async function searchClientsByKeyword(
   };
 }
 
+// ─── Tool 4: get_recent_calls ────────────────────────────────────────
+
+export interface GetRecentCallsArgs {
+  limit?: number;
+  since_days?: number;
+}
+
+export interface RecentCallRow {
+  call_id: string;
+  client_profile_id: string | null;
+  caller_name: string | null;
+  phone: string | null;
+  date: string;
+  duration_seconds: number | null;
+  summary: string | null;
+}
+
+export async function getRecentCalls(
+  tenantId: string,
+  args: GetRecentCallsArgs
+): Promise<{ result: RecentCallRow[]; sources: ToolSource[] }> {
+  const limit = Math.min(args.limit ?? 10, 50);
+  let q = supabaseAdmin
+    .from("call_logs")
+    .select("id, caller_number, duration_seconds, summary, created_at")
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (typeof args.since_days === "number" && args.since_days > 0) {
+    const cutoff = new Date(Date.now() - args.since_days * 86_400_000).toISOString();
+    q = q.gte("created_at", cutoff);
+  }
+
+  const { data: calls } = await q;
+  const rows = (calls ?? []) as any[];
+
+  // Resolve caller names via client_profiles in one batch
+  const phones = Array.from(new Set(rows.map((r) => r.caller_number).filter(Boolean)));
+  const { data: profiles } = phones.length
+    ? await supabaseAdmin
+        .from("client_profiles")
+        .select("id, phone, first_name, last_name")
+        .eq("tenant_id", tenantId)
+        .in("phone", phones as string[])
+    : { data: [] as any[] };
+  const byPhone = new Map<string, { id: string; name: string }>();
+  for (const p of profiles ?? []) {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+    byPhone.set(p.phone, { id: p.id, name: name || p.phone });
+  }
+
+  const result: RecentCallRow[] = rows.map((r) => {
+    const match = r.caller_number ? byPhone.get(r.caller_number) : undefined;
+    return {
+      call_id: r.id,
+      client_profile_id: match?.id ?? null,
+      caller_name: match?.name ?? null,
+      phone: r.caller_number,
+      date: r.created_at,
+      duration_seconds: r.duration_seconds,
+      summary: r.summary,
+    };
+  });
+
+  const sources: ToolSource[] = [];
+  for (const r of result) {
+    if (r.client_profile_id && r.caller_name) {
+      sources.push({ kind: "client", clientProfileId: r.client_profile_id, label: r.caller_name });
+    }
+  }
+  return { result, sources };
+}
+
+// ─── Tool 5: list_upcoming_appointments ──────────────────────────────
+
+export interface UpcomingArgs {
+  within_days?: number;
+  limit?: number;
+}
+
+export interface UpcomingRow {
+  date: string;
+  customer_name: string | null;
+  phone: string | null;
+  service: string | null;
+  status: string;
+  client_profile_id: string | null;
+}
+
+export async function listUpcomingAppointments(
+  tenantId: string,
+  args: UpcomingArgs
+): Promise<{ result: UpcomingRow[]; sources: ToolSource[] }> {
+  const withinDays = Math.min(args.within_days ?? 7, 60);
+  const limit = Math.min(args.limit ?? 20, 100);
+  const now = new Date().toISOString();
+  const horizon = new Date(Date.now() + withinDays * 86_400_000).toISOString();
+
+  const { data } = await supabaseAdmin
+    .from("calendar_events")
+    .select("start_time, customer_name, customer_phone, service_type, status")
+    .eq("tenant_id", tenantId)
+    .gte("start_time", now)
+    .lte("start_time", horizon)
+    .order("start_time", { ascending: true })
+    .limit(limit);
+
+  const rows = (data ?? []) as any[];
+  const phones = Array.from(
+    new Set(rows.map((r) => r.customer_phone).filter(Boolean))
+  );
+  const { data: profs } = phones.length
+    ? await supabaseAdmin
+        .from("client_profiles")
+        .select("id, phone")
+        .eq("tenant_id", tenantId)
+        .in("phone", phones as string[])
+    : { data: [] as any[] };
+  const idByPhone = new Map<string, string>();
+  for (const p of profs ?? []) idByPhone.set(p.phone, p.id);
+
+  const result: UpcomingRow[] = rows.map((r) => ({
+    date: r.start_time,
+    customer_name: r.customer_name,
+    phone: r.customer_phone,
+    service: r.service_type,
+    status: r.status,
+    client_profile_id: r.customer_phone ? idByPhone.get(r.customer_phone) ?? null : null,
+  }));
+
+  const sources: ToolSource[] = [];
+  for (const r of result) {
+    if (r.client_profile_id && r.customer_name) {
+      sources.push({ kind: "client", clientProfileId: r.client_profile_id, label: r.customer_name });
+    }
+  }
+  return { result, sources };
+}
+
+// ─── Tool 6: list_providers ──────────────────────────────────────────
+
+export interface ProviderRow {
+  name: string;
+  title: string | null;
+  services: string[];
+  specialties: string[];
+  ai_notes: string | null;
+  working_hours: Record<string, { open: string; close: string }> | null;
+  active: boolean;
+}
+
+export async function listProviders(
+  tenantId: string
+): Promise<{ result: ProviderRow[]; sources: ToolSource[] }> {
+  const { data } = await supabaseAdmin
+    .from("staff")
+    .select("name, title, services, specialties, ai_notes, working_hours, active")
+    .eq("tenant_id", tenantId)
+    .eq("active", true)
+    .order("name");
+  const result = (data ?? []).map((r: any) => ({
+    name: r.name,
+    title: r.title,
+    services: r.services ?? [],
+    specialties: r.specialties ?? [],
+    ai_notes: r.ai_notes,
+    working_hours: r.working_hours,
+    active: r.active,
+  }));
+  return { result, sources: [] };
+}
+
+// ─── Tool 7: get_business_snapshot ───────────────────────────────────
+
+export interface SnapshotRow {
+  calls_today: number;
+  calls_this_week: number;
+  calls_this_month: number;
+  bookings_today: number;
+  bookings_this_week: number;
+  upcoming_next_7_days: number;
+  new_clients_this_week: number;
+}
+
+export async function getBusinessSnapshot(
+  tenantId: string
+): Promise<{ result: SnapshotRow; sources: ToolSource[] }> {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const in7Days = new Date(Date.now() + 7 * 86_400_000).toISOString();
+
+  const [callsToday, callsWeek, callsMonth, bookingsToday, bookingsWeek, upcoming, newClients] =
+    await Promise.all([
+      supabaseAdmin
+        .from("call_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("created_at", startOfDay),
+      supabaseAdmin
+        .from("call_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("created_at", weekAgo),
+      supabaseAdmin
+        .from("call_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("created_at", monthAgo),
+      supabaseAdmin
+        .from("calendar_events")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("start_time", startOfDay)
+        .lt("start_time", new Date(Date.now() + 86_400_000).toISOString()),
+      supabaseAdmin
+        .from("calendar_events")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("start_time", weekAgo),
+      supabaseAdmin
+        .from("calendar_events")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("start_time", new Date().toISOString())
+        .lt("start_time", in7Days),
+      supabaseAdmin
+        .from("client_profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("created_at", weekAgo),
+    ]);
+
+  return {
+    result: {
+      calls_today: callsToday.count ?? 0,
+      calls_this_week: callsWeek.count ?? 0,
+      calls_this_month: callsMonth.count ?? 0,
+      bookings_today: bookingsToday.count ?? 0,
+      bookings_this_week: bookingsWeek.count ?? 0,
+      upcoming_next_7_days: upcoming.count ?? 0,
+      new_clients_this_week: newClients.count ?? 0,
+    },
+    sources: [],
+  };
+}
+
 // ─── Tool definitions for the OpenAI API ─────────────────────────────
 
 export const CHAT_TOOL_DEFINITIONS = [
@@ -384,6 +633,60 @@ export const CHAT_TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_recent_calls",
+      description:
+        "Get the most recent phone calls to the AI receptionist with summaries and caller identity. Use for questions like 'tell me about the most recent call', 'what did the last 5 callers want', 'any calls today from new clients'.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max calls to return (default 10, max 50)." },
+          since_days: {
+            type: "number",
+            description: "Only include calls from the last N days. Omit for no time limit.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_upcoming_appointments",
+      description:
+        "List upcoming appointments on the calendar within a time window. Use for 'what's on for tomorrow', 'who's coming in this week', 'any appointments today'.",
+      parameters: {
+        type: "object",
+        properties: {
+          within_days: {
+            type: "number",
+            description: "How far ahead to look, in days (default 7, max 60).",
+          },
+          limit: { type: "number", description: "Max appointments to return (default 20)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_providers",
+      description:
+        "List the clinic's active providers with their titles, specialties, AI notes, and working hours. Use when the user asks about staff generally: 'who are our providers', 'tell me about our team', 'which providers do Botox'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_business_snapshot",
+      description:
+        "Quick dashboard numbers for the clinic: call volume today/week/month, bookings, upcoming appointments, new clients this week. Use for 'how are we doing this week', 'how busy has it been', 'what are the numbers'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 // ─── Dispatch helper ─────────────────────────────────────────────────
@@ -404,6 +707,14 @@ export async function runTool(
         return await filterClients(tenantId, args as unknown as FilterClientsArgs);
       case "search_clients_by_keyword":
         return await searchClientsByKeyword(tenantId, args as unknown as SearchClientsArgs);
+      case "get_recent_calls":
+        return await getRecentCalls(tenantId, args as unknown as GetRecentCallsArgs);
+      case "list_upcoming_appointments":
+        return await listUpcomingAppointments(tenantId, args as unknown as UpcomingArgs);
+      case "list_providers":
+        return await listProviders(tenantId);
+      case "get_business_snapshot":
+        return await getBusinessSnapshot(tenantId);
       default:
         return {
           result: null,
