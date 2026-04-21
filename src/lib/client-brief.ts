@@ -249,13 +249,30 @@ export async function regenerateClientSummary(
     const brief = await generateClientBrief(tenantId, clientProfileId);
     if (!brief) return;
 
+    // Embed the summary for pgvector cross-client search in the chat layer.
+    // If embedding fails, we still save the summary — search falls back to
+    // ILIKE in that path.
+    let embedding: number[] | null = null;
+    try {
+      const embRes = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: brief.text,
+      });
+      embedding = embRes.data[0]?.embedding ?? null;
+    } catch (err) {
+      console.error("CLIENT_SUMMARY_EMBED_ERR:", clientProfileId, err);
+    }
+
+    const update: Record<string, unknown> = {
+      summary: brief.text,
+      summary_updated_at: brief.generatedAt,
+      summary_source_call_ids: brief.sourceCallIds,
+    };
+    if (embedding) update.summary_embedding = embedding;
+
     await supabaseAdmin
       .from("client_profiles")
-      .update({
-        summary: brief.text,
-        summary_updated_at: brief.generatedAt,
-        summary_source_call_ids: brief.sourceCallIds,
-      })
+      .update(update)
       .eq("id", clientProfileId)
       .eq("tenant_id", tenantId);
   } catch (err) {
