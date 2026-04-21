@@ -103,7 +103,7 @@ export default function ProvidersPage() {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="px-4 py-2 bg-[#fdf9ec] text-amber-900 border border-amber-300 font-bold rounded-lg hover:bg-amber-50 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
+          className="px-4 py-2 bg-white text-amber-900 border border-amber-400 shadow-sm font-bold rounded-lg hover:bg-[#fdf9ec] hover:border-amber-500 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
         >
           <span>+</span> Add Provider
         </button>
@@ -152,7 +152,7 @@ export default function ProvidersPage() {
               >
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2 bg-[#fdf9ec] text-amber-900 border border-amber-300 rounded-lg font-bold text-sm">
+              <button type="submit" className="px-6 py-2 bg-white text-amber-900 border border-amber-400 shadow-sm rounded-lg font-bold text-sm">
                 Save Provider
               </button>
             </div>

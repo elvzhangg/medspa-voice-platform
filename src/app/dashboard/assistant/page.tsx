@@ -160,7 +160,7 @@ export default function AssistantPage() {
         <div className="px-4 py-3 border-b border-gray-100">
           <button
             onClick={newConversation}
-            className="w-full px-3 py-2 bg-[#fdf9ec] hover:bg-[#fdf9ec] text-amber-900 border border-amber-400 text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
+            className="w-full px-3 py-2 bg-[#fdf9ec] hover:bg-white text-amber-900 border border-amber-400 shadow-sm text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -243,7 +243,7 @@ export default function AssistantPage() {
             <button
               onClick={send}
               disabled={!input.trim() || sending}
-              className="px-5 py-3 bg-[#fdf9ec] hover:bg-amber-50 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+              className="px-5 py-3 bg-[#fdf9ec] hover:bg-[#fdf9ec] hover:border-amber-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
             >
               Send
             </button>
@@ -298,7 +298,7 @@ function MessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-[#fdf9ec] text-amber-900 border border-amber-300 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
+        <div className="bg-white text-amber-900 border border-amber-400 shadow-sm rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
           {message.content}
         </div>
       </div>

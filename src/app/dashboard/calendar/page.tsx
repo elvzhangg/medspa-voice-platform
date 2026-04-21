@@ -296,7 +296,7 @@ export default function CalendarPage() {
                   <span
                     className={`inline-flex items-center justify-center text-xs font-bold ${
                       isToday
-                        ? "bg-[#fdf9ec] text-amber-900 border border-amber-300 rounded-full w-6 h-6"
+                        ? "bg-white text-amber-900 border border-amber-400 shadow-sm rounded-full w-6 h-6"
                         : inMonth
                         ? "text-gray-700 w-6 h-6"
                         : "text-gray-300 w-6 h-6"

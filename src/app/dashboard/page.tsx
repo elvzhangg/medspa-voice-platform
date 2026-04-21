@@ -188,7 +188,7 @@ export default async function DashboardPage() {
             <div className="space-y-2">
               <Link
                 href="/dashboard/knowledge-base"
-                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-[#fdf9ec] text-amber-900 border border-amber-300 rounded-lg text-sm font-semibold hover:bg-amber-50 transition-all shadow-sm"
+                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-white text-amber-900 border border-amber-400 shadow-sm rounded-lg text-sm font-semibold hover:bg-[#fdf9ec] hover:border-amber-500 transition-all shadow-sm"
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
