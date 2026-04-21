@@ -30,12 +30,6 @@ export default async function DashboardLayout({
       <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-zinc-200 flex flex-col z-10 shadow-sm">
         {/* Brand header */}
         <div className="px-5 py-5 border-b border-zinc-100">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="block w-1 h-1 rounded-full bg-amber-500" />
-            <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-[0.25em]">
-              AI Receptionist
-            </span>
-          </div>
           <h2 className="font-serif text-lg text-zinc-900 leading-snug truncate">
             {tenant.name}
           </h2>
