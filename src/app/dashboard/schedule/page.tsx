@@ -431,6 +431,7 @@ export default function SchedulingSystemPage() {
 
       {/* ── SMS fallback setup (only relevant for hybrid / sms_fallback / unset modes) ── */}
       {integration?.mode !== "direct_book" && (
+      <>
       <div>
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">
           {integration?.mode === "hybrid" ? "Staff SMS Confirmation" : "Your AI Phone Line — Setup"}
@@ -674,7 +675,6 @@ export default function SchedulingSystemPage() {
           <p className="mt-3 text-xs font-bold text-emerald-700">{twilioMsg}</p>
         )}
       </div>
-      )}
 
       {/* ── Provider status pill ── */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex items-center gap-5">
@@ -884,7 +884,7 @@ export default function SchedulingSystemPage() {
           ))}
         </div>
       </div>
-
+      </>
       )}
       {/* ── Forwarded Requests Log ── */}
       {requests.length > 0 && (
