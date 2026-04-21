@@ -228,7 +228,7 @@ export default function MessagingPage() {
  <button
  type="submit"
  disabled={saving}
- className="px-6 py-2.5 bg-zinc-950 text-white font-semibold rounded-lg hover:bg-zinc-900 shadow-sm transition-all disabled:opacity-50 text-sm"
+ className="px-6 py-2.5 bg-stone-700 text-white font-semibold rounded-lg hover:bg-stone-600 shadow-sm transition-all disabled:opacity-50 text-sm"
  >
  {saving ?"Saving..." :"Save Messaging Preferences"}
  </button>
