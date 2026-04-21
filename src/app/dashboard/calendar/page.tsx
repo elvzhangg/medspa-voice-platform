@@ -174,9 +174,6 @@ export default function CalendarPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Calendar</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">
-            Every appointment — AI-booked or synced from your connected platform.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -201,6 +198,39 @@ export default function CalendarPage() {
           </button>
         </div>
       </div>
+
+      {/* Connect-your-platform banner — prominent CTA when no integration is connected */}
+      {integration && integration.status !== "connected" && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-8 shadow-lg">
+          <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute -left-8 -bottom-16 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
+          <div className="relative flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex-1 min-w-[260px]">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                  Not connected
+                </span>
+              </div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tight leading-tight">
+                Connect your booking platform
+              </h2>
+              <p className="text-sm text-white/80 mt-2 max-w-xl leading-relaxed">
+                Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
+              </p>
+            </div>
+            <a
+              href="mailto:founder@vauxvoice.com"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-white text-indigo-700 text-sm font-black uppercase tracking-wider rounded-2xl hover:bg-indigo-50 transition-colors shadow-sm shrink-0"
+            >
+              Email founder@vauxvoice.com
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Sync status strip — read-only status for the connected booking platform */}
       {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
@@ -311,27 +341,7 @@ export default function CalendarPage() {
         <p className="text-xs text-gray-400 italic text-center">Loading events…</p>
       )}
 
-      {events.length === 0 && !loading && integration?.status !== "connected" && (
-        <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-3xl border border-indigo-100 p-10 text-center">
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </div>
-          <p className="text-base font-bold text-gray-900">Connect your booking platform</p>
-          <p className="text-sm text-gray-600 mt-1.5 max-w-md mx-auto">
-            Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
-          </p>
-          <a
-            href="mailto:founder@vauxvoice.com"
-            className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors"
-          >
-            Email founder@vauxvoice.com
-          </a>
-        </div>
-      )}
-
-      {events.length === 0 && !loading && integration?.status === "connected" && (
+      {events.length === 0 && !loading && (
         <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-10 text-center">
           <p className="text-sm font-bold text-gray-700">No appointments for {monthLabel(cursor)}</p>
           <p className="text-xs text-gray-500 mt-1">
