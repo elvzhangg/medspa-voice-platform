@@ -55,7 +55,7 @@ export default function CampaignsPage() {
  </div>
  <button 
  onClick={() => setIsCreating(true)}
- className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
+ className="px-4 py-2 bg-zinc-950 text-white font-bold rounded-lg hover:bg-zinc-900 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
  >
  <span>+</span> New Campaign
  </button>
@@ -72,7 +72,7 @@ export default function CampaignsPage() {
  onChange={e => setNewCampaignName(e.target.value)}
  required
  />
- <button type="submit" className="px-6 py-2 bg-amber-600 text-white rounded-lg font-bold">Create</button>
+ <button type="submit" className="px-6 py-2 bg-zinc-950 text-white rounded-lg font-bold">Create</button>
  <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-500">Cancel</button>
  </form>
  </div>
@@ -118,7 +118,7 @@ export default function CampaignsPage() {
 
  <Link
  href={`/dashboard/campaigns/${cp.id}`}
- className="block w-full text-center py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-all shadow-sm shadow-amber-100"
+ className="block w-full text-center py-2 bg-zinc-950 text-white rounded-lg text-sm font-bold hover:bg-zinc-900 transition-all shadow-sm shadow-amber-100"
  >
  Open Campaign
  </Link>
