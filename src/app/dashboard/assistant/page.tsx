@@ -265,10 +265,7 @@ function EmptyState({ onSuggestion }: { onSuggestion: (s: string) => void }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       </div>
-      <h2 className="font-serif text-2xl text-zinc-900 mb-2">Ask about your clients</h2>
-      <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
-        Everything you remember, even the things only one of you remembered. Pulls from call transcripts, notes, and appointments.
-      </p>
+      <h2 className="font-serif text-2xl text-zinc-900 mb-6">Ask about your clients</h2>
       <div className="grid grid-cols-2 gap-2 max-w-xl mx-auto">
         {SUGGESTIONS.map((s) => (
           <button
