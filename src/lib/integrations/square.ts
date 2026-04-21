@@ -1,9 +1,12 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterWebhookEvent,
+  AdapterWebhookEventType,
   BookingAdapter,
 } from "./types";
 
@@ -176,6 +179,109 @@ const adapter: BookingAdapter = {
       serviceId: variation.id,
       staffId: a.appointment_segments?.[0]?.team_member_id,
     }));
+  },
+
+  async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
+    // Square signs: base64(HMAC-SHA256(notificationURL + rawBody, signatureKey))
+    // Header: x-square-hmacsha256-signature.
+    // The notification URL must be the exact URL configured in Square's
+    // webhook subscription UI — we store it on config.webhook_url so sig
+    // verification works without guessing the public host.
+    // https://developer.squareup.com/docs/webhooks/step3validate
+    const signatureKey = ctx.credentials.webhook_signature_key;
+    const url = ctx.config.webhook_url;
+    const sigHeader = headers["x-square-hmacsha256-signature"];
+    let signatureOk = false;
+    if (signatureKey && url && sigHeader) {
+      try {
+        const expected = createHmac("sha256", signatureKey)
+          .update(url + rawBody, "utf8")
+          .digest("base64");
+        const a = Buffer.from(expected, "base64");
+        const b = Buffer.from(sigHeader, "base64");
+        signatureOk = a.length === b.length && timingSafeEqual(a, b);
+      } catch {
+        signatureOk = false;
+      }
+    }
+
+    let payload: {
+      type?: string;
+      data?: {
+        id?: string;
+        object?: {
+          booking?: {
+            id?: string;
+            status?: string;
+            start_at?: string;
+            customer_id?: string;
+            appointment_segments?: Array<{
+              duration_minutes?: number;
+              service_variation_id?: string;
+              team_member_id?: string;
+            }>;
+          };
+        };
+      };
+    };
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+
+    const type = (payload.type || "").toLowerCase();
+    const booking = payload.data?.object?.booking;
+    const externalId = booking?.id || payload.data?.id;
+    if (!externalId || !type.startsWith("booking.")) return null;
+
+    // Square has no separate "cancelled" event — state transitions arrive
+    // as booking.updated with status = CANCELLED_BY_*.
+    const status = (booking?.status || "").toUpperCase();
+    const cancelled = status.startsWith("CANCELLED") || status === "DECLINED" || status === "NO_SHOW";
+
+    let eventType: AdapterWebhookEventType;
+    if (cancelled) eventType = "appointment.cancelled";
+    else if (type === "booking.created") eventType = "appointment.created";
+    else eventType = "appointment.updated";
+
+    // Compute end_at from duration if present — Square reports start + segments.
+    const seg = booking?.appointment_segments?.[0];
+    let endTime: string | undefined;
+    if (booking?.start_at && seg?.duration_minutes) {
+      endTime = new Date(
+        new Date(booking.start_at).getTime() + seg.duration_minutes * 60_000
+      ).toISOString();
+    }
+
+    // Square webhooks don't include customer name/phone — fetch them best-effort
+    // so calendar_events has something useful to show. Skip for cancellations.
+    let customerName: string | undefined;
+    let customerPhone: string | undefined;
+    if (!cancelled && booking?.customer_id) {
+      try {
+        const c = await sqFetch<{
+          customer?: { given_name?: string; family_name?: string; phone_number?: string };
+        }>(ctx, `/customers/${booking.customer_id}`);
+        customerName =
+          [c.customer?.given_name, c.customer?.family_name].filter(Boolean).join(" ") || undefined;
+        customerPhone = c.customer?.phone_number;
+      } catch (err) {
+        console.warn("SQUARE_WEBHOOK_CUSTOMER_FETCH_ERR:", err);
+      }
+    }
+
+    return {
+      signatureOk,
+      eventType,
+      externalId,
+      startTime: booking?.start_at,
+      endTime,
+      serviceName: seg?.service_variation_id, // variation id — service lookup happens at call-time in the UI
+      customerName,
+      customerPhone,
+      cancelled,
+    };
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {

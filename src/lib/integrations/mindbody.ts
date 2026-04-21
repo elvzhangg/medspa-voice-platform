@@ -1,9 +1,12 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterWebhookEvent,
+  AdapterWebhookEventType,
   BookingAdapter,
 } from "./types";
 
@@ -173,6 +176,82 @@ const adapter: BookingAdapter = {
       staffId: it.Staff?.Id ? String(it.Staff.Id) : staffId ? String(staffId) : undefined,
       staffName: it.Staff?.Name,
     }));
+  },
+
+  async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
+    // Mindbody's Webhooks API (separate product from Public API v6).
+    // Signature: base64(HMAC-SHA256(rawBody, subscription_secret)),
+    // header X-Mindbody-Signature. The secret is returned when the admin
+    // creates the subscription; we store it on credentials.webhook_secret.
+    // https://developers.mindbodyonline.com/WebhooksDocumentation
+    const secret = ctx.credentials.webhook_secret;
+    const sigHeader = headers["x-mindbody-signature"];
+    let signatureOk = false;
+    if (secret && sigHeader) {
+      try {
+        const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("base64");
+        const a = Buffer.from(expected, "base64");
+        const b = Buffer.from(sigHeader.replace(/^sha256=/, ""), "base64");
+        signatureOk = a.length === b.length && timingSafeEqual(a, b);
+      } catch {
+        signatureOk = false;
+      }
+    }
+
+    let payload: {
+      eventId?: string;
+      eventData?: {
+        appointmentId?: number | string;
+        startDateTime?: string;
+        endDateTime?: string;
+        staffId?: number;
+        staffName?: string;
+        sessionTypeName?: string;
+        appointmentStatus?: string;
+        clientFirstName?: string;
+        clientLastName?: string;
+        clientPhone?: string;
+        clientMobilePhone?: string;
+      };
+    };
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+
+    const raw = (payload.eventId || "").toLowerCase();
+    const d = payload.eventData;
+    if (!d?.appointmentId) return null;
+
+    let eventType: AdapterWebhookEventType | null = null;
+    if (raw.includes("cancel")) eventType = "appointment.cancelled";
+    else if (raw.includes("reschedul")) eventType = "appointment.rescheduled";
+    else if (raw.includes("creat") || raw.includes("book")) eventType = "appointment.created";
+    else if (raw.includes("updat")) eventType = "appointment.updated";
+    if (!eventType) return null;
+
+    // Mindbody sometimes signals cancellation via appointmentStatus instead
+    // of a distinct event — honor both.
+    const cancelled =
+      eventType === "appointment.cancelled" ||
+      /cancel|no ?show/i.test(d.appointmentStatus || "");
+
+    const customerName =
+      [d.clientFirstName, d.clientLastName].filter(Boolean).join(" ") || undefined;
+
+    return {
+      signatureOk,
+      eventType,
+      externalId: String(d.appointmentId),
+      startTime: d.startDateTime,
+      endTime: d.endDateTime,
+      serviceName: d.sessionTypeName,
+      staffName: d.staffName,
+      customerName,
+      customerPhone: d.clientMobilePhone || d.clientPhone,
+      cancelled,
+    };
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {

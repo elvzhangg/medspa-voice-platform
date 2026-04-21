@@ -1,9 +1,12 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterWebhookEvent,
+  AdapterWebhookEventType,
   BookingAdapter,
 } from "./types";
 
@@ -155,6 +158,98 @@ const adapter: BookingAdapter = {
       serviceId: bookingId,
       staffId: therapistId,
     }));
+  },
+
+  async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
+    // Zenoti's webhook docs vary by enterprise plan — field names drift
+    // between tenants, so we normalize loosely and verify against real
+    // traffic when the first tenant onboards.
+    //
+    // Signature (Zenoti Enterprise default): hex(HMAC-SHA256(rawBody, secret)),
+    // header X-Zenoti-Signature. Secret is the value Zenoti asks the admin
+    // to paste when configuring the subscription; stored on credentials.webhook_secret.
+    const secret = ctx.credentials.webhook_secret;
+    const sigHeader = headers["x-zenoti-signature"];
+    let signatureOk = false;
+    if (secret && sigHeader) {
+      try {
+        const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+        const clean = sigHeader.replace(/^sha256=/, "");
+        const a = Buffer.from(expected, "hex");
+        const b = Buffer.from(clean, "hex");
+        signatureOk = a.length === b.length && timingSafeEqual(a, b);
+      } catch {
+        signatureOk = false;
+      }
+    }
+
+    let payload: {
+      event_type?: string;
+      event?: string;
+      type?: string;
+      data?: Record<string, unknown>;
+      appointment?: Record<string, unknown>;
+    };
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+
+    const body = (payload.appointment || payload.data || payload) as Record<string, unknown>;
+    const raw = (payload.event_type || payload.event || payload.type || "").toString().toLowerCase();
+
+    // Zenoti sends ids under a few different keys across plans
+    const externalId =
+      (body.appointment_id as string | undefined) ||
+      (body.id as string | undefined) ||
+      (body.booking_id as string | undefined);
+    if (!externalId) return null;
+
+    let eventType: AdapterWebhookEventType | null = null;
+    if (raw.includes("cancel")) eventType = "appointment.cancelled";
+    else if (raw.includes("reschedul")) eventType = "appointment.rescheduled";
+    else if (raw.includes("creat") || raw.includes("add") || raw.includes("book"))
+      eventType = "appointment.created";
+    else if (raw.includes("updat") || raw.includes("chang")) eventType = "appointment.updated";
+    if (!eventType) return null;
+
+    const guest = (body.guest || body.customer || {}) as {
+      first_name?: string;
+      last_name?: string;
+      mobile_phone?: string | { number?: string };
+      phone?: string;
+    };
+    const service = (body.service || {}) as { name?: string };
+    const therapist = (body.therapist || body.staff || {}) as {
+      display_name?: string;
+      first_name?: string;
+      last_name?: string;
+    };
+
+    const customerName =
+      [guest.first_name, guest.last_name].filter(Boolean).join(" ") || undefined;
+    const customerPhone =
+      typeof guest.mobile_phone === "string"
+        ? guest.mobile_phone
+        : guest.mobile_phone?.number || guest.phone;
+    const staffName =
+      therapist.display_name ||
+      [therapist.first_name, therapist.last_name].filter(Boolean).join(" ") ||
+      undefined;
+
+    return {
+      signatureOk,
+      eventType,
+      externalId: String(externalId),
+      startTime: (body.start_time || body.appointment_time || body.start_date_time) as string | undefined,
+      endTime: (body.end_time || body.end_date_time) as string | undefined,
+      serviceName: service.name,
+      staffName,
+      customerName,
+      customerPhone,
+      cancelled: eventType === "appointment.cancelled",
+    };
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {

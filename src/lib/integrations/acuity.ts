@@ -1,9 +1,12 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
+  AdapterWebhookEvent,
+  AdapterWebhookEventType,
   BookingAdapter,
 } from "./types";
 
@@ -138,6 +141,75 @@ const adapter: BookingAdapter = {
       serviceId: String(matchedType.id),
       staffId: t.calendarID ? String(t.calendarID) : calendarID ? String(calendarID) : undefined,
     }));
+  },
+
+  async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
+    // Acuity webhooks are form-encoded and deliver only IDs + action —
+    // we have to fetch the full appointment to populate start/end times.
+    // Signature: base64(HMAC-SHA256(rawBody, api_key)), header X-Acuity-Signature.
+    // https://developers.acuityscheduling.com/docs/webhooks
+    const apiKey = ctx.credentials.api_key;
+    const sigHeader = headers["x-acuity-signature"];
+    let signatureOk = false;
+    if (apiKey && sigHeader) {
+      try {
+        const expected = createHmac("sha256", apiKey).update(rawBody, "utf8").digest("base64");
+        const a = Buffer.from(expected, "base64");
+        const b = Buffer.from(sigHeader, "base64");
+        signatureOk = a.length === b.length && timingSafeEqual(a, b);
+      } catch {
+        signatureOk = false;
+      }
+    }
+
+    const form = new URLSearchParams(rawBody);
+    const action = (form.get("action") || "").toLowerCase();
+    const externalId = form.get("id");
+    if (!externalId) return null;
+
+    let eventType: AdapterWebhookEventType | null = null;
+    if (action.includes("cancel")) eventType = "appointment.cancelled";
+    else if (action.includes("reschedul")) eventType = "appointment.rescheduled";
+    else if (action.includes("schedul")) eventType = "appointment.created";
+    else if (action.includes("chang")) eventType = "appointment.updated";
+    if (!eventType) return null;
+
+    // Cancellations: skip the fetch — the route handler only needs the ID.
+    if (eventType === "appointment.cancelled") {
+      return { signatureOk, eventType, externalId, cancelled: true };
+    }
+
+    // Fetch full appointment detail. If the fetch fails we still return the
+    // event with signatureOk so the route can 200 + audit, but without
+    // startTime the upsert path is skipped.
+    try {
+      const appt = await acuityFetch<{
+        id: number;
+        datetime: string;
+        endTime?: string;
+        type?: string;
+        calendar?: string;
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+      }>(ctx, `/appointments/${externalId}`);
+
+      const customerName = [appt.firstName, appt.lastName].filter(Boolean).join(" ") || undefined;
+      return {
+        signatureOk,
+        eventType,
+        externalId,
+        startTime: appt.datetime,
+        endTime: appt.endTime,
+        serviceName: appt.type,
+        staffName: appt.calendar,
+        customerName,
+        customerPhone: appt.phone,
+      };
+    } catch (err) {
+      console.warn("ACUITY_WEBHOOK_FETCH_ERR:", err);
+      return { signatureOk, eventType, externalId };
+    }
   },
 
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {

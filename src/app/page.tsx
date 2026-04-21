@@ -1283,17 +1283,26 @@ function DemoSection() {
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-em-600/18 to-transparent" />
 
       <div ref={ref} className="relative max-w-3xl mx-auto px-6">
-        <div className="text-center mb-12">
+        <div className="text-center">
           <h2 className={`reveal-tilt ${visible ? "visible" : ""} font-medium text-sage-100 mb-5 tracking-[-0.005em] leading-[1.08]`}>
             <span className="block whitespace-nowrap text-[clamp(28px,4.2vw,52px)]">Your clients are already calling.</span>
             <span className="block italic text-sage-200 text-[clamp(22px,2.8vw,36px)] mt-2">Your Vivienne is ready when you are.</span>
           </h2>
-          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg`} style={{ transitionDelay: "100ms" }}>
-            A private demo, tailored to your spa. Vivienne is live in under 48 hours.
+          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-400 text-lg mb-10`} style={{ transitionDelay: "100ms" }}>
+            Book a private demo, tailored to your spa. Live in under 48 hours.
           </p>
-        </div>
-        <div className={`reveal-up ${visible ? "visible" : ""} max-w-2xl mx-auto`} style={{ transitionDelay: "200ms" }}>
-          <DemoForm />
+          <div className={`reveal-up ${visible ? "visible" : ""} flex justify-center`} style={{ transitionDelay: "200ms" }}>
+            <Link
+              href="/book-a-demo"
+              className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-medium text-sm tracking-[0.02em] text-white bg-[#0a0a0a] hover:bg-black border border-white/10 hover:border-em-500/40 transition-all duration-300 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.6)] hover:scale-[1.02]"
+            >
+              Book a private demo
+              <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5">→</span>
+            </Link>
+          </div>
+          <p className={`reveal-up ${visible ? "visible" : ""} text-sage-600 text-[11px] tracking-[0.18em] uppercase mt-6`} style={{ transitionDelay: "280ms" }}>
+            Private · Unhurried · Live in under 48 hours
+          </p>
         </div>
       </div>
     </section>
