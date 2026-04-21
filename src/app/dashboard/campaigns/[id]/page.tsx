@@ -94,13 +94,13 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
  <div className="flex gap-2">
  <button
  onClick={() => setIsUploading(true)}
- className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-[#fdf9ec] shadow-sm"
+ className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-50 shadow-sm"
  >
  Import CSV
  </button>
  <button 
  onClick={triggerCalls}
- className="px-6 py-2 bg-white text-amber-900 border border-amber-200 font-semibold rounded-lg hover:bg-[#fdf9ec] border border-amber-300 shadow-lg shadow-amber-100 text-xs"
+ className="px-6 py-2 bg-amber-50 text-amber-900 border border-amber-300 font-semibold rounded-lg hover:bg-amber-100 border border-amber-400 shadow-lg shadow-amber-100 text-xs"
  >
  🚀 Start sequence
  </button>
@@ -116,10 +116,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
  type="file" 
  accept=".csv"
  onChange={e => setFile(e.target.files?.[0] || null)}
- className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white border border-amber-200 file:text-white hover:file:bg-white border border-amber-200 cursor-pointer"
+ className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-50 border border-amber-300 file:text-white hover:file:bg-amber-50 border border-amber-300 cursor-pointer"
  />
  <div className="flex justify-center gap-2">
- <button type="submit" className="px-8 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg font-bold">Upload leads</button>
+ <button type="submit" className="px-8 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg font-bold">Upload leads</button>
  <button type="button" onClick={() => setIsUploading(false)} className="px-4 py-2 text-gray-500">Cancel</button>
  </div>
  {uploadError && (
@@ -131,7 +131,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
  <table className="w-full text-sm">
- <thead className="bg-[#fdf9ec] border-b border-gray-100">
+ <thead className="bg-gray-50 border-b border-gray-100">
  <tr>
  <th className="px-6 py-4 text-left font-semibold text-gray-400 text-[10px]">Name</th>
  <th className="px-6 py-4 text-left font-semibold text-gray-400 text-[10px]">Phone</th>
@@ -140,7 +140,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
  </thead>
  <tbody className="divide-y divide-gray-50">
  {leads.map(lead => (
- <tr key={lead.id} className="hover:bg-[#fdf9ec] transition-colors">
+ <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
  <td className="px-6 py-4 font-bold text-gray-900">{lead.first_name} {lead.last_name}</td>
  <td className="px-6 py-4 text-gray-500">{lead.phone_number}</td>
  <td className="px-6 py-4">

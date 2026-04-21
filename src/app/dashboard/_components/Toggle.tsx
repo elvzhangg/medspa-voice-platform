@@ -15,7 +15,7 @@ export default function Toggle({ enabled, onChange, ariaLabel }: ToggleProps) {
  aria-label={ariaLabel}
  onClick={onChange}
  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
- enabled ?"bg-white border border-amber-200" :"bg-gray-200"
+ enabled ?"bg-amber-50 border border-amber-300" :"bg-gray-200"
  }`}
  >
  <span

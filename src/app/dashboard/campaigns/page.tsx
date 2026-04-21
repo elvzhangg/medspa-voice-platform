@@ -55,7 +55,7 @@ export default function CampaignsPage() {
  </div>
  <button 
  onClick={() => setIsCreating(true)}
- className="px-4 py-2 bg-white text-amber-900 border border-amber-200 font-bold rounded-lg hover:bg-[#fdf9ec] border border-amber-300 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 font-bold rounded-lg hover:bg-amber-100 border border-amber-400 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
  >
  <span>+</span> New Campaign
  </button>
@@ -72,7 +72,7 @@ export default function CampaignsPage() {
  onChange={e => setNewCampaignName(e.target.value)}
  required
  />
- <button type="submit" className="px-6 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg font-bold">Create</button>
+ <button type="submit" className="px-6 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg font-bold">Create</button>
  <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-500">Cancel</button>
  </form>
  </div>
@@ -118,7 +118,7 @@ export default function CampaignsPage() {
 
  <Link
  href={`/dashboard/campaigns/${cp.id}`}
- className="block w-full text-center py-2 bg-white text-amber-900 border border-amber-200 rounded-lg text-sm font-bold hover:bg-[#fdf9ec] border border-amber-300 transition-all shadow-sm shadow-amber-100"
+ className="block w-full text-center py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-bold hover:bg-amber-100 border border-amber-400 transition-all shadow-sm shadow-amber-100"
  >
  Open Campaign
  </Link>

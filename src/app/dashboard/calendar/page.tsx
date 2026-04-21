@@ -178,20 +178,20 @@ export default function CalendarPage() {
  <div className="flex items-center gap-2">
  <button
  onClick={prev}
- className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-[#fdf9ec] transition-colors flex items-center justify-center"
+ className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center"
  aria-label="Previous month"
  >
  ‹
  </button>
  <button
  onClick={goToday}
- className="px-3 h-9 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:bg-[#fdf9ec] transition-colors"
+ className="px-3 h-9 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-colors"
  >
  Today
  </button>
  <button
  onClick={next}
- className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-[#fdf9ec] transition-colors flex items-center justify-center"
+ className="w-9 h-9 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center"
  aria-label="Next month"
  >
  ›
@@ -267,7 +267,7 @@ export default function CalendarPage() {
  {/* Grid */}
  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
  {/* Day-of-week header */}
- <div className="grid grid-cols-7 border-b border-gray-100 bg-[#fdf9ec]">
+ <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
  {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
  <div
  key={d}
@@ -289,14 +289,14 @@ export default function CalendarPage() {
  <div
  key={i}
  className={`min-h-[112px] border-b border-r border-gray-100 p-1.5 ${
- inMonth ?"bg-white" :"bg-[#fdf9ec]/60"
+ inMonth ?"bg-white" :"bg-gray-50/60"
  } ${i % 7 === 6 ?"border-r-0" :""} ${i >= 35 ?"border-b-0" :""}`}
  >
  <div className="flex items-center justify-between mb-1">
  <span
  className={`inline-flex items-center justify-center text-xs font-bold ${
  isToday
- ?"bg-white text-amber-900 border border-amber-200 rounded-full w-6 h-6"
+ ?"bg-amber-50 text-amber-900 border border-amber-300 rounded-full w-6 h-6"
  : inMonth
  ?"text-gray-700 w-6 h-6"
  :"text-gray-300 w-6 h-6"

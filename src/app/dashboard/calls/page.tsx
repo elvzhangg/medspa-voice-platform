@@ -38,7 +38,7 @@ export default async function CallLogsPage() {
  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
  <table className="w-full text-sm">
  <thead className="border-b border-gray-100">
- <tr className="bg-[#fdf9ec]">
+ <tr className="bg-gray-50">
  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500">
  Caller
  </th>

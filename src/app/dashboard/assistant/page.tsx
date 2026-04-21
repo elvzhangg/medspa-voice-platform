@@ -160,7 +160,7 @@ export default function AssistantPage() {
  <div className="px-4 py-3 border-b border-gray-100">
  <button
  onClick={newConversation}
- className="w-full px-3 py-2 bg-white border border-amber-200 hover:bg-[#fdf9ec] border border-amber-300 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
+ className="w-full px-3 py-2 bg-amber-50 border border-amber-300 hover:bg-amber-100 border border-amber-400 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
  >
  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -182,7 +182,7 @@ export default function AssistantPage() {
  className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors ${
  activeId === c.id
  ?"bg-amber-50 text-amber-800 font-medium"
- :"text-gray-600 hover:bg-[#fdf9ec]"
+ :"text-gray-600 hover:bg-gray-50"
  }`}
  title={c.title ??"Untitled"}
  >
@@ -196,7 +196,7 @@ export default function AssistantPage() {
  </aside>
 
  {/* Main panel */}
- <main className="flex-1 flex flex-col bg-[#fdf9ec]">
+ <main className="flex-1 flex flex-col bg-gray-50">
  <div className="flex-1 overflow-y-auto px-8 py-8" ref={scrollRef}>
  {loadingConv ? (
  <div className="flex items-center justify-center py-24">
@@ -238,12 +238,12 @@ export default function AssistantPage() {
  }}
  rows={1}
  placeholder="Ask about a client, filter by tag, search across notes…"
- className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-[#fdf9ec] focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none text-sm resize-none"
+ className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none text-sm resize-none"
  />
  <button
  onClick={send}
  disabled={!input.trim() || sending}
- className="px-5 py-3 bg-white border border-amber-200 hover:bg-[#fdf9ec] border border-amber-300 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+ className="px-5 py-3 bg-amber-50 border border-amber-300 hover:bg-amber-100 border border-amber-400 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
  >
  Send
  </button>
@@ -298,7 +298,7 @@ function MessageBubble({
  if (message.role ==="user") {
  return (
  <div className="flex justify-end">
- <div className="bg-white text-amber-900 border border-amber-200 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
+ <div className="bg-amber-50 text-amber-900 border border-amber-300 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl text-sm whitespace-pre-wrap">
  {message.content}
  </div>
  </div>

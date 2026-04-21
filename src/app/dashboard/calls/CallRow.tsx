@@ -25,7 +25,7 @@ export default function CallRow({ call }: { call: CallLog }) {
  return (
  <>
  <tr
- className="border-b border-gray-50 hover:bg-[#fdf9ec] cursor-pointer transition-colors"
+ className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
  onClick={() => setExpanded((e) => !e)}
  >
  <td className="px-5 py-3.5">

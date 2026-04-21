@@ -25,13 +25,13 @@ export default async function DashboardLayout({
  const brandPrefix = `/${tenant.slug}`;
 
  return (
- <div className="min-h-screen bg-[#fdf9ec] flex">
+ <div className="min-h-screen bg-gray-50 flex">
  {/* Sidebar */}
- <aside className="fixed inset-y-0 left-0 w-64 bg-white/80 backdrop-blur-sm border-r border-amber-100 flex flex-col z-10 shadow-sm">
+ <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
  {/* Brand header */}
  <div className="px-5 py-5 border-b border-gray-100">
  <div className="flex items-center gap-1.5 mb-2">
- <span className="block w-1.5 h-1.5 rounded-full bg-white border border-amber-200" />
+ <span className="block w-1.5 h-1.5 rounded-full bg-amber-50 border border-amber-300" />
  <span className="text-[10px] font-semibold text-amber-600">
  AI Receptionist
  </span>

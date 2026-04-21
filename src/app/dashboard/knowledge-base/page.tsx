@@ -113,7 +113,7 @@ export default function KnowledgeBasePage() {
  </div>
  <button
  onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}
- className="px-4 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg text-sm font-medium hover:bg-[#fdf9ec] border border-amber-300 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 transition-colors"
  >
  + Add Document
  </button>
@@ -164,14 +164,14 @@ export default function KnowledgeBasePage() {
  <button
  type="submit"
  disabled={addSaving}
- className="px-4 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg text-sm font-medium hover:bg-[#fdf9ec] border border-amber-300 disabled:opacity-50 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 disabled:opacity-50 transition-colors"
  >
  {addSaving ?"Saving..." :"Save Document"}
  </button>
  <button
  type="button"
  onClick={() => setShowAddForm(false)}
- className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-[#fdf9ec] transition-colors"
+ className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
  >
  Cancel
  </button>
@@ -194,7 +194,7 @@ export default function KnowledgeBasePage() {
  </p>
  <button
  onClick={() => setShowAddForm(true)}
- className="px-4 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg text-sm font-medium hover:bg-[#fdf9ec] border border-amber-300 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 transition-colors"
  >
  + Add your first document
  </button>
@@ -335,14 +335,14 @@ function DocCard({
  <button
  type="submit"
  disabled={editSaving}
- className="px-4 py-2 bg-white text-amber-900 border border-amber-200 rounded-lg text-sm font-medium hover:bg-[#fdf9ec] border border-amber-300 disabled:opacity-50 transition-colors"
+ className="px-4 py-2 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-sm font-medium hover:bg-amber-100 border border-amber-400 disabled:opacity-50 transition-colors"
  >
  {editSaving ?"Saving..." :"Save Changes"}
  </button>
  <button
  type="button"
  onClick={onCancelEdit}
- className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-[#fdf9ec] transition-colors"
+ className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
  >
  Cancel
  </button>
@@ -370,7 +370,7 @@ function DocCard({
  <div className="flex items-center gap-2 flex-shrink-0">
  <button
  onClick={onEdit}
- className="px-3 py-1.5 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-[#fdf9ec] transition-colors"
+ className="px-3 py-1.5 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
  >
  Edit
  </button>
