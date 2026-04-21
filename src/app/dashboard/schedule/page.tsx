@@ -228,9 +228,7 @@ export default function SchedulingSystemPage() {
               <span className="text-sm text-gray-500">No booking platform connected yet.</span>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              Tell us which scheduling platform your clinic uses (Boulevard, Acuity, Mindbody, Fresha, etc.)
-              and we'll wire up the integration on our side — you don't need to touch API keys. Once connected,
-              your AI can verify real-time availability and, on supported platforms, book appointments directly.
+              Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
             </p>
             <a
               href="mailto:founder@vauxvoice.com?subject=Booking%20platform%20integration"

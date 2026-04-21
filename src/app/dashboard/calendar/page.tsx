@@ -30,6 +30,24 @@ const PLATFORM_COLORS: Record<string, { bg: string; text: string; label: string 
 };
 const AI_COLOR = { bg: "bg-indigo-100", text: "text-indigo-800", label: "AI booked" };
 
+interface IntegrationStatus {
+  platform: string | null;
+  status: "pending" | "connected" | "error" | "disabled";
+  last_synced_at: string | null;
+}
+
+function formatSyncAgo(iso: string | null): string {
+  if (!iso) return "awaiting first sync";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "synced just now";
+  if (mins < 60) return `synced ${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `synced ${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `synced ${days}d ago`;
+}
+
 function eventColor(ev: CalEvent) {
   if (ev.external_source && PLATFORM_COLORS[ev.external_source]) {
     return PLATFORM_COLORS[ev.external_source];
@@ -61,6 +79,14 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CalEvent | null>(null);
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
+
+  useEffect(() => {
+    fetch("/api/integrations/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setIntegration(data))
+      .catch(() => {});
+  }, []);
 
   const closeSelected = useCallback(() => setSelected(null), []);
   useDismiss(selected !== null, closeSelected);
@@ -176,6 +202,21 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {/* Sync status strip — read-only status for the connected booking platform */}
+      {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-gray-200 rounded-2xl">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="text-xs font-bold text-gray-800">
+            {PLATFORM_COLORS[integration.platform].label}
+          </span>
+          <span className="text-[11px] text-gray-500">·</span>
+          <span className="text-[11px] text-gray-500">{formatSyncAgo(integration.last_synced_at)}</span>
+        </div>
+      )}
+
       {/* Month header + legend */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-xl font-black text-gray-900 tracking-tight">{monthLabel(cursor)}</h2>
@@ -270,11 +311,31 @@ export default function CalendarPage() {
         <p className="text-xs text-gray-400 italic text-center">Loading events…</p>
       )}
 
-      {events.length === 0 && !loading && (
+      {events.length === 0 && !loading && integration?.status !== "connected" && (
+        <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-3xl border border-indigo-100 p-10 text-center">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </div>
+          <p className="text-base font-bold text-gray-900">Connect your booking platform</p>
+          <p className="text-sm text-gray-600 mt-1.5 max-w-md mx-auto">
+            Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
+          </p>
+          <a
+            href="mailto:founder@vauxvoice.com"
+            className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors"
+          >
+            Email founder@vauxvoice.com
+          </a>
+        </div>
+      )}
+
+      {events.length === 0 && !loading && integration?.status === "connected" && (
         <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-10 text-center">
           <p className="text-sm font-bold text-gray-700">No appointments for {monthLabel(cursor)}</p>
           <p className="text-xs text-gray-500 mt-1">
-            Events booked by your AI receptionist — and those synced from a connected booking platform — will appear here.
+            Events booked by your AI receptionist — and those synced from your connected booking platform — will appear here.
           </p>
         </div>
       )}
