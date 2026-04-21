@@ -674,6 +674,7 @@ export default function SchedulingSystemPage() {
           <p className="mt-3 text-xs font-bold text-emerald-700">{twilioMsg}</p>
         )}
       </div>
+      )}
 
       {/* ── Provider status pill ── */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex items-center gap-5">

@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
@@ -22,8 +23,6 @@ import type {
  * WellnessLiving requires an account executive to enable Developer API
  * access on the tenant's plan — add a note to that effect in onboarding.
  */
-
-import { createHmac } from "crypto";
 
 const BASE_URL = "https://api.wellnessliving.com";
 
