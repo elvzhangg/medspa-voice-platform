@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export interface CallLog {
   id: string;
@@ -19,13 +19,31 @@ function formatDuration(seconds: number | null): string {
   return `${m}m ${s}s`;
 }
 
-export default function CallRow({ call }: { call: CallLog }) {
-  const [expanded, setExpanded] = useState(false);
+export default function CallRow({
+  call,
+  highlighted,
+}: {
+  call: CallLog;
+  highlighted?: boolean;
+}) {
+  // Deep-link from Ask Vivienne source pills: highlighted=true auto-expands
+  // the row and scrolls it into view. Brief amber glow so the eye lands on it.
+  const [expanded, setExpanded] = useState(Boolean(highlighted));
+  const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlighted]);
 
   return (
     <>
       <tr
-        className="border-b border-zinc-50 hover:bg-zinc-50 cursor-pointer transition-colors"
+        ref={rowRef}
+        id={`call-${call.id}`}
+        className={`border-b border-zinc-50 hover:bg-zinc-50 cursor-pointer transition-colors ${
+          highlighted ? "bg-[#fdf9ec] ring-2 ring-amber-300 ring-inset" : ""
+        }`}
         onClick={() => setExpanded((e) => !e)}
       >
         <td className="px-5 py-3.5">

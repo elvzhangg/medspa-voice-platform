@@ -2,9 +2,15 @@ import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 import CallRow, { type CallLog } from "./CallRow";
 
-export default async function CallLogsPage() {
+export default async function CallLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ call?: string }>;
+}) {
   const tenant = (await getCurrentTenant()) as { id: string } | null;
   if (!tenant) return null;
+
+  const { call: highlightedCallId } = await searchParams;
 
   const { data } = await supabaseAdmin
     .from("call_logs")
@@ -55,7 +61,11 @@ export default async function CallLogsPage() {
             </thead>
             <tbody>
               {calls.map((call) => (
-                <CallRow key={call.id} call={call} />
+                <CallRow
+                  key={call.id}
+                  call={call}
+                  highlighted={call.id === highlightedCallId}
+                />
               ))}
             </tbody>
           </table>

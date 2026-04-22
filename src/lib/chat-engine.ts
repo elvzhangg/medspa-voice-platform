@@ -66,8 +66,26 @@ export interface ChatTurnResult {
 }
 
 export async function runChatTurn(req: ChatTurnRequest): Promise<ChatTurnResult> {
+  // Inject current date/time so the model doesn't hallucinate "earlier today"
+  // when shown a call from weeks ago. Matches the voice AI's approach.
+  const now = new Date();
+  const dateContext = `## Current time
+${now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Los_Angeles",
+    timeZoneName: "short",
+  })}
+
+When staff asks about "today", "yesterday", "this week", etc., interpret relative to this timestamp. Always reason about timestamps in tool results by comparing to it — e.g. a call logged April 9 when it's April 22 is "two weeks ago", NOT "earlier today".`;
+
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: dateContext },
     ...req.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: req.message },
   ];
