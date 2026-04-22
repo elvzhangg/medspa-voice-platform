@@ -187,7 +187,7 @@ export default function ClinicSetupPage() {
             </svg>
           }
         >
-          <Field label="Voice" hint="Click play to hear a sample before selecting.">
+          <Field label="Voice">
             <VoicePicker
               value={calls.voice_id}
               onChange={(id) => setCalls({ ...calls, voice_id: id })}
