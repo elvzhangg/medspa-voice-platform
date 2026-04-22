@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentTenant } from "@/lib/supabase-server";
 
 /**
  * GET /api/voices/[id]/sample
@@ -11,10 +12,12 @@ import { NextRequest, NextResponse } from "next/server";
  * curated set so this endpoint can't be used as a general-purpose
  * ElevenLabs proxy (which would let anyone with the URL rack up usage).
  *
- * Requires ELEVENLABS_API_KEY in env.
+ * Sample text includes the tenant's clinic name when a session is
+ * present, falling back to a generic greeting when not. Cache is
+ * therefore `private` (browser-only) — edge can't share bytes across
+ * tenants.
  *
- * Response is cached immutably — the sample never changes for a given
- * voice ID, so browsers + Vercel edge reuse the same bytes across clicks.
+ * Requires ELEVENLABS_API_KEY in env.
  */
 
 // Allowlist of curated ElevenLabs voice IDs — mirrors VOICE_OPTIONS in
@@ -28,8 +31,11 @@ const ALLOWED_VOICE_IDS = new Set<string>([
   "pNInz6obpgDQGcFmaJgB", // Adam
 ]);
 
-const SAMPLE_TEXT =
-  "Thank you for calling! I'm your AI Clientele Specialist. How can I help you today?";
+function sampleTextFor(clinicName: string | null): string {
+  return clinicName
+    ? `Thank you for calling ${clinicName}! I'm your AI Clientele Specialist. How can I help you today?`
+    : "Thank you for calling! I'm your AI Clientele Specialist. How can I help you today?";
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -47,6 +53,14 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
       { status: 503 }
     );
   }
+
+  // Personalize the sample with the caller's clinic name when they're
+  // logged in as a tenant. Fall back to a generic greeting for any
+  // unauthenticated caller (e.g. the landing page — future use).
+  const tenant = (await getCurrentTenant().catch(() => null)) as
+    | { name?: string }
+    | null;
+  const SAMPLE_TEXT = sampleTextFor(tenant?.name ?? null);
 
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${id}?output_format=mp3_44100_128`,
@@ -75,7 +89,10 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   return new NextResponse(buf, {
     headers: {
       "Content-Type": "audio/mpeg",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      // Private — content is tenant-specific so edge caches can't share
+      // across tenants. Browser may cache for a day to avoid burning
+      // ElevenLabs chars on repeat clicks by the same user.
+      "Cache-Control": "private, max-age=86400",
     },
   });
 }
