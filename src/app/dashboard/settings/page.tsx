@@ -15,19 +15,19 @@ const VOICE_OPTIONS: VoiceOption[] = [
     id: "rachel",
     name: "Rachel",
     tagline: "Professional, warm — the default receptionist",
-    sampleUrl: "/voices/rachel.mp3",
+    sampleUrl: "/api/voices/rachel/sample",
   },
   {
     id: "drew",
     name: "Drew",
     tagline: "Medical, direct — calm and reassuring",
-    sampleUrl: "/voices/drew.mp3",
+    sampleUrl: "/api/voices/drew/sample",
   },
   {
     id: "natasha",
     name: "Natasha",
     tagline: "Warm, engaging — conversational energy",
-    sampleUrl: "/voices/natasha.mp3",
+    sampleUrl: "/api/voices/natasha/sample",
   },
 ];
 
@@ -399,12 +399,14 @@ function VoicePicker({
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const isPreset = VOICE_OPTIONS.some((v) => v.id === value);
   const [customMode, setCustomMode] = useState(!isPreset && Boolean(value));
   const [customId, setCustomId] = useState(!isPreset ? value : "");
 
-  function togglePlay(opt: VoiceOption) {
+  async function togglePlay(opt: VoiceOption) {
     // Stop any currently-playing preview first — one at a time.
     if (audioRef.current) {
       audioRef.current.pause();
@@ -415,11 +417,38 @@ function VoicePicker({
       setPlaying(null);
       return;
     }
-    const audio = new Audio(opt.sampleUrl);
-    audio.play().catch(() => setPlaying(null));
-    audio.onended = () => setPlaying(null);
-    audioRef.current = audio;
-    setPlaying(opt.id);
+
+    setSampleError(null);
+    setLoadingId(opt.id);
+    try {
+      // HEAD-check so a 503 "no API key" fails cleanly BEFORE audio element
+      // silently stalls on invalid content. If 200, proceed to <audio> play.
+      const probe = await fetch(opt.sampleUrl, { method: "HEAD" });
+      if (!probe.ok) {
+        const data = await fetch(opt.sampleUrl).then((r) => r.json()).catch(() => ({}));
+        setSampleError(
+          data.error ||
+            "Voice sample isn't available right now. Ask the VauxVoice team to enable previews."
+        );
+        setLoadingId(null);
+        return;
+      }
+      const audio = new Audio(opt.sampleUrl);
+      audio.onended = () => setPlaying(null);
+      audio.onerror = () => {
+        setPlaying(null);
+        setLoadingId(null);
+        setSampleError("Couldn't play the sample.");
+      };
+      await audio.play();
+      audioRef.current = audio;
+      setPlaying(opt.id);
+      setLoadingId(null);
+    } catch {
+      setLoadingId(null);
+      setPlaying(null);
+      setSampleError("Couldn't play the sample.");
+    }
   }
 
   return (
@@ -427,6 +456,7 @@ function VoicePicker({
       {VOICE_OPTIONS.map((opt) => {
         const selected = !customMode && value === opt.id;
         const isPlaying = playing === opt.id;
+        const isLoading = loadingId === opt.id;
         return (
           <div
             key={opt.id}
@@ -446,10 +476,13 @@ function VoicePicker({
                 e.stopPropagation();
                 togglePlay(opt);
               }}
-              className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-zinc-950 text-white hover:bg-zinc-800 transition-colors"
+              disabled={isLoading}
+              className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-zinc-950 text-white hover:bg-zinc-800 disabled:opacity-60 transition-colors"
               aria-label={isPlaying ? "Pause sample" : "Play sample"}
             >
-              {isPlaying ? (
+              {isLoading ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : isPlaying ? (
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <rect x="5" y="4" width="3" height="12" rx="1" />
                   <rect x="12" y="4" width="3" height="12" rx="1" />
@@ -525,6 +558,12 @@ function VoicePicker({
           </div>
         )}
       </div>
+
+      {sampleError && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {sampleError}
+        </p>
+      )}
     </div>
   );
 }
