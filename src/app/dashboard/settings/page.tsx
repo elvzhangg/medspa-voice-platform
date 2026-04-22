@@ -92,7 +92,7 @@ export default function ClinicSetupPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         <Section
-          title="Clinic Identity"
+          title="Clinic Profile"
           subtitle="Who your AI says it represents."
           icon={
             <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
