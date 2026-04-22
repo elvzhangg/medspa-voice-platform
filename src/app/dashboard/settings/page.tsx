@@ -10,24 +10,46 @@ interface VoiceOption {
   sampleUrl: string;
 }
 
+// Curated ElevenLabs voices — one per category. Tenants self-serve from
+// this list; anything else routes to founder@vauxvoice.com.
+// The id IS the ElevenLabs voice ID — stored directly in tenants.voice_id
+// and consumed unchanged by Vapi at call time.
 const VOICE_OPTIONS: VoiceOption[] = [
   {
-    id: "rachel",
+    id: "EXAVITQu4vr4xnSDxMaL",
+    name: "Sarah",
+    tagline: "Warm & reassuring — mature, trustworthy tone",
+    sampleUrl: "/api/voices/EXAVITQu4vr4xnSDxMaL/sample",
+  },
+  {
+    id: "21m00Tcm4TlvDq8ikWAM",
     name: "Rachel",
-    tagline: "Professional, warm — the default receptionist",
-    sampleUrl: "/api/voices/rachel/sample",
+    tagline: "Professional — calm, clear, easy to follow",
+    sampleUrl: "/api/voices/21m00Tcm4TlvDq8ikWAM/sample",
   },
   {
-    id: "drew",
-    name: "Drew",
-    tagline: "Medical, direct — calm and reassuring",
-    sampleUrl: "/api/voices/drew/sample",
+    id: "MF3mGyEYCl7XYWbV9V6O",
+    name: "Elli",
+    tagline: "Young & expressive — friendly, upbeat energy",
+    sampleUrl: "/api/voices/MF3mGyEYCl7XYWbV9V6O/sample",
   },
   {
-    id: "natasha",
-    name: "Natasha",
-    tagline: "Warm, engaging — conversational energy",
-    sampleUrl: "/api/voices/natasha/sample",
+    id: "ErXwobaYiN019PkySvjV",
+    name: "Antoni",
+    tagline: "Warm male — approachable, conversational",
+    sampleUrl: "/api/voices/ErXwobaYiN019PkySvjV/sample",
+  },
+  {
+    id: "onwK4e9ZLuTAKqWW03F9",
+    name: "Daniel",
+    tagline: "Calm male — steady, authoritative",
+    sampleUrl: "/api/voices/onwK4e9ZLuTAKqWW03F9/sample",
+  },
+  {
+    id: "pNInz6obpgDQGcFmaJgB",
+    name: "Adam",
+    tagline: "Deep male — rich low end, narrator gravitas",
+    sampleUrl: "/api/voices/pNInz6obpgDQGcFmaJgB/sample",
   },
 ];
 
@@ -45,7 +67,7 @@ interface IdentitySettings {
 }
 
 interface CallSettings {
-  ai_voice_id: string;
+  voice_id: string;
   voicemail_forwarding_number: string;
 }
 
@@ -63,7 +85,7 @@ export default function ClinicSetupPage() {
     directions_parking_info: "",
   });
   const [calls, setCalls] = useState<CallSettings>({
-    ai_voice_id: "rachel",
+    voice_id: VOICE_OPTIONS[0].id,
     voicemail_forwarding_number: "",
   });
   const [loading, setLoading] = useState(true);
@@ -79,7 +101,7 @@ export default function ClinicSetupPage() {
     if (cRes.ok) {
       const data = await cRes.json();
       setCalls({
-        ai_voice_id: data.ai_voice_id ?? "rachel",
+        voice_id: data.voice_id ?? VOICE_OPTIONS[0].id,
         voicemail_forwarding_number: data.voicemail_forwarding_number ?? "",
       });
     }
@@ -167,8 +189,8 @@ export default function ClinicSetupPage() {
         >
           <Field label="Voice" hint="Click play to hear a sample before selecting.">
             <VoicePicker
-              value={calls.ai_voice_id}
-              onChange={(id) => setCalls({ ...calls, ai_voice_id: id })}
+              value={calls.voice_id}
+              onChange={(id) => setCalls({ ...calls, voice_id: id })}
             />
           </Field>
           <Field
@@ -384,11 +406,9 @@ function Field({
 
 /**
  * Voice picker — card list of preset voices with play/pause sample
- * buttons, plus a "Custom voice" row for tenants who've cloned their
- * own voice (e.g. in ElevenLabs) and want to paste its voice ID.
- *
- * Sample audio lives at /public/voices/<id>.mp3. A single shared
- * audioRef ensures only one preview plays at a time.
+ * buttons. Samples generated on-demand via /api/voices/[id]/sample
+ * (ElevenLabs proxy). Anything outside this list routes the tenant to
+ * founder@vauxvoice.com so the VauxVoice team can add it admin-side.
  */
 function VoicePicker({
   value,
@@ -400,10 +420,6 @@ function VoicePicker({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-
-  const isPreset = VOICE_OPTIONS.some((v) => v.id === value);
-  const [customMode, setCustomMode] = useState(!isPreset && Boolean(value));
-  const [customId, setCustomId] = useState(!isPreset ? value : "");
 
   async function togglePlay(opt: VoiceOption) {
     // Stop any currently-playing preview first — one at a time.
@@ -491,60 +507,16 @@ function VoicePicker({
         );
       })}
 
-      {/* Custom voice card — for tenants who've cloned their own voice */}
-      <div
-        className={`rounded-xl border transition-colors ${
-          customMode ? "border-amber-400 bg-[#fdf9ec]" : "border-zinc-200 bg-white"
-        }`}
-      >
-        <div
-          onClick={() => {
-            setCustomMode(true);
-            if (customId) onChange(customId);
-          }}
-          className="flex items-center gap-3 p-3 cursor-pointer"
+      <p className="text-xs text-zinc-400 pt-1">
+        Want a different voice or a custom-cloned one?{" "}
+        <a
+          href="mailto:founder@vauxvoice.com?subject=Voice%20request"
+          className="text-amber-700 hover:text-amber-800 font-medium"
         >
-          <div className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-white border border-zinc-300 text-zinc-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-zinc-900">Custom voice</p>
-            <p className="text-xs text-zinc-500">
-              Cloned your own voice? Paste its ID below — we'll use it on every call.
-            </p>
-          </div>
-          {customMode && (
-            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden />
-          )}
-        </div>
-        {customMode && (
-          <div className="px-3 pb-3">
-            <input
-              type="text"
-              value={customId}
-              onChange={(e) => {
-                setCustomId(e.target.value);
-                onChange(e.target.value);
-              }}
-              placeholder="Voice ID (e.g. from ElevenLabs)"
-              className="w-full px-3 py-2 rounded-lg border border-zinc-200 bg-white focus:ring-2 focus:ring-amber-400 outline-none transition-all text-sm"
-            />
-            <p className="text-[11px] text-zinc-400 mt-1.5">
-              Need help cloning your voice?{" "}
-              <a
-                href="mailto:founder@vauxvoice.com"
-                className="text-amber-700 hover:text-amber-800 font-medium"
-              >
-                Contact founder@vauxvoice.com
-              </a>
-              .
-            </p>
-          </div>
-        )}
-      </div>
+          Contact founder@vauxvoice.com
+        </a>
+        .
+      </p>
     </div>
   );
 }

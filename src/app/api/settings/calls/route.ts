@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+// Canonical column is `tenants.voice_id` — this is what assistant-builder
+// passes to Vapi at call time. Previously this route read/wrote a ghost
+// `ai_voice_id` column that nothing downstream consumed; consolidated.
+
 export async function GET() {
   const tenant: any = await getCurrentTenant();
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -9,7 +13,7 @@ export async function GET() {
   return NextResponse.json({
     greeting_message: tenant.greeting_message,
     system_prompt_override: tenant.system_prompt_override,
-    ai_voice_id: tenant.ai_voice_id || "rachel",
+    voice_id: tenant.voice_id || "EXAVITQu4vr4xnSDxMaL",
     voicemail_forwarding_number: tenant.voicemail_forwarding_number || "",
   });
 }
@@ -22,12 +26,12 @@ export async function POST(req: Request) {
   // greeting_message is owned by /api/settings (clinic identity) — it's
   // returned there for read-side backwards-compat but never written, so
   // Clinic Setup can't overwrite it by accident from two sides.
-  const { ai_voice_id, voicemail_forwarding_number } = body;
+  const { voice_id, voicemail_forwarding_number } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
     .update({
-      ai_voice_id,
+      voice_id,
       voicemail_forwarding_number,
     })
     .eq("id", tenant.id);
