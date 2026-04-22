@@ -10,12 +10,28 @@ interface ConversationListItem {
   updated_at: string;
 }
 
+type ChatSource =
+  | { kind: "client"; clientProfileId: string; label: string }
+  | {
+      kind: "call";
+      callId: string;
+      clientProfileId: string | null;
+      label: string;
+      when: string;
+    }
+  | {
+      kind: "appointment";
+      clientProfileId: string | null;
+      label: string;
+      when: string;
+    };
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   metadata?: {
-    sources?: Array<{ kind: string; clientProfileId: string; label: string }>;
+    sources?: ChatSource[];
   };
   created_at: string;
 }
@@ -313,13 +329,8 @@ function MessageBubble({
         <div className="bg-white border border-zinc-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-zinc-800 whitespace-pre-wrap shadow-sm">
           {message.content}
         </div>
+        {sources.length > 0 && <SourcePills sources={sources} />}
         <div className="flex items-center gap-3 mt-2 px-2">
-          {sources.length > 0 && (
-            <span className="text-[11px] text-zinc-400">
-              from {sources.length} client{sources.length === 1 ? "" : "s"}
-              {sources.length <= 3 ? `: ${sources.map((s) => s.label).join(", ")}` : ""}
-            </span>
-          )}
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={() => onRate(message.id, 1)}
@@ -348,6 +359,64 @@ function MessageBubble({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Clickable pills under each AI reply — the "show your work" affordance.
+ * Each source links to the exact record the answer leaned on, so staff
+ * can verify provenance without leaving context.
+ */
+function SourcePills({ sources }: { sources: ChatSource[] }) {
+  function hrefFor(s: ChatSource): string {
+    if (s.kind === "client") return `/dashboard/clients?profile=${s.clientProfileId}`;
+    if (s.kind === "call") {
+      const qp = new URLSearchParams({ call: s.callId });
+      if (s.clientProfileId) qp.set("profile", s.clientProfileId);
+      return `/dashboard/calls?${qp}`;
+    }
+    // appointment
+    return s.clientProfileId
+      ? `/dashboard/clients?profile=${s.clientProfileId}`
+      : `/dashboard/calendar`;
+  }
+
+  function iconFor(kind: ChatSource["kind"]) {
+    if (kind === "call") {
+      return (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+        </svg>
+      );
+    }
+    if (kind === "appointment") {
+      return (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+    return (
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    );
+  }
+
+  return (
+    <div className="mt-2 px-2 flex flex-wrap gap-1.5">
+      <span className="text-[11px] text-zinc-400 italic self-center">Source:</span>
+      {sources.map((s, i) => (
+        <a
+          key={`${s.kind}-${i}`}
+          href={hrefFor(s)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fdf9ec] border border-amber-200 text-[11px] text-amber-900 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+        >
+          <span className="text-amber-600">{iconFor(s.kind)}</span>
+          {s.label}
+        </a>
+      ))}
     </div>
   );
 }

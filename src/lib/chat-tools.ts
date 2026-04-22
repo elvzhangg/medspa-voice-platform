@@ -12,11 +12,15 @@ import { supabaseAdmin } from "./supabase";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "placeholder" });
 
-export interface ToolSource {
-  kind: "client";
-  clientProfileId: string;
-  label: string;
-}
+export type ToolSource =
+  | { kind: "client"; clientProfileId: string; label: string }
+  | { kind: "call"; callId: string; clientProfileId: string | null; label: string; when: string }
+  | {
+      kind: "appointment";
+      clientProfileId: string | null;
+      label: string;
+      when: string;
+    };
 
 // ─── Tool 1: get_client_context ──────────────────────────────────────
 
@@ -368,12 +372,22 @@ export async function getRecentCalls(
     };
   });
 
-  const sources: ToolSource[] = [];
-  for (const r of result) {
-    if (r.client_profile_id && r.caller_name) {
-      sources.push({ kind: "client", clientProfileId: r.client_profile_id, label: r.caller_name });
-    }
-  }
+  // Each call is its own clickable source — staff can open the exact
+  // call log entry the AI quoted from.
+  const sources: ToolSource[] = result.map((r) => ({
+    kind: "call" as const,
+    callId: r.call_id,
+    clientProfileId: r.client_profile_id,
+    label: r.caller_name
+      ? `${r.caller_name} — ${new Date(r.date).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}`
+      : `Call on ${new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+    when: r.date,
+  }));
   return { result, sources };
 }
 
@@ -434,12 +448,18 @@ export async function listUpcomingAppointments(
     client_profile_id: r.customer_phone ? idByPhone.get(r.customer_phone) ?? null : null,
   }));
 
-  const sources: ToolSource[] = [];
-  for (const r of result) {
-    if (r.client_profile_id && r.customer_name) {
-      sources.push({ kind: "client", clientProfileId: r.client_profile_id, label: r.customer_name });
-    }
-  }
+  const sources: ToolSource[] = result.map((r) => ({
+    kind: "appointment" as const,
+    clientProfileId: r.client_profile_id,
+    label: `${r.customer_name ?? "Appointment"} — ${new Date(r.date).toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })}`,
+    when: r.date,
+  }));
   return { result, sources };
 }
 

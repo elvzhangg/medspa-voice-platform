@@ -123,13 +123,27 @@ export async function POST(req: NextRequest) {
   await supabaseAdmin.from("chat_conversations").update(convUpdate).eq("id", conversationId);
 
   // HIPAA audit: one row per distinct client touched during the turn.
-  // Separate from chat_messages.metadata — different purpose, different
-  // retention trajectory.
-  if (result.sources.length > 0) {
-    const auditRows = result.sources.map((s) => ({
+  // Only client-scoped sources generate audit rows (clients + calls that
+  // resolved to a client). Generic appointment rows without a known
+  // client_profile_id don't need an audit entry.
+  const clientIds = Array.from(
+    new Set(
+      result.sources
+        .map((s) =>
+          s.kind === "client"
+            ? s.clientProfileId
+            : s.kind === "call" || s.kind === "appointment"
+            ? s.clientProfileId
+            : null
+        )
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+  if (clientIds.length > 0) {
+    const auditRows = clientIds.map((clientProfileId) => ({
       tenant_id: tenant.id,
       user_id: userId,
-      client_profile_id: s.clientProfileId,
+      client_profile_id: clientProfileId,
       action: "chat_query" as const,
       context: {
         conversation_id: conversationId,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useDismiss } from "../_components/useDismiss";
 
 interface Client {
@@ -48,6 +49,11 @@ export default function ClientsPage() {
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
 
+  // Deep-link from Ask Vivienne source pills: /clients?profile=<id>
+  // auto-opens that client's drawer once the list finishes loading.
+  const searchParams = useSearchParams();
+  const deepLinkProfile = searchParams.get("profile");
+
   const refresh = useCallback(async () => {
     const res = await fetch("/api/clients");
     if (res.ok) {
@@ -60,6 +66,13 @@ export default function ClientsPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // After clients load, if a ?profile deep-link is present, open its drawer.
+  useEffect(() => {
+    if (!deepLinkProfile || clients.length === 0 || selected) return;
+    const match = clients.find((c) => c.id === deepLinkProfile);
+    if (match) setSelected(match);
+  }, [deepLinkProfile, clients, selected]);
 
   const filtered = clients.filter((c) => {
     if (!search.trim()) return true;

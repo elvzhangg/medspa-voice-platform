@@ -23,7 +23,7 @@ function makeItems(base: string): NavItem[] {
       ),
     },
     {
-      label: "Assistant",
+      label: "Ask Vivienne",
       href: `${base}/assistant`,
       icon: (
         <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

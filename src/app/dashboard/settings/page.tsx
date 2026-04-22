@@ -1,7 +1,35 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Toggle from "../_components/Toggle";
+
+interface VoiceOption {
+  id: string;
+  name: string;
+  tagline: string;
+  sampleUrl: string;
+}
+
+const VOICE_OPTIONS: VoiceOption[] = [
+  {
+    id: "rachel",
+    name: "Rachel",
+    tagline: "Professional, warm — the default receptionist",
+    sampleUrl: "/voices/rachel.mp3",
+  },
+  {
+    id: "drew",
+    name: "Drew",
+    tagline: "Medical, direct — calm and reassuring",
+    sampleUrl: "/voices/drew.mp3",
+  },
+  {
+    id: "natasha",
+    name: "Natasha",
+    tagline: "Warm, engaging — conversational energy",
+    sampleUrl: "/voices/natasha.mp3",
+  },
+];
 
 interface IdentitySettings {
   name: string;
@@ -137,16 +165,11 @@ export default function ClinicSetupPage() {
             </svg>
           }
         >
-          <Field label="Voice">
-            <select
+          <Field label="Voice" hint="Click play to hear a sample before selecting.">
+            <VoicePicker
               value={calls.ai_voice_id}
-              onChange={(e) => setCalls({ ...calls, ai_voice_id: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm"
-            >
-              <option value="rachel">Rachel — Professional, warm</option>
-              <option value="drew">Drew — Medical, direct</option>
-              <option value="natasha">Natasha — Warm, engaging</option>
-            </select>
+              onChange={(id) => setCalls({ ...calls, ai_voice_id: id })}
+            />
           </Field>
           <Field
             label="Greeting Message"
@@ -355,6 +378,153 @@ function Field({
       </label>
       {children}
       {hint && <p className="text-[11px] text-zinc-400 mt-1.5">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * Voice picker — card list of preset voices with play/pause sample
+ * buttons, plus a "Custom voice" row for tenants who've cloned their
+ * own voice (e.g. in ElevenLabs) and want to paste its voice ID.
+ *
+ * Sample audio lives at /public/voices/<id>.mp3. A single shared
+ * audioRef ensures only one preview plays at a time.
+ */
+function VoicePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+
+  const isPreset = VOICE_OPTIONS.some((v) => v.id === value);
+  const [customMode, setCustomMode] = useState(!isPreset && Boolean(value));
+  const [customId, setCustomId] = useState(!isPreset ? value : "");
+
+  function togglePlay(opt: VoiceOption) {
+    // Stop any currently-playing preview first — one at a time.
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (playing === opt.id) {
+      setPlaying(null);
+      return;
+    }
+    const audio = new Audio(opt.sampleUrl);
+    audio.play().catch(() => setPlaying(null));
+    audio.onended = () => setPlaying(null);
+    audioRef.current = audio;
+    setPlaying(opt.id);
+  }
+
+  return (
+    <div className="space-y-2">
+      {VOICE_OPTIONS.map((opt) => {
+        const selected = !customMode && value === opt.id;
+        const isPlaying = playing === opt.id;
+        return (
+          <div
+            key={opt.id}
+            onClick={() => {
+              setCustomMode(false);
+              onChange(opt.id);
+            }}
+            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+              selected
+                ? "border-amber-400 bg-[#fdf9ec]"
+                : "border-zinc-200 bg-white hover:bg-zinc-50"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay(opt);
+              }}
+              className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-zinc-950 text-white hover:bg-zinc-800 transition-colors"
+              aria-label={isPlaying ? "Pause sample" : "Play sample"}
+            >
+              {isPlaying ? (
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <rect x="5" y="4" width="3" height="12" rx="1" />
+                  <rect x="12" y="4" width="3" height="12" rx="1" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 translate-x-[1px]" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M6 4l10 6-10 6V4z" />
+                </svg>
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-zinc-900">{opt.name}</p>
+              <p className="text-xs text-zinc-500 truncate">{opt.tagline}</p>
+            </div>
+            {selected && (
+              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden />
+            )}
+          </div>
+        );
+      })}
+
+      {/* Custom voice card — for tenants who've cloned their own voice */}
+      <div
+        className={`rounded-xl border transition-colors ${
+          customMode ? "border-amber-400 bg-[#fdf9ec]" : "border-zinc-200 bg-white"
+        }`}
+      >
+        <div
+          onClick={() => {
+            setCustomMode(true);
+            if (customId) onChange(customId);
+          }}
+          className="flex items-center gap-3 p-3 cursor-pointer"
+        >
+          <div className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-white border border-zinc-300 text-zinc-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-zinc-900">Custom voice</p>
+            <p className="text-xs text-zinc-500">
+              Cloned your own voice? Paste its ID below — we'll use it on every call.
+            </p>
+          </div>
+          {customMode && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden />
+          )}
+        </div>
+        {customMode && (
+          <div className="px-3 pb-3">
+            <input
+              type="text"
+              value={customId}
+              onChange={(e) => {
+                setCustomId(e.target.value);
+                onChange(e.target.value);
+              }}
+              placeholder="Voice ID (e.g. from ElevenLabs)"
+              className="w-full px-3 py-2 rounded-lg border border-zinc-200 bg-white focus:ring-2 focus:ring-amber-400 outline-none transition-all text-sm"
+            />
+            <p className="text-[11px] text-zinc-400 mt-1.5">
+              Need help cloning your voice?{" "}
+              <a
+                href="mailto:founder@vauxvoice.com"
+                className="text-amber-700 hover:text-amber-800 font-medium"
+              >
+                Contact founder@vauxvoice.com
+              </a>
+              .
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

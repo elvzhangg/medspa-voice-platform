@@ -156,7 +156,12 @@ function dedupeSources(sources: ToolSource[]): ToolSource[] {
   const seen = new Set<string>();
   const out: ToolSource[] = [];
   for (const s of sources) {
-    const key = `${s.kind}:${s.clientProfileId}`;
+    const key =
+      s.kind === "client"
+        ? `client:${s.clientProfileId}`
+        : s.kind === "call"
+        ? `call:${s.callId}`
+        : `appt:${s.clientProfileId ?? "anon"}:${s.when}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(s);
