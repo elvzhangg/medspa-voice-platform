@@ -400,7 +400,6 @@ function VoicePicker({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const isPreset = VOICE_OPTIONS.some((v) => v.id === value);
   const [customMode, setCustomMode] = useState(!isPreset && Boolean(value));
@@ -418,27 +417,16 @@ function VoicePicker({
       return;
     }
 
-    setSampleError(null);
     setLoadingId(opt.id);
     try {
-      // HEAD-check so a 503 "no API key" fails cleanly BEFORE audio element
-      // silently stalls on invalid content. If 200, proceed to <audio> play.
-      const probe = await fetch(opt.sampleUrl, { method: "HEAD" });
-      if (!probe.ok) {
-        const data = await fetch(opt.sampleUrl).then((r) => r.json()).catch(() => ({}));
-        setSampleError(
-          data.error ||
-            "Voice sample isn't available right now. Ask the VauxVoice team to enable previews."
-        );
-        setLoadingId(null);
-        return;
-      }
       const audio = new Audio(opt.sampleUrl);
-      audio.onended = () => setPlaying(null);
+      audio.onended = () => {
+        setPlaying(null);
+        setLoadingId(null);
+      };
       audio.onerror = () => {
         setPlaying(null);
         setLoadingId(null);
-        setSampleError("Couldn't play the sample.");
       };
       await audio.play();
       audioRef.current = audio;
@@ -447,7 +435,6 @@ function VoicePicker({
     } catch {
       setLoadingId(null);
       setPlaying(null);
-      setSampleError("Couldn't play the sample.");
     }
   }
 
@@ -558,12 +545,6 @@ function VoicePicker({
           </div>
         )}
       </div>
-
-      {sampleError && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          {sampleError}
-        </p>
-      )}
     </div>
   );
 }
