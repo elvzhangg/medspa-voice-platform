@@ -457,16 +457,13 @@ function VoicePicker({
   return (
     <div className="space-y-2">
       {VOICE_OPTIONS.map((opt) => {
-        const selected = !customMode && value === opt.id;
+        const selected = value === opt.id;
         const isPlaying = playing === opt.id;
         const isLoading = loadingId === opt.id;
         return (
           <div
             key={opt.id}
-            onClick={() => {
-              setCustomMode(false);
-              onChange(opt.id);
-            }}
+            onClick={() => onChange(opt.id)}
             className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
               selected
                 ? "border-amber-400 bg-[#fdf9ec]"
