@@ -53,12 +53,41 @@ const VOICE_OPTIONS: VoiceOption[] = [
   },
 ];
 
+interface DepositByServiceRow {
+  service: string;
+  amount: number;
+}
+
+interface PaymentMethodsMap {
+  stripe: { enabled: boolean };
+  square: { enabled: boolean; payment_link_url: string };
+  paypal: { enabled: boolean; handle: string };
+  venmo: { enabled: boolean; handle: string };
+  zelle: { enabled: boolean; handle: string };
+  cash: { enabled: boolean };
+  care_credit: { enabled: boolean; application_url: string };
+  cherry: { enabled: boolean; application_url: string };
+}
+
+const DEFAULT_PAYMENT_METHODS: PaymentMethodsMap = {
+  stripe: { enabled: true },
+  square: { enabled: false, payment_link_url: "" },
+  paypal: { enabled: false, handle: "" },
+  venmo: { enabled: false, handle: "" },
+  zelle: { enabled: false, handle: "" },
+  cash: { enabled: false },
+  care_credit: { enabled: false, application_url: "" },
+  cherry: { enabled: false, application_url: "" },
+};
+
 interface IdentitySettings {
   name: string;
   greeting_message: string;
   system_prompt_override: string;
   deposit_enabled: boolean;
   deposit_amount: number;
+  deposit_by_service: DepositByServiceRow[];
+  payment_methods: PaymentMethodsMap;
   payment_policy_notes: string;
   membership_enabled: boolean;
   membership_details: string;
@@ -78,6 +107,8 @@ export default function ClinicSetupPage() {
     system_prompt_override: "",
     deposit_enabled: false,
     deposit_amount: 0,
+    deposit_by_service: [],
+    payment_methods: DEFAULT_PAYMENT_METHODS,
     payment_policy_notes: "",
     membership_enabled: false,
     membership_details: "",
@@ -97,7 +128,19 @@ export default function ClinicSetupPage() {
       fetch("/api/settings"),
       fetch("/api/settings/calls"),
     ]);
-    if (iRes.ok) setIdentity(await iRes.json());
+    if (iRes.ok) {
+      const data = await iRes.json();
+      setIdentity({
+        ...data,
+        deposit_by_service: Array.isArray(data.deposit_by_service)
+          ? data.deposit_by_service
+          : [],
+        payment_methods: {
+          ...DEFAULT_PAYMENT_METHODS,
+          ...(data.payment_methods ?? {}),
+        },
+      });
+    }
     if (cRes.ok) {
       const data = await cRes.json();
       setCalls({
@@ -253,7 +296,7 @@ export default function ClinicSetupPage() {
         >
           <Field
             label="Booking Deposit"
-            hint="When on, the AI offers to text a payment link for the amount to secure the booking."
+            hint="When on, the AI offers to text a payment link for the amount to secure the booking. Set a default below, or override per-service."
           >
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-3">
@@ -270,6 +313,7 @@ export default function ClinicSetupPage() {
               </div>
               {identity.deposit_enabled && (
                 <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-zinc-500 font-medium">Default</span>
                   <span className="text-sm text-zinc-500 font-medium">$</span>
                   <input
                     type="number"
@@ -278,11 +322,31 @@ export default function ClinicSetupPage() {
                     onChange={(e) =>
                       setIdentity({ ...identity, deposit_amount: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-32 px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm"
+                    className="w-28 px-3 py-2 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm"
                   />
                 </div>
               )}
             </div>
+          </Field>
+          {identity.deposit_enabled && (
+            <Field
+              label="Deposits by service"
+              hint="Optional per-service overrides. Anything not listed uses the default above. The AI matches the caller's requested service against this list (case-insensitive)."
+            >
+              <DepositsByServiceEditor
+                rows={identity.deposit_by_service}
+                onChange={(next) => setIdentity({ ...identity, deposit_by_service: next })}
+              />
+            </Field>
+          )}
+          <Field
+            label="Payment methods accepted"
+            hint="Turn on the methods you accept. The AI will mention them when cost comes up and can text the relevant link or handle."
+          >
+            <PaymentMethodsEditor
+              methods={identity.payment_methods}
+              onChange={(next) => setIdentity({ ...identity, payment_methods: next })}
+            />
           </Field>
           <Field
             label="Payment & Financing Notes"
@@ -355,6 +419,198 @@ export default function ClinicSetupPage() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/**
+ * Editor for per-service deposit overrides. The caller's requested
+ * service string is matched against these (case-insensitive, contains)
+ * at prompt-build time; anything that doesn't match uses the default.
+ */
+function DepositsByServiceEditor({
+  rows,
+  onChange,
+}: {
+  rows: DepositByServiceRow[];
+  onChange: (next: DepositByServiceRow[]) => void;
+}) {
+  function updateRow(i: number, patch: Partial<DepositByServiceRow>) {
+    const next = rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
+    onChange(next);
+  }
+  function addRow() {
+    onChange([...rows, { service: "", amount: 0 }]);
+  }
+  function removeRow(i: number) {
+    onChange(rows.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="space-y-2">
+      {rows.length === 0 ? (
+        <p className="text-[11px] text-zinc-400 italic">No per-service overrides yet.</p>
+      ) : (
+        rows.map((row, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={row.service}
+              onChange={(e) => updateRow(i, { service: e.target.value })}
+              placeholder="Service name (e.g. CoolSculpting)"
+              className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 bg-white focus:ring-2 focus:ring-amber-400 outline-none text-sm"
+            />
+            <span className="text-sm text-zinc-500 font-medium">$</span>
+            <input
+              type="number"
+              min={0}
+              value={row.amount}
+              onChange={(e) => updateRow(i, { amount: parseFloat(e.target.value) || 0 })}
+              className="w-24 px-3 py-2 rounded-lg border border-zinc-200 bg-white focus:ring-2 focus:ring-amber-400 outline-none text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => removeRow(i)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-200 text-zinc-400 hover:text-red-500 hover:border-red-200 transition-colors"
+              aria-label="Remove row"
+            >
+              ×
+            </button>
+          </div>
+        ))
+      )}
+      <button
+        type="button"
+        onClick={addRow}
+        className="text-xs text-amber-700 hover:text-amber-800 font-medium"
+      >
+        + Add service override
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Payment methods editor. Each method toggles on/off; when on, the
+ * optional secondary field (URL or handle) appears. Stripe is
+ * always-on-by-default since it's the only method actually wired for
+ * dynamic on-call payment-link creation.
+ */
+function PaymentMethodsEditor({
+  methods,
+  onChange,
+}: {
+  methods: PaymentMethodsMap;
+  onChange: (next: PaymentMethodsMap) => void;
+}) {
+  type Row = {
+    key: keyof PaymentMethodsMap;
+    label: string;
+    description: string;
+    field?: { key: string; placeholder: string; prefix?: string };
+  };
+
+  const rows: Row[] = [
+    {
+      key: "stripe",
+      label: "Stripe",
+      description: "Dynamic payment links for deposits. The AI handles creation + texting.",
+    },
+    {
+      key: "square",
+      label: "Square",
+      description: "Tenants already on Square can paste a reusable Square payment link.",
+      field: { key: "payment_link_url", placeholder: "https://square.link/..." },
+    },
+    {
+      key: "paypal",
+      label: "PayPal",
+      description: "AI texts callers your PayPal handle if they prefer this.",
+      field: { key: "handle", placeholder: "@yourhandle", prefix: "@" },
+    },
+    {
+      key: "venmo",
+      label: "Venmo",
+      description: "Texted to callers on request.",
+      field: { key: "handle", placeholder: "@yourhandle", prefix: "@" },
+    },
+    {
+      key: "zelle",
+      label: "Zelle",
+      description: "AI texts the Zelle contact (phone or email) when asked.",
+      field: { key: "handle", placeholder: "email or phone" },
+    },
+    {
+      key: "cash",
+      label: "Cash",
+      description: "AI mentions as an in-person option when relevant.",
+    },
+    {
+      key: "care_credit",
+      label: "CareCredit",
+      description: "Medical financing. AI texts your application link for treatments the caller flags as costly.",
+      field: { key: "application_url", placeholder: "https://..." },
+    },
+    {
+      key: "cherry",
+      label: "Cherry financing",
+      description: "Aesthetic-focused financing. AI texts your Cherry application link on cost-sensitive calls.",
+      field: { key: "application_url", placeholder: "https://..." },
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {rows.map(({ key, label, description, field }) => {
+        const method = methods[key] as any;
+        const enabled = Boolean(method?.enabled);
+        return (
+          <div
+            key={key}
+            className={`rounded-xl border transition-colors ${
+              enabled ? "border-amber-300 bg-[#fdf9ec]/60" : "border-zinc-200 bg-white"
+            }`}
+          >
+            <div className="flex items-center gap-3 p-3">
+              <Toggle
+                enabled={enabled}
+                onChange={() =>
+                  onChange({
+                    ...methods,
+                    [key]: { ...method, enabled: !enabled },
+                  })
+                }
+                ariaLabel={`Enable ${label}`}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-zinc-900">{label}</p>
+                <p className="text-[11px] text-zinc-500 truncate">{description}</p>
+              </div>
+            </div>
+            {enabled && field && (
+              <div className="px-3 pb-3">
+                <div className="flex items-center gap-2">
+                  {field.prefix && (
+                    <span className="text-sm text-zinc-500 font-medium">{field.prefix}</span>
+                  )}
+                  <input
+                    type="text"
+                    value={(method?.[field.key] as string) ?? ""}
+                    onChange={(e) =>
+                      onChange({
+                        ...methods,
+                        [key]: { ...method, [field.key]: e.target.value },
+                      })
+                    }
+                    placeholder={field.placeholder}
+                    className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 bg-white focus:ring-2 focus:ring-amber-400 outline-none text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

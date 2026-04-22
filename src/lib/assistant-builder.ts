@@ -363,10 +363,67 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
   // amount alone isn't enough — this lets a tenant pause deposits without
   // wiping their configured amount.
   if (bookingConfig?.deposit_enabled && bookingConfig?.deposit_amount) {
-    const amount = bookingConfig.deposit_amount;
-    depositInstruction = `- MANDATORY: For all new consultations or appointments, you MUST offer to text a secure payment link for a $${amount} deposit to secure the spot. Say something like: "To secure your appointment, we collect a $${amount} deposit which goes toward your treatment. Can I text a secure payment link to this number now?"
-- If they agree to the deposit, immediately use the 'create_payment_link' tool with amount ${amount} and description "Consultation Deposit".`;
+    const defaultAmount = bookingConfig.deposit_amount;
+    const serviceOverrides: Array<{ service: string; amount: number }> = Array.isArray(
+      bookingConfig.deposit_by_service
+    )
+      ? bookingConfig.deposit_by_service
+      : [];
+
+    const overrideLines = serviceOverrides
+      .filter((r) => r?.service && Number(r.amount) > 0)
+      .map((r) => `  • ${r.service}: $${r.amount}`)
+      .join("\n");
+
+    depositInstruction = `- MANDATORY: For all new consultations or appointments, you MUST offer to text a secure payment link to secure the spot.
+- Default deposit: $${defaultAmount}.${
+      overrideLines
+        ? `
+- Per-service overrides (match case-insensitive; if the caller's requested service contains one of these names, use its amount instead of the default):
+${overrideLines}`
+        : ""
+    }
+- Phrase it like: "To secure your appointment, we collect a $[AMOUNT] deposit which goes toward your treatment. Can I text a secure payment link to this number now?"
+- If they agree, immediately call the 'create_payment_link' tool with the matched amount and a description like "[Service] Deposit".`;
   }
+
+  // Payment methods — AI mentions/texts enabled methods when the caller
+  // asks about payment options or wants financing. Dynamic Stripe payment
+  // links go through create_payment_link; everything else is AI-mentioned
+  // or texted via send_sms with the configured handle/URL.
+  const paymentMethods = bookingConfig?.payment_methods as
+    | Record<string, { enabled?: boolean; [k: string]: unknown }>
+    | undefined;
+  const enabledMethods: string[] = [];
+  if (paymentMethods) {
+    const methodLabels: Record<string, (m: any) => string> = {
+      stripe: () => "Credit/debit card (via Stripe payment link — use create_payment_link tool)",
+      square: (m) =>
+        m.payment_link_url
+          ? `Square payment link: ${m.payment_link_url} (text via send_sms when requested)`
+          : "Square",
+      paypal: (m) => (m.handle ? `PayPal @${m.handle}` : "PayPal"),
+      venmo: (m) => (m.handle ? `Venmo @${m.handle}` : "Venmo"),
+      zelle: (m) => (m.handle ? `Zelle (${m.handle})` : "Zelle"),
+      cash: () => "Cash (in-person only)",
+      care_credit: (m) =>
+        m.application_url
+          ? `CareCredit medical financing — application: ${m.application_url} (offer + text for cost-sensitive callers)`
+          : "CareCredit medical financing (offer for cost-sensitive callers)",
+      cherry: (m) =>
+        m.application_url
+          ? `Cherry aesthetic financing — application: ${m.application_url} (offer + text for cost-sensitive callers)`
+          : "Cherry aesthetic financing (offer for cost-sensitive callers)",
+    };
+    for (const [key, val] of Object.entries(paymentMethods)) {
+      if (val?.enabled && methodLabels[key]) {
+        enabledMethods.push(methodLabels[key](val));
+      }
+    }
+  }
+  const paymentMethodsBlock = enabledMethods.length
+    ? `\n## Payment Methods Accepted\n${enabledMethods.map((m) => `- ${m}`).join("\n")}\nWhen callers ask "how can I pay?" or about specific methods, answer from this list. When they pick a non-Stripe method that has a link/handle, offer to text it via send_sms.\n`
+    : "";
 
   // Always-available clinic facts. Short-and-frequent info goes in the
   // prompt instead of the KB so the AI doesn't have to tool-call for it.
@@ -404,7 +461,7 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 
 ## Current Time
 ${timeStr} (Pacific Time)
-${callerContext}${providerRoster}${locationBlock}${paymentBlock}${membershipBlock}
+${callerContext}${providerRoster}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}
