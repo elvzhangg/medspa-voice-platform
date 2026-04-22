@@ -13,6 +13,9 @@ export async function GET() {
     deposit_enabled: tenant.booking_config?.deposit_enabled ?? false,
     deposit_amount: tenant.booking_config?.deposit_amount || 0,
     payment_policy_notes: tenant.booking_config?.payment_policy_notes || "",
+    membership_enabled: tenant.booking_config?.membership_enabled ?? false,
+    membership_details: tenant.booking_config?.membership_details || "",
+    membership_signup_url: tenant.booking_config?.membership_signup_url || "",
     directions_parking_info: tenant.directions_parking_info || "",
   });
 }
@@ -29,6 +32,9 @@ export async function POST(req: Request) {
     deposit_enabled,
     deposit_amount,
     payment_policy_notes,
+    membership_enabled,
+    membership_details,
+    membership_signup_url,
     directions_parking_info,
   } = body;
 
@@ -44,6 +50,9 @@ export async function POST(req: Request) {
         deposit_enabled,
         deposit_amount,
         payment_policy_notes,
+        membership_enabled,
+        membership_details,
+        membership_signup_url,
       },
     })
     .eq("id", tenant.id);

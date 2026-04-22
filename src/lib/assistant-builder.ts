@@ -370,8 +370,12 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 
   // Always-available clinic facts. Short-and-frequent info goes in the
   // prompt instead of the KB so the AI doesn't have to tool-call for it.
-  const paymentPolicy = (tenant.booking_config as any)?.payment_policy_notes?.trim();
+  const bc = tenant.booking_config as any;
+  const paymentPolicy = bc?.payment_policy_notes?.trim();
   const directions = tenant.directions_parking_info?.trim();
+  const membershipEnabled = Boolean(bc?.membership_enabled);
+  const membershipDetails = bc?.membership_details?.trim();
+  const membershipSignupUrl = bc?.membership_signup_url?.trim();
 
   const locationBlock = directions
     ? `\n## Location & Parking\n${directions}\nWhen callers ask "where are you?" or about parking, answer directly using this info.\n`
@@ -380,6 +384,15 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
   const paymentBlock = paymentPolicy
     ? `\n## Payment & Billing Guidance\n${paymentPolicy}\nWhen callers ask about cost, financing, or payment methods, follow this guidance. For longer policy questions (refunds, detailed pricing), you may still need to use search_knowledge_base.\n`
     : "";
+
+  const membershipBlock =
+    membershipEnabled && membershipDetails
+      ? `\n## Membership Program\n${membershipDetails}\n${
+          membershipSignupUrl
+            ? `Signup link: ${membershipSignupUrl}\n`
+            : ""
+        }When cost, loyalty, or returning-client topics come up — especially if the caller sounds like they'd be a fit — warmly mention the membership. If they're interested, offer to text them the signup link via the send_sms tool. Don't push; one mention is enough unless they ask for more.\n`
+      : "";
 
   return `You are a friendly, professional AI receptionist for ${tenant.name}, a med spa business.
 
@@ -391,7 +404,7 @@ If they say "no, just that one time works" — skip the tool call. Don't force i
 
 ## Current Time
 ${timeStr} (Pacific Time)
-${callerContext}${providerRoster}${locationBlock}${paymentBlock}
+${callerContext}${providerRoster}${locationBlock}${paymentBlock}${membershipBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}

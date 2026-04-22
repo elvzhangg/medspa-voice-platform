@@ -10,6 +10,9 @@ interface IdentitySettings {
   deposit_enabled: boolean;
   deposit_amount: number;
   payment_policy_notes: string;
+  membership_enabled: boolean;
+  membership_details: string;
+  membership_signup_url: string;
   directions_parking_info: string;
 }
 
@@ -26,6 +29,9 @@ export default function ClinicSetupPage() {
     deposit_enabled: false,
     deposit_amount: 0,
     payment_policy_notes: "",
+    membership_enabled: false,
+    membership_details: "",
+    membership_signup_url: "",
     directions_parking_info: "",
   });
   const [calls, setCalls] = useState<CallSettings>({
@@ -244,6 +250,45 @@ export default function ClinicSetupPage() {
               className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm resize-none"
               placeholder={`e.g.\n- Mention CareCredit and Cherry financing for treatments over $500\n- Deposits are refundable with 24h notice\n- We accept HSA/FSA cards`}
             />
+          </Field>
+          <Field
+            label="Membership Program"
+            hint="When on, the AI can mention your membership when pricing or loyalty comes up, and offer to text the signup link."
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <Toggle
+                enabled={identity.membership_enabled}
+                onChange={() =>
+                  setIdentity({ ...identity, membership_enabled: !identity.membership_enabled })
+                }
+                ariaLabel="Enable membership program"
+              />
+              <span className="text-xs font-bold text-zinc-500">
+                {identity.membership_enabled ? "ON" : "OFF"}
+              </span>
+            </div>
+            {identity.membership_enabled && (
+              <div className="space-y-3">
+                <textarea
+                  rows={4}
+                  value={identity.membership_details}
+                  onChange={(e) =>
+                    setIdentity({ ...identity, membership_details: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm resize-none"
+                  placeholder={`e.g.\n- "Glow VIP" — $99/month: free monthly facial + 15% off services + member-only events\n- "Glow Gold" — $199/month: everything above + quarterly Botox credit`}
+                />
+                <input
+                  type="url"
+                  value={identity.membership_signup_url}
+                  onChange={(e) =>
+                    setIdentity({ ...identity, membership_signup_url: e.target.value })
+                  }
+                  placeholder="Signup link (Stripe subscription URL, membership landing page, etc.)"
+                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm"
+                />
+              </div>
+            )}
           </Field>
         </Section>
 
