@@ -852,7 +852,7 @@ function Stars() {
 const QUOTES = [
   { text: "We were losing 30% of our calls to voicemail. Now every single call gets answered. Our bookings are up 40% in two months.", name: "Dr. Sarah Chen",    role: "Owner, Radiance Medical Spa",      initials: "SC" },
   { text: "The AI knows our service menu better than some of our staff. Patients love that they get instant answers at 9pm on a Saturday.", name: "Jennifer Martinez", role: "Practice Manager, Glow Aesthetics", initials: "JM" },
-  { text: "Setup was painless. We sent our service list and pricing, and 48 hours later we had a fully trained AI receptionist.", name: "Michael Torres", role: "Owner, Skin Studio LA", initials: "MT" },
+  { text: "Setup was painless. We sent our service list and pricing, and 48 hours later we had a fully trained AI Clientele Specialist.", name: "Michael Torres", role: "Owner, Skin Studio LA", initials: "MT" },
 ];
 
 function QuoteCard({ quote, index, visible }: {

@@ -47,7 +47,7 @@ export default function OnboardPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Onboard New Med Spa</h1>
       <p className="text-gray-500 mb-8">
-        Create a new tenant, provision a phone number, and set up their AI receptionist.
+        Create a new tenant, provision a phone number, and set up their AI Clientele Specialist.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">

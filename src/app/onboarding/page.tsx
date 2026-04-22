@@ -37,7 +37,7 @@ export default function OnboardingPage() {
           <p className="text-4xl mb-3">✨</p>
           <h1 className="text-2xl font-bold text-gray-900">Welcome! Let&apos;s set up your med spa</h1>
           <p className="text-gray-500 mt-2 text-sm">
-            Just a few details to get your AI receptionist ready.
+            Just a few details to get your AI Clientele Specialist ready.
           </p>
         </div>
 

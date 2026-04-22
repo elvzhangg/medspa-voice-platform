@@ -266,7 +266,7 @@ export async function buildAssistantConfig(
   ];
 
   return {
-    name: `${tenant.name} AI Receptionist`,
+    name: `${tenant.name} AI Clientele Specialist`,
     model: {
       provider: "openai",
       model: "gpt-4o",
@@ -451,7 +451,7 @@ ${overrideLines}`
         }When cost, loyalty, or returning-client topics come up — especially if the caller sounds like they'd be a fit — warmly mention the membership. If they're interested, offer to text them the signup link via the send_sms tool. Don't push; one mention is enough unless they ask for more.\n`
       : "";
 
-  return `You are a friendly, professional AI receptionist for ${tenant.name}, a med spa business.
+  return `You are a friendly, professional AI Clientele Specialist for ${tenant.name}, a med spa business.
 
 ## Your Role
 - Answer questions about services, pricing, and appointments

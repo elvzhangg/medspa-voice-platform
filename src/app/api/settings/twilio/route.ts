@@ -10,7 +10,7 @@ import { supabaseAdmin } from "@/lib/supabase";
  * POST   → save / update the tenant's Twilio credentials.
  * DELETE → disconnect (clear credentials; platform fallback takes over).
  *
- * The same Twilio number acts as BOTH the inbound AI receptionist line
+ * The same Twilio number acts as BOTH the inbound AI Clientele Specialist line
  * (wired via Vapi BYO Twilio) AND the outbound SMS sender for booking
  * forward notifications. One number, one credential set, maximum trust.
  */

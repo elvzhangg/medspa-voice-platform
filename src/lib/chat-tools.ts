@@ -658,7 +658,7 @@ export const CHAT_TOOL_DEFINITIONS = [
     function: {
       name: "get_recent_calls",
       description:
-        "Get the most recent phone calls to the AI receptionist with summaries and caller identity. Use for questions like 'tell me about the most recent call', 'what did the last 5 callers want', 'any calls today from new clients'.",
+        "Get the most recent phone calls to the AI Clientele Specialist with summaries and caller identity. Use for questions like 'tell me about the most recent call', 'what did the last 5 callers want', 'any calls today from new clients'.",
       parameters: {
         type: "object",
         properties: {

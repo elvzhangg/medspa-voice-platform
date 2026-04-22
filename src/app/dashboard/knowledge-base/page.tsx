@@ -109,7 +109,7 @@ export default function KnowledgeBasePage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-serif text-3xl text-zinc-900">Clinic Handbook</h1>
-          <p className="text-zinc-500 mt-1">Manage what your AI receptionist knows</p>
+          <p className="text-zinc-500 mt-1">Manage what your AI Clientele Specialist knows</p>
         </div>
         <button
           onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); }}
@@ -190,7 +190,7 @@ export default function KnowledgeBasePage() {
           <p className="text-5xl mb-4">📚</p>
           <h3 className="text-lg font-semibold text-zinc-700 mb-2">No documents yet</h3>
           <p className="text-zinc-400 text-sm mb-6">
-            Add your first document to train your AI receptionist.
+            Add your first document to train your AI Clientele Specialist.
           </p>
           <button
             onClick={() => setShowAddForm(true)}

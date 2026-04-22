@@ -106,7 +106,7 @@ export default function ReferralsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-serif text-3xl text-zinc-900">Referral Management</h1>
-          <p className="text-zinc-500 mt-1">Track patient referrals from your AI receptionist and manual entries</p>
+          <p className="text-zinc-500 mt-1">Track patient referrals from your AI Clientele Specialist and manual entries</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -236,7 +236,7 @@ export default function ReferralsPage() {
             </svg>
             <p className="text-sm font-medium text-zinc-500 mb-1">No referrals yet</p>
             <p className="text-xs text-zinc-400 max-w-xs mx-auto">
-              Referrals will appear here when your AI receptionist logs them during calls, or when you add them manually.
+              Referrals will appear here when your AI Clientele Specialist logs them during calls, or when you add them manually.
             </p>
           </div>
         ) : (

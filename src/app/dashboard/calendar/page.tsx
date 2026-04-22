@@ -350,7 +350,7 @@ export default function CalendarPage() {
         <div className="bg-white rounded-3xl border border-dashed border-zinc-200 p-10 text-center">
           <p className="text-sm font-bold text-zinc-700">No appointments for {monthLabel(cursor)}</p>
           <p className="text-xs text-zinc-500 mt-1">
-            Events booked by your AI receptionist — and those synced from your connected booking platform — will appear here.
+            Events booked by your AI Clientele Specialist — and those synced from your connected booking platform — will appear here.
           </p>
         </div>
       )}

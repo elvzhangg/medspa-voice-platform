@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 
-const DEFAULT_TEMPLATE = `📋 New booking request via AI receptionist
+const DEFAULT_TEMPLATE = `📋 New booking request via AI Clientele Specialist
 
 Patient: [CustomerName]
 Phone: [CustomerPhone]

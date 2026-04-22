@@ -127,7 +127,7 @@ export default function BookADemoPage() {
 /* ─────────────────────────────────────────────────────────────── */
 
 const BENEFITS = [
-  "Live demo call to a real AI receptionist",
+  "Live demo call to a real AI Clientele Specialist",
   "Custom setup walkthrough for your med spa",
   "Pricing tailored to your call volume",
   "Q&A with our team",
@@ -183,7 +183,7 @@ function LeftColumn() {
         </p>
         <ul className="space-y-3">
           {[
-            "Live demo call to a real AI receptionist",
+            "Live demo call to a real AI Clientele Specialist",
             "Custom setup walkthrough for your med spa",
             "Pricing tailored to your call volume",
             "Q&A with our team",
@@ -599,7 +599,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 const FAQS = [
   {
     q: "What happens in the demo?",
-    a: "We walk through a live 30-minute session that includes a real call to our AI receptionist, a full setup walkthrough tailored to your med spa, and a transparent pricing discussion based on your call volume.",
+    a: "We walk through a live 30-minute session that includes a real call to our AI Clientele Specialist, a full setup walkthrough tailored to your med spa, and a transparent pricing discussion based on your call volume.",
   },
   {
     q: "How quickly can I go live?",

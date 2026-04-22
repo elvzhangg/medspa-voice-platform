@@ -181,7 +181,7 @@ Cite casually ("from her last call" / "per her profile"), don't say "based on th
   if (coldStart) {
     // Deterministic cold-start message; don't waste an LLM call on a
     // client we know nothing about.
-    text = `No notes on file yet for ${displayName(p)}. They haven't called your AI receptionist before${
+    text = `No notes on file yet for ${displayName(p)}. They haven't called your AI Clientele Specialist before${
       events.length > 0 ? `, but they're booked for ${formatDate(events[0].start_time)}.` : "."
     } Once they've interacted, this brief will fill in.`;
   } else {

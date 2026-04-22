@@ -29,7 +29,7 @@ const ALLOWED_VOICE_IDS = new Set<string>([
 ]);
 
 const SAMPLE_TEXT =
-  "Thank you for calling! I'm your AI receptionist. How can I help you today?";
+  "Thank you for calling! I'm your AI Clientele Specialist. How can I help you today?";
 
 type Ctx = { params: Promise<{ id: string }> };
 

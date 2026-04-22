@@ -93,7 +93,7 @@ function SignupForm() {
           ) : (
             <>
               <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-              <p className="text-gray-500 mt-1 text-sm">Get started with your AI receptionist</p>
+              <p className="text-gray-500 mt-1 text-sm">Get started with your AI Clientele Specialist</p>
             </>
           )}
         </div>

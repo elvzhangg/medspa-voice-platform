@@ -47,7 +47,7 @@ async function handleAssistantRequest(message: Record<string, unknown>) {
   if (!tenant) {
     return NextResponse.json({
       assistant: {
-        name: "AI Receptionist",
+        name: "AI Clientele Specialist",
         model: {
           provider: "openai", model: "gpt-4o-mini",
           messages: [{ role: "system", content: "You are a receptionist. There's a technical issue." }],

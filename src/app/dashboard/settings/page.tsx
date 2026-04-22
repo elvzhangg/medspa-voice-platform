@@ -245,7 +245,7 @@ export default function ClinicSetupPage() {
               value={identity.greeting_message}
               onChange={(e) => setIdentity({ ...identity, greeting_message: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm resize-none"
-              placeholder="Thank you for calling [Clinic]! I'm your AI receptionist. How can I help you today?"
+              placeholder="Thank you for calling [Clinic]! I'm your AI Clientele Specialist. How can I help you today?"
             />
           </Field>
           <Field

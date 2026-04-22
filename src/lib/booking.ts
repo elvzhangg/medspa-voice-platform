@@ -243,7 +243,7 @@ async function sendStaffForwardNotification(
 
   const template: string =
     tenant.booking_forward_sms_template ||
-    "📋 New booking request via AI receptionist\n\nPatient: [CustomerName]\nPhone: [CustomerPhone]\nService: [Service]\nRequested: [DateTime]\nProvider preference: [ProviderPreference]\nOpen to other providers? [ProviderFlexibility]\nBackup slots: [BackupSlots]\nTime preference: [TimePreference]\nNotes: [Notes]\n\nPlease text or call to confirm.\n— [ClinicName] VauxVoice";
+    "📋 New booking request via AI Clientele Specialist\n\nPatient: [CustomerName]\nPhone: [CustomerPhone]\nService: [Service]\nRequested: [DateTime]\nProvider preference: [ProviderPreference]\nOpen to other providers? [ProviderFlexibility]\nBackup slots: [BackupSlots]\nTime preference: [TimePreference]\nNotes: [Notes]\n\nPlease text or call to confirm.\n— [ClinicName] VauxVoice";
 
   const dateTime = [request.preferredDate, request.preferredTime].filter(Boolean).join(" at ") || "Flexible";
   const notes = request.notes || (request.referredBy ? `Referred by: ${request.referredBy}` : "None");
