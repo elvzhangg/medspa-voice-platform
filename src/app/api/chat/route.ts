@@ -78,8 +78,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Persist the user turn BEFORE running the engine so if the LLM hangs
-  // the user message isn't lost.
-  const userMessageInsert = await supabaseAdmin
+  // the user message isn't lost. If this insert fails the whole turn is
+  // broken — UI would reload and the question would be missing — so fail
+  // the request visibly rather than pressing on.
+  const { data: userRow, error: userErr } = await supabaseAdmin
     .from("chat_messages")
     .insert({
       conversation_id: conversationId,
@@ -89,6 +91,13 @@ export async function POST(req: NextRequest) {
     })
     .select("id")
     .single();
+  if (userErr || !userRow) {
+    console.error("CHAT_USER_MSG_INSERT_ERR:", userErr);
+    return NextResponse.json(
+      { error: "Failed to save your message" },
+      { status: 500 }
+    );
+  }
 
   // Run the engine.
   const result = await runChatTurn({
@@ -98,8 +107,11 @@ export async function POST(req: NextRequest) {
     clientProfileId: body.client_profile_id,
   });
 
-  // Persist the assistant turn + source metadata + prompt version.
-  const { data: assistantRow } = await supabaseAdmin
+  // Persist the assistant turn + source metadata + prompt version. If the
+  // insert fails, the answer is lost on reload AND the thumbs-up/down
+  // widget wouldn't have a message ID to attach feedback to — fail the
+  // request so the UI can show a retry rather than rendering a ghost.
+  const { data: assistantRow, error: assistantErr } = await supabaseAdmin
     .from("chat_messages")
     .insert({
       conversation_id: conversationId,
@@ -114,6 +126,13 @@ export async function POST(req: NextRequest) {
     })
     .select("id")
     .single();
+  if (assistantErr || !assistantRow) {
+    console.error("CHAT_ASSISTANT_MSG_INSERT_ERR:", assistantErr);
+    return NextResponse.json(
+      { error: "Failed to save the assistant's reply" },
+      { status: 500 }
+    );
+  }
 
   // Bump conversation.updated_at + auto-title on first turn.
   const convUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -147,17 +166,33 @@ export async function POST(req: NextRequest) {
       action: "chat_query" as const,
       context: {
         conversation_id: conversationId,
-        message_id: assistantRow?.id ?? null,
+        message_id: assistantRow.id,
         tool_calls: result.toolCalls.map((t) => t.name),
       },
     }));
-    await supabaseAdmin.from("chat_access_audit").insert(auditRows);
+    const { error: auditErr } = await supabaseAdmin
+      .from("chat_access_audit")
+      .insert(auditRows);
+    if (auditErr) {
+      // Don't fail the request — the staff user has already seen the
+      // client info in the reply. But shout loud in logs so a monitoring
+      // rule can pick this up: a HIPAA access-log write silently lost is
+      // an incident, not a background warning.
+      console.error("HIPAA_AUDIT_WRITE_FAILED", {
+        tenant_id: tenant.id,
+        user_id: userId,
+        conversation_id: conversationId,
+        message_id: assistantRow.id,
+        client_ids: clientIds,
+        error: auditErr.message,
+      });
+    }
   }
 
   return NextResponse.json({
     conversation_id: conversationId,
-    user_message_id: userMessageInsert.data?.id ?? null,
-    assistant_message_id: assistantRow?.id ?? null,
+    user_message_id: userRow.id,
+    assistant_message_id: assistantRow.id,
     answer: result.answer,
     sources: result.sources,
   });

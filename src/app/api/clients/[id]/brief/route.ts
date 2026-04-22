@@ -40,13 +40,25 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   // "sources the AI read" log (we return sourceCallIds in the response
   // for UI transparency, but don't expand them here).
   const session = await getSession();
-  await supabaseAdmin.from("chat_access_audit").insert({
+  const { error: auditErr } = await supabaseAdmin.from("chat_access_audit").insert({
     tenant_id: tenant.id,
     user_id: session?.user?.id ?? null,
     client_profile_id: id,
     action: "brief_view",
     context: { source_count: brief.sourceCallIds.length },
   });
+  if (auditErr) {
+    // Don't fail the request — the view has already happened from the
+    // user's perspective. Shout loud so monitoring treats a silent audit
+    // loss as the incident it is.
+    console.error("HIPAA_AUDIT_WRITE_FAILED", {
+      endpoint: "client_brief",
+      tenant_id: tenant.id,
+      user_id: session?.user?.id ?? null,
+      client_profile_id: id,
+      error: auditErr.message,
+    });
+  }
 
   return NextResponse.json({
     brief: brief.text,
