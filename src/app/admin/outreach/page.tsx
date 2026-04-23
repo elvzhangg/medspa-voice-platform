@@ -29,7 +29,7 @@ export default function OutreachPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/admin/outreach-campaigns");
+    const res = await fetch("/api/admin/outreach-campaigns", { cache: "no-store" });
     const json = await res.json();
     setCampaigns(json.campaigns ?? []);
     setLoading(false);

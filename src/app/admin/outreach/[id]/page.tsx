@@ -111,13 +111,12 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   async function load() {
     const [cRes, pRes] = await Promise.all([
-      fetch(`/api/admin/outreach-campaigns`),
-      fetch(`/api/admin/outreach-prospects?campaign_id=${id}`),
+      fetch(`/api/admin/outreach-campaigns/${id}`, { cache: "no-store" }),
+      fetch(`/api/admin/outreach-prospects?campaign_id=${id}`, { cache: "no-store" }),
     ]);
     const cJson = await cRes.json();
     const pJson = await pRes.json();
-    const found = cJson.campaigns?.find((c: Campaign) => c.id === id);
-    setCampaign(found ?? null);
+    setCampaign(cRes.ok ? cJson.campaign : null);
     setProspects(pJson.prospects ?? []);
     setLoading(false);
   }
