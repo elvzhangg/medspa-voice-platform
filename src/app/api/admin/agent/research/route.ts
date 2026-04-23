@@ -2,6 +2,17 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabase";
 import { logProspectEvent } from "@/lib/prospect-events";
+import { computeConfidence, AUTO_RUN_CONFIDENCE_THRESHOLD } from "@/lib/prospect-confidence";
+import { provisionDemoForProspect } from "@/lib/demo-provisioner";
+import { draftEmailForProspect } from "@/lib/email-drafter";
+
+function normalizeWebsite(website: string): string {
+  return website
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/$/, "");
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -198,6 +209,22 @@ export async function POST(req: NextRequest) {
     "Mindbody",
   ];
 
+  // Pull already-known prospects globally so the agent doesn't rediscover them.
+  // We pass the 200 most-recently-researched — enough context without blowing the prompt.
+  const { data: knownProspects } = await supabaseAdmin
+    .from("outreach_prospects")
+    .select("business_name, website_normalized, city, state")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const knownList = (knownProspects ?? [])
+    .map((p) => {
+      const where = [p.city, p.state].filter(Boolean).join(", ");
+      const site = p.website_normalized ?? "(no website)";
+      return `- ${p.business_name}${where ? ` (${where})` : ""} — ${site}`;
+    })
+    .join("\n");
+
   const stream = new ReadableStream({
     async start(controller) {
       const send = (obj: object) => controller.enqueue(encode(obj));
@@ -221,7 +248,8 @@ For each prospect:
 2. Use web_search to find real businesses
 3. VISIT THE SPA'S OWN WEBSITE to extract structured details — this is where the good data lives (services page, pricing page, providers/team page, contact page, about page)
 4. Call save_prospect with as much structured detail as you can verify. Populate procedures[], providers[], hours, owner_name/owner_email when you can find them.
-5. Use draft_email to write a personalized outreach email. Admin approves before anything sends.
+
+You do NOT need to call draft_email. The system automatically drafts personalized outreach emails for every prospect whose data is complete enough (data completeness ≥ 70% — driven by procedures with prices, owner email, hours, and provider list). Focus your effort on extraction quality — completeness directly determines whether a demo number gets provisioned and an email gets drafted for that prospect.
 
 Structured data rules:
 - procedures[]: list each distinct service as its own entry with name, short description, duration_min if stated, price if stated ("from $12/unit", "$300", etc.). Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
@@ -239,6 +267,11 @@ Hard rules:
 - Emails warm, professional, under 200 words
 
 VauxVoice value prop: AI handles incoming calls 24/7, books appointments directly into their existing system, dramatically reduces missed calls and front-desk overhead.
+
+ALREADY-KNOWN PROSPECTS — DO NOT rediscover or re-save these. Pick different businesses:
+${knownList || "(none yet)"}
+
+If the ideal set of businesses you'd otherwise pick heavily overlaps with the known list, surface different neighborhoods or slightly different segments within the region. It's better to return 3 genuinely new prospects than 10 duplicates.
 
 Start now.`,
           },
@@ -305,6 +338,8 @@ Start now.`,
               const businessName = String(rawInput.business_name ?? "");
               const city = String(rawInput.city ?? "");
               const state = String(rawInput.state ?? "");
+              const websiteRaw = rawInput.website ? String(rawInput.website) : "";
+              const normalizedWebsite = websiteRaw ? normalizeWebsite(websiteRaw) : null;
 
               send({
                 type: "step",
@@ -312,64 +347,162 @@ Start now.`,
                 message: `Saving prospect: ${businessName} (${city}, ${state})`,
               });
 
-              const { data: saved, error: saveErr } = await supabaseAdmin
-                .from("outreach_prospects")
-                .insert({
-                  campaign_id,
-                  business_name: businessName,
-                  website: rawInput.website ?? null,
-                  email: rawInput.email ?? null,
-                  phone: rawInput.phone ?? null,
-                  city,
-                  state,
-                  address: rawInput.address ?? null,
-                  booking_platform: rawInput.booking_platform ?? "Unknown",
-                  owner_name: rawInput.owner_name ?? null,
-                  owner_email: rawInput.owner_email ?? null,
-                  owner_title: rawInput.owner_title ?? null,
-                  locations: rawInput.locations ?? null,
-                  procedures: rawInput.procedures ?? null,
-                  providers: rawInput.providers ?? null,
-                  hours: rawInput.hours ?? null,
-                  social_links: rawInput.social_links ?? null,
-                  research_sources: rawInput.research_sources ?? null,
-                  research_confidence: typeof rawInput.research_confidence === "number" ? rawInput.research_confidence : null,
-                  researched_at: new Date().toISOString(),
-                  services_summary: rawInput.services_summary ?? null,
-                  pricing_notes: rawInput.pricing_notes ?? null,
-                  notes: rawInput.notes ?? null,
-                  status: "researched",
-                })
-                .select("id")
-                .single();
+              // Global dedup by normalized website — if already known, just add to campaign.
+              let savedId: string | null = null;
+              let wasDedup = false;
+              if (normalizedWebsite) {
+                const { data: existing } = await supabaseAdmin
+                  .from("outreach_prospects")
+                  .select("id, business_name")
+                  .eq("website_normalized", normalizedWebsite)
+                  .maybeSingle();
+                if (existing) {
+                  savedId = existing.id;
+                  wasDedup = true;
+                  await supabaseAdmin
+                    .from("prospect_campaign_memberships")
+                    .upsert({ prospect_id: existing.id, campaign_id });
+                  send({
+                    type: "step",
+                    step_type: "decision",
+                    message: `Already in DB as ${existing.business_name} — added to this campaign, skipping re-research`,
+                  });
+                }
+              }
 
-              if (saveErr || !saved) {
-                toolResults.push({
-                  type: "tool_result",
-                  tool_use_id: toolUse.id,
-                  content: `Error saving: ${saveErr?.message ?? "unknown error"}`,
-                  is_error: true,
-                });
-              } else {
-                _prospectIds[toolUse.id] = saved.id;
+              // Compute deterministic confidence from the incoming structured fields
+              const confidenceBreakdown = computeConfidence({
+                website: websiteRaw || null,
+                phone: rawInput.phone as string | undefined,
+                email: rawInput.email as string | undefined,
+                owner_name: rawInput.owner_name as string | undefined,
+                owner_email: rawInput.owner_email as string | undefined,
+                address: rawInput.address as string | undefined,
+                procedures: rawInput.procedures as Array<{ name?: string; price?: string | number }> | undefined,
+                providers: rawInput.providers as Array<{ name?: string }> | undefined,
+                hours: rawInput.hours as Record<string, unknown> | undefined,
+                research_sources: rawInput.research_sources as Array<{ url?: string }> | undefined,
+              });
+
+              if (!wasDedup) {
+                const { data: saved, error: saveErr } = await supabaseAdmin
+                  .from("outreach_prospects")
+                  .insert({
+                    campaign_id,
+                    business_name: businessName,
+                    website: websiteRaw || null,
+                    email: rawInput.email ?? null,
+                    phone: rawInput.phone ?? null,
+                    city,
+                    state,
+                    address: rawInput.address ?? null,
+                    booking_platform: rawInput.booking_platform ?? "Unknown",
+                    owner_name: rawInput.owner_name ?? null,
+                    owner_email: rawInput.owner_email ?? null,
+                    owner_title: rawInput.owner_title ?? null,
+                    locations: rawInput.locations ?? null,
+                    procedures: rawInput.procedures ?? null,
+                    providers: rawInput.providers ?? null,
+                    hours: rawInput.hours ?? null,
+                    social_links: rawInput.social_links ?? null,
+                    research_sources: rawInput.research_sources ?? null,
+                    research_confidence: confidenceBreakdown.score,
+                    researched_at: new Date().toISOString(),
+                    services_summary: rawInput.services_summary ?? null,
+                    pricing_notes: rawInput.pricing_notes ?? null,
+                    notes: rawInput.notes ?? null,
+                    status: "researched",
+                  })
+                  .select("id")
+                  .single();
+
+                if (saveErr || !saved) {
+                  toolResults.push({
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: `Error saving: ${saveErr?.message ?? "unknown error"}`,
+                    is_error: true,
+                  });
+                  continue;
+                }
+
+                savedId = saved.id;
+                await supabaseAdmin
+                  .from("prospect_campaign_memberships")
+                  .upsert({ prospect_id: saved.id, campaign_id });
+
                 const proceduresLen = Array.isArray(rawInput.procedures) ? rawInput.procedures.length : 0;
                 const providersLen = Array.isArray(rawInput.providers) ? rawInput.providers.length : 0;
                 await logProspectEvent({
                   prospect_id: saved.id,
                   event_type: "researched",
-                  summary: `Research agent saved ${businessName} — ${proceduresLen} procedures, ${providersLen} providers${typeof rawInput.research_confidence === "number" ? `, confidence ${Math.round(rawInput.research_confidence * 100)}%` : ""}`,
+                  summary: `Research agent saved ${businessName} — ${proceduresLen} procedures, ${providersLen} providers, confidence ${Math.round(confidenceBreakdown.score * 100)}%`,
                   actor: "agent:research",
                 });
                 send({
                   type: "prospect_saved",
                   prospect_id: saved.id,
                   business_name: businessName,
+                  confidence: confidenceBreakdown.score,
                 });
-                toolResults.push({
-                  type: "tool_result",
-                  tool_use_id: toolUse.id,
-                  content: JSON.stringify({ prospect_id: saved.id }),
+              }
+
+              if (savedId) _prospectIds[toolUse.id] = savedId;
+
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: JSON.stringify({
+                  prospect_id: savedId,
+                  confidence: confidenceBreakdown.score,
+                  deduped: wasDedup,
+                }),
+              });
+
+              // Auto-run: if confidence clears threshold, provision demo + draft email inline.
+              // Skip for dedup'd prospects (they probably already have a demo + draft).
+              if (savedId && !wasDedup && confidenceBreakdown.score >= AUTO_RUN_CONFIDENCE_THRESHOLD) {
+                send({
+                  type: "step",
+                  step_type: "decision",
+                  message: `Confidence ${Math.round(confidenceBreakdown.score * 100)}% — auto-provisioning demo and drafting email`,
                 });
+                try {
+                  const provResult = await provisionDemoForProspect(savedId);
+                  if (provResult.ok) {
+                    send({
+                      type: "step",
+                      step_type: "found",
+                      message: `Demo ready at ${provResult.phone_number} (${provResult.kb_chunks ?? 0} KB chunks)`,
+                    });
+                  } else {
+                    send({
+                      type: "step",
+                      step_type: "decision",
+                      message: `Auto-provision skipped: ${provResult.error}`,
+                    });
+                  }
+                  const draftResult = await draftEmailForProspect(savedId);
+                  if (draftResult.ok) {
+                    send({
+                      type: "email_drafted",
+                      prospect_id: savedId,
+                      subject: draftResult.subject,
+                    });
+                  } else {
+                    send({
+                      type: "step",
+                      step_type: "decision",
+                      message: `Auto-draft failed: ${draftResult.error}`,
+                    });
+                  }
+                } catch (err) {
+                  send({
+                    type: "step",
+                    step_type: "decision",
+                    message: `Auto-run error: ${err instanceof Error ? err.message : String(err)}`,
+                  });
+                }
               }
             } else if (toolUse.name === "draft_email") {
               const prospectId = input.prospect_id;

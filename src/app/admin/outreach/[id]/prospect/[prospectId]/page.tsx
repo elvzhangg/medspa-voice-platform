@@ -74,6 +74,19 @@ interface TimelineEvent {
   created_at: string;
 }
 
+interface CampaignChip {
+  id: string;
+  name: string;
+  added_at: string;
+}
+
+interface ConfidenceBreakdown {
+  score: number;
+  total_points: number;
+  missing: string[];
+  strengths: string[];
+}
+
 const STATUS_OPTIONS = ["new", "researched", "contacted", "demo_scheduled", "demo_tested", "converted", "archived"] as const;
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-gray-100 text-gray-600",
@@ -119,6 +132,8 @@ export default function ProspectDetailPage({
   const [demoTenant, setDemoTenant] = useState<DemoTenant | null>(null);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignChip[]>([]);
+  const [confidence, setConfidence] = useState<ConfidenceBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDraftPreview, setShowDraftPreview] = useState(false);
@@ -140,6 +155,8 @@ export default function ProspectDetailPage({
       setDemoTenant(data.demo_tenant);
       setCallLogs(data.call_logs ?? []);
       setEvents(data.events ?? []);
+      setCampaigns(data.campaigns ?? []);
+      setConfidence(data.confidence ?? null);
     } catch {
       setError("Failed to load prospect.");
     } finally {
@@ -312,6 +329,24 @@ export default function ProspectDetailPage({
                 </span>
               )}
             </div>
+            {campaigns.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                <span className="text-xs text-gray-400">In campaigns:</span>
+                {campaigns.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/admin/outreach/${c.id}`}
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+                      c.id === campaignId
+                        ? "bg-indigo-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             <button
@@ -406,19 +441,27 @@ export default function ProspectDetailPage({
               <Field label="Address" className="col-span-2">
                 {prospect.address ?? <Muted />}
               </Field>
-              {prospect.research_confidence != null && (
-                <Field label="Research confidence">
-                  <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      prospect.research_confidence >= 0.75
-                        ? "bg-emerald-50 text-emerald-700"
-                        : prospect.research_confidence >= 0.5
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-red-50 text-red-700"
-                    }`}
-                  >
-                    {Math.round(prospect.research_confidence * 100)}%
-                  </span>
+              {confidence && (
+                <Field label="Data completeness">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        confidence.score >= 0.7
+                          ? "bg-emerald-50 text-emerald-700"
+                          : confidence.score >= 0.5
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {Math.round(confidence.score * 100)}%
+                    </span>
+                    {confidence.missing.length > 0 && (
+                      <span className="text-xs text-gray-400">
+                        Missing: {confidence.missing.slice(0, 4).join(", ")}
+                        {confidence.missing.length > 4 ? `, +${confidence.missing.length - 4} more` : ""}
+                      </span>
+                    )}
+                  </div>
                 </Field>
               )}
               <Field label="Researched">{fmtDate(prospect.researched_at)}</Field>
