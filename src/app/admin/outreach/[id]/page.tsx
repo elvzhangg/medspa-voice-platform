@@ -82,7 +82,6 @@ const EMPTY_FORM = {
   booking_platform: "",
   services_summary: "",
   pricing_notes: "",
-  assigned_demo_number: "",
   notes: "",
 };
 
@@ -145,7 +144,6 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       booking_platform: p.booking_platform ?? "",
       services_summary: p.services_summary ?? "",
       pricing_notes: p.pricing_notes ?? "",
-      assigned_demo_number: p.assigned_demo_number ?? "",
       notes: p.notes ?? "",
     });
     setShowAdd(true);
@@ -763,12 +761,6 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <textarea value={form.pricing_notes} onChange={e => setForm({...form, pricing_notes: e.target.value})}
                     rows={2} className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                     placeholder="Botox from $12/unit..." />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Assigned Demo Number</label>
-                  <input type="text" value={form.assigned_demo_number} onChange={e => setForm({...form, assigned_demo_number: e.target.value})}
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="+1 (555) 000-0000" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Internal Notes</label>

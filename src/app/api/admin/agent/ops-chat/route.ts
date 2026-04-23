@@ -90,7 +90,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "update_hours",
     description:
-      "Update hours. Pass an object keyed by lowercase day name (monday..sunday). Values are display strings like '9am–6pm' or 'Closed'. Only keys you pass get updated — others stay as-is. Pass all 7 days if you want a full replacement.",
+      "Update business hours. Pass an object keyed by lowercase day name (monday..sunday). Values are display strings like '9am–6pm' or 'Closed'. Only keys you pass get updated — others stay as-is. Pass all 7 days if you want a full replacement.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -104,6 +104,75 @@ const TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["hours"],
+    },
+  },
+  {
+    name: "update_parking_info",
+    description: "Set or replace the parking/directions text used by the voice agent when callers ask 'where do I park?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        directions_parking_info: { type: "string" },
+      },
+      required: ["directions_parking_info"],
+    },
+  },
+  {
+    name: "update_booking_config",
+    description:
+      "Update booking policies + payment info (cancellation, deposit, late arrival, payment_methods, financing_options, membership_program). Partial updates merge into existing booking_config unless replace_all is true.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        booking_config: {
+          type: "object",
+          properties: {
+            cancellation_policy: { type: "string" },
+            deposit_policy: { type: "string" },
+            deposit_amount_display: { type: "string" },
+            late_policy: { type: "string" },
+            payment_methods: { type: "array", items: { type: "string" } },
+            financing_options: { type: "array", items: { type: "string" } },
+            membership_program: { type: "string" },
+          },
+        },
+        replace_all: { type: "boolean" },
+      },
+      required: ["booking_config"],
+    },
+  },
+  {
+    name: "replace_faqs",
+    description:
+      "Replace the entire FAQ array. Each item: { question, answer }. FAQs become individual KB chunks when the demo is next provisioned.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        faqs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              question: { type: "string" },
+              answer: { type: "string" },
+            },
+            required: ["question", "answer"],
+          },
+        },
+      },
+      required: ["faqs"],
+    },
+  },
+  {
+    name: "update_system_prompt_override",
+    description:
+      "Set or replace the short narrative that shapes the voice agent's tone and brand. Under 300 words.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        system_prompt_override: { type: "string" },
+      },
+      required: ["system_prompt_override"],
     },
   },
   {
@@ -225,12 +294,12 @@ async function handleToolCall(
     case "update_hours": {
       const incoming = (input.hours ?? {}) as Record<string, string>;
       const replaceAll = input.replace_all === true;
-      const merged = replaceAll ? incoming : { ...(prospect.hours ?? {}), ...incoming };
-      const confidence = computeConfidence({ ...prospect, hours: merged });
+      const merged = replaceAll ? incoming : { ...(prospect.business_hours ?? {}), ...incoming };
+      const confidence = computeConfidence({ ...prospect, business_hours: merged });
       await supabaseAdmin
         .from("outreach_prospects")
         .update({
-          hours: merged,
+          business_hours: merged,
           research_confidence: confidence.score,
           updated_at: new Date().toISOString(),
         })
@@ -241,7 +310,90 @@ async function handleToolCall(
         summary: `Ops chat: hours ${replaceAll ? "replaced" : "merged"}`,
         actor: "agent:ops-chat",
       });
-      return JSON.stringify({ ok: true, hours: merged });
+      return JSON.stringify({ ok: true, business_hours: merged });
+    }
+
+    case "update_parking_info": {
+      const value = String(input.directions_parking_info ?? "").trim() || null;
+      const confidence = computeConfidence({ ...prospect, directions_parking_info: value });
+      await supabaseAdmin
+        .from("outreach_prospects")
+        .update({
+          directions_parking_info: value,
+          research_confidence: confidence.score,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", prospect_id);
+      await logProspectEvent({
+        prospect_id,
+        event_type: "note_added",
+        summary: `Ops chat: updated parking/directions`,
+        actor: "agent:ops-chat",
+      });
+      return JSON.stringify({ ok: true });
+    }
+
+    case "update_booking_config": {
+      const incoming = (input.booking_config ?? {}) as Record<string, unknown>;
+      const replaceAll = input.replace_all === true;
+      const merged = replaceAll
+        ? incoming
+        : { ...((prospect.booking_config ?? {}) as Record<string, unknown>), ...incoming };
+      const confidence = computeConfidence({ ...prospect, booking_config: merged });
+      await supabaseAdmin
+        .from("outreach_prospects")
+        .update({
+          booking_config: merged,
+          research_confidence: confidence.score,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", prospect_id);
+      const changed = Object.keys(incoming).join(", ");
+      await logProspectEvent({
+        prospect_id,
+        event_type: "note_added",
+        summary: `Ops chat: booking_config ${replaceAll ? "replaced" : `updated (${changed})`}`,
+        actor: "agent:ops-chat",
+      });
+      return JSON.stringify({ ok: true, booking_config: merged });
+    }
+
+    case "replace_faqs": {
+      const faqs = input.faqs;
+      const confidence = computeConfidence({ ...prospect, faqs: faqs as Array<{ question?: string; answer?: string }> });
+      await supabaseAdmin
+        .from("outreach_prospects")
+        .update({
+          faqs,
+          research_confidence: confidence.score,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", prospect_id);
+      await logProspectEvent({
+        prospect_id,
+        event_type: "note_added",
+        summary: `Ops chat: FAQs replaced (${Array.isArray(faqs) ? faqs.length : 0} entries)`,
+        actor: "agent:ops-chat",
+      });
+      return JSON.stringify({ ok: true, count: Array.isArray(faqs) ? faqs.length : 0 });
+    }
+
+    case "update_system_prompt_override": {
+      const value = String(input.system_prompt_override ?? "").trim() || null;
+      await supabaseAdmin
+        .from("outreach_prospects")
+        .update({
+          system_prompt_override: value,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", prospect_id);
+      await logProspectEvent({
+        prospect_id,
+        event_type: "note_added",
+        summary: `Ops chat: updated voice-agent narrative`,
+        actor: "agent:ops-chat",
+      });
+      return JSON.stringify({ ok: true });
     }
 
     case "add_kb_chunk": {

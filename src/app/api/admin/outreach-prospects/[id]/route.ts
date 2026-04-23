@@ -73,7 +73,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 // Fields that affect the confidence score — we recompute when any of them change.
 const CONFIDENCE_FIELDS = new Set([
   "website", "phone", "email", "owner_name", "owner_email", "address",
-  "procedures", "providers", "hours", "research_sources",
+  "procedures", "providers", "business_hours", "research_sources",
+  "directions_parking_info", "booking_config", "faqs",
 ]);
 
 // PATCH — structured-field updates. Recomputes research_confidence deterministically

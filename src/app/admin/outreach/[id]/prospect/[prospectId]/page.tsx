@@ -39,7 +39,19 @@ interface Prospect {
   procedures: Array<{ name: string; description?: string; duration_min?: number; price?: string | number; notes?: string }> | null;
   pricing: Record<string, Array<{ item: string; price: string | number; notes?: string }>> | Array<{ item: string; price: string | number }> | null;
   providers: Array<{ name: string; title?: string; specialties?: string[]; bio?: string }> | null;
-  hours: Record<string, { open: string; close: string } | string> | null;
+  business_hours: Record<string, { open: string; close: string } | string> | null;
+  directions_parking_info: string | null;
+  booking_config: {
+    cancellation_policy?: string;
+    deposit_policy?: string;
+    deposit_amount_display?: string;
+    late_policy?: string;
+    payment_methods?: string[];
+    financing_options?: string[];
+    membership_program?: string;
+  } | null;
+  faqs: Array<{ question: string; answer: string }> | null;
+  system_prompt_override: string | null;
   social_links: Record<string, string> | null;
   research_sources: Array<{ url: string; fetched_at?: string }> | null;
   research_confidence: number | null;
@@ -535,10 +547,10 @@ export default function ProspectDetailPage({
             )}
 
             {/* Hours */}
-            {prospect.hours && Object.keys(prospect.hours).length > 0 && (
+            {prospect.business_hours && Object.keys(prospect.business_hours).length > 0 && (
               <Subsection title="Hours">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                  {Object.entries(prospect.hours).map(([day, val]) => (
+                  {Object.entries(prospect.business_hours).map(([day, val]) => (
                     <div key={day} className="flex justify-between">
                       <span className="capitalize text-gray-500">{day}</span>
                       <span className="text-gray-800 font-mono">
@@ -547,6 +559,70 @@ export default function ProspectDetailPage({
                     </div>
                   ))}
                 </div>
+              </Subsection>
+            )}
+
+            {/* Policies & payment */}
+            {prospect.booking_config && Object.keys(prospect.booking_config).length > 0 && (
+              <Subsection title="Policies & Payment">
+                <div className="space-y-2 text-sm">
+                  {prospect.booking_config.cancellation_policy && (
+                    <PolicyLine label="Cancellation" value={prospect.booking_config.cancellation_policy} />
+                  )}
+                  {(prospect.booking_config.deposit_policy || prospect.booking_config.deposit_amount_display) && (
+                    <PolicyLine
+                      label="Deposit"
+                      value={[prospect.booking_config.deposit_policy, prospect.booking_config.deposit_amount_display]
+                        .filter(Boolean)
+                        .join(" — ")}
+                    />
+                  )}
+                  {prospect.booking_config.late_policy && (
+                    <PolicyLine label="Late arrival" value={prospect.booking_config.late_policy} />
+                  )}
+                  {prospect.booking_config.payment_methods && prospect.booking_config.payment_methods.length > 0 && (
+                    <PolicyLine label="Payment methods" value={prospect.booking_config.payment_methods.join(", ")} />
+                  )}
+                  {prospect.booking_config.financing_options && prospect.booking_config.financing_options.length > 0 && (
+                    <PolicyLine label="Financing" value={prospect.booking_config.financing_options.join(", ")} />
+                  )}
+                  {prospect.booking_config.membership_program && (
+                    <PolicyLine label="Membership" value={prospect.booking_config.membership_program} />
+                  )}
+                </div>
+              </Subsection>
+            )}
+
+            {/* Parking / directions */}
+            {prospect.directions_parking_info && (
+              <Subsection title="Parking & directions">
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{prospect.directions_parking_info}</p>
+              </Subsection>
+            )}
+
+            {/* FAQs */}
+            {prospect.faqs && prospect.faqs.length > 0 && (
+              <Subsection title={`FAQs (${prospect.faqs.length})`}>
+                <div className="space-y-2">
+                  {prospect.faqs.map((faq, i) => (
+                    <details key={i} className="rounded-lg border border-gray-100 px-3 py-2 text-sm group">
+                      <summary className="font-medium text-gray-800 cursor-pointer list-none flex items-center gap-2">
+                        <span className="text-gray-400 text-xs group-open:rotate-90 transition-transform">▸</span>
+                        {faq.question}
+                      </summary>
+                      <p className="text-xs text-gray-600 mt-2 ml-5 whitespace-pre-wrap">{faq.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              </Subsection>
+            )}
+
+            {/* Voice agent narrative */}
+            {prospect.system_prompt_override && (
+              <Subsection title="Voice agent narrative">
+                <p className="text-sm text-gray-600 whitespace-pre-wrap italic border-l-2 border-violet-200 pl-3">
+                  {prospect.system_prompt_override}
+                </p>
               </Subsection>
             )}
 
@@ -794,4 +870,13 @@ function DeliveryRow({ label, at }: { label: string; at: string | null }) {
 
 function Muted() {
   return <span className="text-gray-300">—</span>;
+}
+
+function PolicyLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-32 shrink-0 pt-0.5">{label}</span>
+      <span className="text-sm text-gray-700 flex-1">{value}</span>
+    </div>
+  );
 }

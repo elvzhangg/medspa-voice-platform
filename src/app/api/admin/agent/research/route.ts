@@ -106,10 +106,46 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
             required: ["name"],
           },
         },
-        hours: {
+        business_hours: {
           type: "object",
           description: "Operating hours keyed by day name (monday, tuesday, ...). Values can be { open, close } or a display string like '9am–6pm' or 'Closed'.",
           additionalProperties: true,
+        },
+        directions_parking_info: {
+          type: "string",
+          description: "Parking instructions, building entrance notes, validation — whatever a first-time visitor would ask. Leave empty if not stated on the website.",
+        },
+        booking_config: {
+          type: "object",
+          description:
+            "Spa policies + payment info. Shape: { cancellation_policy: string, deposit_policy: string, deposit_amount_display: string, late_policy: string, payment_methods: string[], financing_options: string[], membership_program: string }. Populate only fields you can verify from their site (policies page, FAQ, new-patient page).",
+          properties: {
+            cancellation_policy: { type: "string", description: "e.g. '24 hours notice required; otherwise full charge'" },
+            deposit_policy: { type: "string", description: "e.g. 'Non-refundable deposit required to book'" },
+            deposit_amount_display: { type: "string", description: "e.g. '$100' or '25% of service'" },
+            late_policy: { type: "string", description: "e.g. 'Grace period of 10 minutes'" },
+            payment_methods: { type: "array", items: { type: "string" }, description: "e.g. ['Visa', 'Mastercard', 'Amex', 'Cash', 'HSA/FSA']" },
+            financing_options: { type: "array", items: { type: "string" }, description: "e.g. ['CareCredit', 'Cherry', 'Afterpay']" },
+            membership_program: { type: "string", description: "Description of any membership/VIP/loyalty program" },
+          },
+        },
+        faqs: {
+          type: "array",
+          description:
+            "FAQ entries lifted from their FAQ or policies page. Each: { question, answer }. Prioritize questions a first-time caller might ask (consultation cost, downtime for popular procedures, age restrictions, numbing options, etc.). Up to 10 entries.",
+          items: {
+            type: "object",
+            properties: {
+              question: { type: "string" },
+              answer: { type: "string" },
+            },
+            required: ["question", "answer"],
+          },
+        },
+        system_prompt_override: {
+          type: "string",
+          description:
+            "Free-text notes that describe the spa's vibe, selling points, and voice tone. Examples: 'Luxury brand targeting 35-55 professional women; warm, discreet tone. Known for natural-looking injectables and the latest in regenerative aesthetics (PRP, exosomes). Emphasize consultation-first approach.' Keep under 300 words. This shapes how the AI receptionist sounds.",
         },
         social_links: {
           type: "object",
@@ -254,10 +290,15 @@ You do NOT need to call draft_email. The system automatically drafts personalize
 Structured data rules:
 - procedures[]: list each distinct service as its own entry with name, short description, duration_min if stated, price if stated ("from $12/unit", "$300", etc.). Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
 - providers[]: each staff member on the "Our Team" / "Providers" page. Include title (MD, NP, PA, RN, Aesthetician) and specialties.
-- hours: keyed by day (monday..sunday). Use display strings like "9am–6pm" or "Closed" — don't invent values.
+- business_hours: keyed by day (monday..sunday). Use display strings like "9am–6pm" or "Closed" — don't invent values.
 - owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
+- directions_parking_info: lifted from Contact / Location / Visit pages. Include validation, garage info, building-entry notes.
+- booking_config: cancellation, deposit, late-arrival policies usually live on a dedicated "Policies" page. Payment methods are often on FAQ or footer. Financing options (CareCredit, Cherry, Afterpay) usually have logos at checkout or a dedicated financing page.
+- faqs[]: the spa's actual FAQ page, verbatim-ish. Prioritize questions first-time callers ask: consultation cost, downtime, age limits, numbing, tipping, packages. Up to 10 entries.
+- system_prompt_override: a short paragraph describing who they serve, their aesthetic philosophy, brand vibe, and standout procedures. This drives the voice agent's tone. Write it in your own words based on what you read, not a direct quote.
 - research_sources[]: record which URLs you actually fetched and which fields came from each. This becomes the audit trail.
-- research_confidence: 0.8–1.0 if you found everything on their own site with pricing; 0.5–0.7 if relying on third-party aggregators or missing pricing; below 0.5 if large gaps.
+
+Completeness > inventing. A populated prospect with verified owner_email, pricing, policies, and FAQs beats a "full-looking" row with made-up values. Confidence is scored deterministically from which of these fields you actually filled — so leave fields empty rather than guessing.
 
 Hard rules:
 - Only save real, verifiable businesses
@@ -380,8 +421,11 @@ Start now.`,
                 address: rawInput.address as string | undefined,
                 procedures: rawInput.procedures as Array<{ name?: string; price?: string | number }> | undefined,
                 providers: rawInput.providers as Array<{ name?: string }> | undefined,
-                hours: rawInput.hours as Record<string, unknown> | undefined,
+                business_hours: rawInput.business_hours as Record<string, unknown> | undefined,
                 research_sources: rawInput.research_sources as Array<{ url?: string }> | undefined,
+                directions_parking_info: rawInput.directions_parking_info as string | undefined,
+                booking_config: rawInput.booking_config as Record<string, unknown> | undefined,
+                faqs: rawInput.faqs as Array<{ question?: string; answer?: string }> | undefined,
               });
 
               if (!wasDedup) {
@@ -403,7 +447,11 @@ Start now.`,
                     locations: rawInput.locations ?? null,
                     procedures: rawInput.procedures ?? null,
                     providers: rawInput.providers ?? null,
-                    hours: rawInput.hours ?? null,
+                    business_hours: rawInput.business_hours ?? null,
+                    directions_parking_info: rawInput.directions_parking_info ?? null,
+                    booking_config: rawInput.booking_config ?? null,
+                    faqs: rawInput.faqs ?? null,
+                    system_prompt_override: rawInput.system_prompt_override ?? null,
                     social_links: rawInput.social_links ?? null,
                     research_sources: rawInput.research_sources ?? null,
                     research_confidence: confidenceBreakdown.score,
