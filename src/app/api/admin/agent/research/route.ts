@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logProspectEvent } from "@/lib/prospect-events";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -34,36 +35,105 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
   {
     name: "save_prospect",
     description:
-      "Save a discovered med spa prospect to the database. Only save businesses that are real, have a working website, and are genuinely likely to benefit from an AI voice receptionist.",
+      "Save a discovered med spa prospect to the database with as much structured detail as you can verify. Only save businesses that are real, have a working website, and are genuinely likely to benefit from an AI voice receptionist. Only include fields you've actually verified from the spa's own website or other authoritative sources. Leave a field out if you're guessing.",
     input_schema: {
       type: "object" as const,
       properties: {
         business_name: { type: "string", description: "Name of the med spa" },
         website: { type: "string", description: "Website URL" },
-        email: {
-          type: "string",
-          description: "Contact email if found, otherwise null",
-        },
-        phone: { type: "string", description: "Phone number if found" },
+        email: { type: "string", description: "General contact email if found" },
+        phone: { type: "string", description: "Main phone number if found" },
         city: { type: "string", description: "City" },
-        state: { type: "string", description: "State (CA or NY)" },
+        state: { type: "string", description: "State (e.g. CA, NY)" },
+        address: { type: "string", description: "Full street address for main location" },
         booking_platform: {
           type: "string",
           enum: ["Acuity", "Boulevard", "Mindbody", "Other", "Unknown"],
-          description: "Booking platform they use",
         },
-        services_summary: {
-          type: "string",
-          description: "Brief summary of services offered",
+        owner_name: { type: "string", description: "Name of the owner or manager if found on About page / LinkedIn" },
+        owner_title: { type: "string", description: "Their role (Owner, Medical Director, Manager, etc.)" },
+        owner_email: { type: "string", description: "Direct email to the owner/manager if distinct from general email" },
+        locations: {
+          type: "array",
+          description: "All physical locations. Each entry: { label, address, phone, hours }",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              address: { type: "string" },
+              phone: { type: "string" },
+              hours: { type: "string" },
+            },
+          },
         },
-        pricing_notes: {
-          type: "string",
-          description: "Any pricing information found",
+        procedures: {
+          type: "array",
+          description: "Individual procedures/services with details. Each: { name, description, duration_min, price, notes }",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              description: { type: "string" },
+              duration_min: { type: "number" },
+              price: { type: "string", description: "e.g. '$300' or 'from $12/unit'" },
+              notes: { type: "string" },
+            },
+            required: ["name"],
+          },
         },
-        notes: {
-          type: "string",
-          description: "Any other relevant notes about this prospect",
+        providers: {
+          type: "array",
+          description: "Medical/aesthetic providers on staff. Each: { name, title, specialties }",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              title: { type: "string" },
+              specialties: { type: "array", items: { type: "string" } },
+              bio: { type: "string" },
+            },
+            required: ["name"],
+          },
         },
+        hours: {
+          type: "object",
+          description: "Operating hours keyed by day name (monday, tuesday, ...). Values can be { open, close } or a display string like '9am–6pm' or 'Closed'.",
+          additionalProperties: true,
+        },
+        social_links: {
+          type: "object",
+          description: "Social profile URLs",
+          properties: {
+            instagram: { type: "string" },
+            facebook: { type: "string" },
+            tiktok: { type: "string" },
+            yelp: { type: "string" },
+            google: { type: "string" },
+          },
+        },
+        research_sources: {
+          type: "array",
+          description: "URLs you actually fetched or referenced for this prospect",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string" },
+              fields_extracted: {
+                type: "array",
+                items: { type: "string" },
+                description: "Which fields came from this source",
+              },
+            },
+            required: ["url"],
+          },
+        },
+        research_confidence: {
+          type: "number",
+          description: "Your overall confidence in the accuracy of this prospect's data, 0.0 to 1.0. Be honest — if you had to guess pricing, lower this.",
+        },
+        services_summary: { type: "string", description: "Short free-text summary for scanning" },
+        pricing_notes: { type: "string", description: "Free-text pricing summary if structured pricing wasn't available" },
+        notes: { type: "string", description: "Anything else useful for sales context" },
       },
       required: ["business_name", "city", "state"],
     },
@@ -146,23 +216,31 @@ export async function POST(req: NextRequest) {
 
 Your mission: Find real med spa prospects in ${regions.join(" and ")} that use ${platforms.join(", ")} booking software. These are ideal customers for VauxVoice because they already have online booking infrastructure.
 
-For each prospect you find:
-1. Use log_step to document your reasoning throughout
-2. Use web_search to find real businesses and verify their details
-3. Use save_prospect to save each confirmed prospect
-4. Use draft_email to write a personalized outreach email (it will NOT be sent — it needs admin approval first)
+For each prospect:
+1. Use log_step frequently to document what you're doing and why
+2. Use web_search to find real businesses
+3. VISIT THE SPA'S OWN WEBSITE to extract structured details — this is where the good data lives (services page, pricing page, providers/team page, contact page, about page)
+4. Call save_prospect with as much structured detail as you can verify. Populate procedures[], providers[], hours, owner_name/owner_email when you can find them.
+5. Use draft_email to write a personalized outreach email. Admin approves before anything sends.
 
-Rules:
-- Only save real businesses with verifiable websites
-- Find 5-10 high-quality prospects, not a large quantity of unverified ones
-- Personalize each email — reference the specific business, their location, their booking platform
-- Keep emails warm but professional, under 200 words
-- NEVER fabricate information — if you can't verify something, say so in notes
-- Log your reasoning clearly so the admin can understand your process
+Structured data rules:
+- procedures[]: list each distinct service as its own entry with name, short description, duration_min if stated, price if stated ("from $12/unit", "$300", etc.). Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
+- providers[]: each staff member on the "Our Team" / "Providers" page. Include title (MD, NP, PA, RN, Aesthetician) and specialties.
+- hours: keyed by day (monday..sunday). Use display strings like "9am–6pm" or "Closed" — don't invent values.
+- owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
+- research_sources[]: record which URLs you actually fetched and which fields came from each. This becomes the audit trail.
+- research_confidence: 0.8–1.0 if you found everything on their own site with pricing; 0.5–0.7 if relying on third-party aggregators or missing pricing; below 0.5 if large gaps.
 
-VauxVoice value proposition: AI handles incoming calls 24/7, books appointments directly into their existing system (Acuity/Boulevard/Mindbody), dramatically reducing missed calls and front-desk overhead.
+Hard rules:
+- Only save real, verifiable businesses
+- 5–10 high-quality prospects, not a flood of low-confidence ones
+- NEVER fabricate. Missing field > made-up field.
+- Personalize each email — reference specific procedures, the city, their booking platform, how VauxVoice books directly into Acuity/Boulevard/Mindbody
+- Emails warm, professional, under 200 words
 
-Start researching now. Use log_step frequently to explain what you're doing and why.`,
+VauxVoice value prop: AI handles incoming calls 24/7, books appointments directly into their existing system, dramatically reduces missed calls and front-desk overhead.
+
+Start now.`,
           },
         ];
 
@@ -223,26 +301,43 @@ Start researching now. Use log_step frequently to explain what you're doing and 
                 content: "Logged.",
               });
             } else if (toolUse.name === "save_prospect") {
+              const rawInput = toolUse.input as Record<string, unknown>;
+              const businessName = String(rawInput.business_name ?? "");
+              const city = String(rawInput.city ?? "");
+              const state = String(rawInput.state ?? "");
+
               send({
                 type: "step",
                 step_type: "found",
-                message: `Saving prospect: ${input.business_name} (${input.city}, ${input.state})`,
+                message: `Saving prospect: ${businessName} (${city}, ${state})`,
               });
 
               const { data: saved, error: saveErr } = await supabaseAdmin
                 .from("outreach_prospects")
                 .insert({
                   campaign_id,
-                  business_name: input.business_name,
-                  website: input.website ?? null,
-                  email: input.email ?? null,
-                  phone: input.phone ?? null,
-                  city: input.city,
-                  state: input.state,
-                  booking_platform: input.booking_platform ?? "Unknown",
-                  services_summary: input.services_summary ?? null,
-                  pricing_notes: input.pricing_notes ?? null,
-                  notes: input.notes ?? null,
+                  business_name: businessName,
+                  website: rawInput.website ?? null,
+                  email: rawInput.email ?? null,
+                  phone: rawInput.phone ?? null,
+                  city,
+                  state,
+                  address: rawInput.address ?? null,
+                  booking_platform: rawInput.booking_platform ?? "Unknown",
+                  owner_name: rawInput.owner_name ?? null,
+                  owner_email: rawInput.owner_email ?? null,
+                  owner_title: rawInput.owner_title ?? null,
+                  locations: rawInput.locations ?? null,
+                  procedures: rawInput.procedures ?? null,
+                  providers: rawInput.providers ?? null,
+                  hours: rawInput.hours ?? null,
+                  social_links: rawInput.social_links ?? null,
+                  research_sources: rawInput.research_sources ?? null,
+                  research_confidence: typeof rawInput.research_confidence === "number" ? rawInput.research_confidence : null,
+                  researched_at: new Date().toISOString(),
+                  services_summary: rawInput.services_summary ?? null,
+                  pricing_notes: rawInput.pricing_notes ?? null,
+                  notes: rawInput.notes ?? null,
                   status: "researched",
                 })
                 .select("id")
@@ -257,10 +352,18 @@ Start researching now. Use log_step frequently to explain what you're doing and 
                 });
               } else {
                 _prospectIds[toolUse.id] = saved.id;
+                const proceduresLen = Array.isArray(rawInput.procedures) ? rawInput.procedures.length : 0;
+                const providersLen = Array.isArray(rawInput.providers) ? rawInput.providers.length : 0;
+                await logProspectEvent({
+                  prospect_id: saved.id,
+                  event_type: "researched",
+                  summary: `Research agent saved ${businessName} — ${proceduresLen} procedures, ${providersLen} providers${typeof rawInput.research_confidence === "number" ? `, confidence ${Math.round(rawInput.research_confidence * 100)}%` : ""}`,
+                  actor: "agent:research",
+                });
                 send({
                   type: "prospect_saved",
                   prospect_id: saved.id,
-                  business_name: input.business_name,
+                  business_name: businessName,
                 });
                 toolResults.push({
                   type: "tool_result",
@@ -294,6 +397,12 @@ Start researching now. Use log_step frequently to explain what you're doing and 
                   is_error: true,
                 });
               } else {
+                await logProspectEvent({
+                  prospect_id: prospectId,
+                  event_type: "email_drafted",
+                  summary: `Email draft: "${input.subject}"`,
+                  actor: "agent:research",
+                });
                 send({
                   type: "email_drafted",
                   prospect_id: prospectId,
