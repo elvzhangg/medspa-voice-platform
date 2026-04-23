@@ -174,6 +174,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       // Upsert by (tenant, source, external_id). Partial-index on those
       // columns means an existing row is updated in place; a brand-new
       // appointment from the platform UI creates a fresh row.
+      //
+      // IMPORTANT: do NOT include booked_via_ai in this payload. PostgREST's
+      // ON CONFLICT DO UPDATE only touches columns present in the insert,
+      // so omitting it here preserves the AI-attribution flag set by
+      // bookViaAdapter. Adding it back — even as `false` — would wipe the
+      // attribution the instant Boulevard fires its follow-up webhook.
       const start = new Date(event.startTime);
       const end = event.endTime ? new Date(event.endTime) : addMinutes(start, 60);
 

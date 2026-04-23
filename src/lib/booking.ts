@@ -368,7 +368,10 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       };
     }
 
-    // 3. Create the calendar event (pending staff review — visible but not confirmed)
+    // 3. Create the calendar event (pending staff review — visible but not confirmed).
+    // booked_via_ai=true so the Revenue card attributes this appointment
+    // correctly even in internal mode (where there's no platform webhook
+    // to later tag it for us).
     await supabaseAdmin.from("calendar_events").insert({
       tenant_id: request.tenantId,
       title: `${request.customerName} - ${request.service}`,
@@ -378,6 +381,7 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       customer_phone: request.customerPhone,
       service_type: request.service,
       status: "confirmed",
+      booked_via_ai: true,
     });
   } else {
     // No specific slot — shouldn't happen under the new workflow, but be defensive
@@ -488,6 +492,41 @@ async function bookViaAdapter(request: BookingRequest): Promise<BookingResult> {
       };
     }
     return { success: false, message: "I couldn't confirm that appointment just now." };
+  }
+
+  // AI-attribution marker — write a calendar_events row immediately, keyed
+  // by the platform's appointment id. When the platform later fires a
+  // webhook for this same appointment, the upsert by (tenant, source,
+  // external_id) finds our row and preserves booked_via_ai=true. This is
+  // how the Revenue card on the Overview isolates AI-driven bookings from
+  // walk-ins or front-desk bookings made directly in the platform UI.
+  if (res.appointmentId) {
+    try {
+      const startDate = new Date(iso);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h default; webhook will correct
+      await supabaseAdmin
+        .from("calendar_events")
+        .upsert(
+          {
+            tenant_id: request.tenantId,
+            external_source: integration.adapter.platform,
+            external_id: res.appointmentId,
+            title: `${request.customerName} - ${request.service}`,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+            customer_name: request.customerName,
+            customer_phone: request.customerPhone,
+            service_type: request.service,
+            status: "confirmed",
+            booked_via_ai: true,
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: "tenant_id,external_source,external_id" }
+        );
+    } catch (e) {
+      // Non-fatal — attribution fails open. Booking still succeeded.
+      console.error("AI_ATTRIBUTION_WRITE_ERR:", e);
+    }
   }
 
   return {

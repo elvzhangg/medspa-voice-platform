@@ -73,8 +73,7 @@ export default async function DashboardPage() {
     weeklyAftercareRes,
     providerDemandRes,
     nextWeekEventsRes,
-    revenueThisWeekRes,
-    revenuePriorWeekRes,
+    aiBookedIdsRes,
   ] = await Promise.all([
     supabaseAdmin
       .from("call_logs")
@@ -165,20 +164,16 @@ export default async function DashboardPage() {
         new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString()
       )
       .neq("status", "cancelled"),
-    // Per-visit revenue from connected platforms (Boulevard today). Null
-    // price_cents rows — rare but possible when the platform hasn't
-    // returned a price — are ignored in the SUM by Postgres.
+    // AI-attributed booking keys — external_ids of calendar_events that
+    // originated from a Vivienne booking. The Revenue card then filters
+    // client_visits down to just these to isolate AI-driven revenue from
+    // walk-ins or platform-native bookings.
     supabaseAdmin
-      .from("client_visits")
-      .select("price_cents")
+      .from("calendar_events")
+      .select("external_id")
       .eq("tenant_id", tenant.id)
-      .gte("visit_at", weekStart),
-    supabaseAdmin
-      .from("client_visits")
-      .select("price_cents")
-      .eq("tenant_id", tenant.id)
-      .gte("visit_at", priorWeekStart)
-      .lt("visit_at", weekStart),
+      .eq("booked_via_ai", true)
+      .not("external_id", "is", null),
   ]);
 
   // ── Derived metrics ─────────────────────────────────────────────────────
@@ -213,12 +208,43 @@ export default async function DashboardPage() {
   const afterHours: Delta = { current: afterHoursCount, prior: afterHoursPrior };
   const conv: Delta = { current: conversion, prior: priorConversion };
 
-  const sumCents = (rows: Array<{ price_cents: number | null }> | null) =>
-    (rows ?? []).reduce((acc, r) => acc + (r.price_cents ?? 0), 0);
-  const revenue: Delta = {
-    current: sumCents(revenueThisWeekRes.data as Array<{ price_cents: number | null }> | null),
-    prior: sumCents(revenuePriorWeekRes.data as Array<{ price_cents: number | null }> | null),
-  };
+  // Revenue is only counted for visits whose calendar_event was AI-booked.
+  // Two steps: (1) pull the set of AI-booked external_ids for the tenant,
+  // (2) fetch client_visits within each week window filtered by those ids.
+  // If there are no AI-booked events yet, we skip the second query and
+  // render the empty state.
+  const aiExternalIds = Array.from(
+    new Set(
+      ((aiBookedIdsRes.data ?? []) as Array<{ external_id: string | null }>)
+        .map((r) => r.external_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  let revenue: Delta = { current: 0, prior: 0 };
+  if (aiExternalIds.length > 0) {
+    const [thisWeekVisits, priorWeekVisits] = await Promise.all([
+      supabaseAdmin
+        .from("client_visits")
+        .select("price_cents")
+        .eq("tenant_id", tenant.id)
+        .in("external_id", aiExternalIds)
+        .gte("visit_at", weekStart),
+      supabaseAdmin
+        .from("client_visits")
+        .select("price_cents")
+        .eq("tenant_id", tenant.id)
+        .in("external_id", aiExternalIds)
+        .gte("visit_at", priorWeekStart)
+        .lt("visit_at", weekStart),
+    ]);
+    const sumCents = (rows: Array<{ price_cents: number | null }> | null) =>
+      (rows ?? []).reduce((acc, r) => acc + (r.price_cents ?? 0), 0);
+    revenue = {
+      current: sumCents(thisWeekVisits.data as Array<{ price_cents: number | null }> | null),
+      prior: sumCents(priorWeekVisits.data as Array<{ price_cents: number | null }> | null),
+    };
+  }
 
   // ── Today strip ─────────────────────────────────────────────────────────
   const todayEvents = (todayEventsRes.data ?? []) as CalendarEvent[];
@@ -332,10 +358,10 @@ export default async function DashboardPage() {
       {/* Hero: 4 ROI cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <RevenueCard
-          label="Revenue booked"
+          label="Revenue from Vivienne"
           cents={revenue.current}
           delta={revenue}
-          emptyState="Real transaction amounts will appear here once your platform (Boulevard today) syncs a completed visit."
+          emptyState="Populates when a visit Vivienne booked completes on your connected platform. Walk-ins and platform-native bookings are intentionally excluded."
         />
         <RoiCard
           accent="emerald"
@@ -573,7 +599,7 @@ function RevenueCard({
             <p className="text-3xl font-bold text-zinc-900 tabular-nums mt-2">
               {formatCurrency(cents)}
             </p>
-            <p className="text-xs text-zinc-500 mt-0.5">completed visits this week</p>
+            <p className="text-xs text-zinc-500 mt-0.5">from completed AI-booked visits</p>
             {delta.prior > 0 && <RevenueDeltaChip diffCents={diffCents} />}
           </>
         )}
