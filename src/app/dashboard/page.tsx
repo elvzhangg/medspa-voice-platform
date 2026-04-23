@@ -71,6 +71,8 @@ export default async function DashboardPage() {
     procedureTemplatesRes,
     seenServicesRes,
     weeklyAftercareRes,
+    providerDemandRes,
+    nextWeekEventsRes,
   ] = await Promise.all([
     supabaseAdmin
       .from("call_logs")
@@ -145,6 +147,22 @@ export default async function DashboardPage() {
       .select("id, template_type, status")
       .eq("tenant_id", tenant.id)
       .gte("sent_at", weekStart),
+    supabaseAdmin
+      .from("booking_requests")
+      .select("provider_preference")
+      .eq("tenant_id", tenant.id)
+      .not("provider_preference", "is", null)
+      .gte("created_at", weekStart),
+    supabaseAdmin
+      .from("calendar_events")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .gte("start_time", new Date().toISOString())
+      .lte(
+        "start_time",
+        new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString()
+      )
+      .neq("status", "cancelled"),
   ]);
 
   // ── Derived metrics ─────────────────────────────────────────────────────
@@ -189,6 +207,38 @@ export default async function DashboardPage() {
   // ── Recent calls w/ outcome ─────────────────────────────────────────────
   const recentCalls = (recentCallsRes.data ?? []) as CallLog[];
   const outcomes = await deriveCallOutcomes(tenant.id, recentCalls);
+
+  // ── Missed opportunities (last 7d, info outcome, distinct caller) ───────
+  // These are calls where someone spoke to Vivienne but didn't book — the
+  // ideal winback candidates. We pull a wider window than Recent Calls and
+  // dedupe by phone so the list surfaces people, not every call attempt.
+  const missedOppsOutcomes = await deriveCallOutcomes(tenant.id, callsThisWeek);
+  const missedOppsByPhone = new Map<string, CallLog>();
+  for (const call of callsThisWeek) {
+    const outcome = missedOppsOutcomes.get(call.id);
+    if (!outcome || outcome.kind !== "info") continue;
+    if (!call.caller_number) continue;
+    const existing = missedOppsByPhone.get(call.caller_number);
+    if (!existing || new Date(call.created_at) > new Date(existing.created_at)) {
+      missedOppsByPhone.set(call.caller_number, call);
+    }
+  }
+  const missedOpps = Array.from(missedOppsByPhone.values())
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
+
+  // ── Time saved (total caller-time Vivienne handled this week) ───────────
+  const totalSecondsHandled = callsThisWeek.reduce(
+    (acc, c) => acc + (c.duration_seconds ?? 0),
+    0
+  );
+
+  // ── Provider demand (who got requested most this week) ──────────────────
+  const topProvider = topCount(
+    ((providerDemandRes.data ?? []) as Array<{ provider_preference: string | null }>)
+      .map((r) => (r.provider_preference ?? "").trim())
+      .filter((p) => p && !/no preference|any|anyone/i.test(p))
+  );
 
   // ── Insights ────────────────────────────────────────────────────────────
   const topService = topCount(
@@ -329,17 +379,31 @@ export default async function DashboardPage() {
         {/* Left: Recent Calls + Insights */}
         <div className="col-span-2 space-y-6">
           {/* Insights */}
-          {(topService || aftercareStats.sent > 0) && (
+          {(topService || aftercareStats.sent > 0 || topProvider || totalSecondsHandled > 0) && (
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-zinc-900 text-sm">AI insights this week</h2>
+                <h2 className="font-semibold text-zinc-900 text-sm">Vivienne's insights this week</h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
+                {totalSecondsHandled > 0 && (
+                  <InsightTile
+                    label="Caller time handled"
+                    value={formatDurationLong(totalSecondsHandled)}
+                    sub={describeTimeSaved(totalSecondsHandled)}
+                  />
+                )}
                 {topService && (
                   <InsightTile
                     label="Most-booked service"
                     value={topService.key}
                     sub={`${topService.count} booking${topService.count === 1 ? "" : "s"}`}
+                  />
+                )}
+                {topProvider && (
+                  <InsightTile
+                    label="Most-requested provider"
+                    value={topProvider.key}
+                    sub={`${topProvider.count} caller${topProvider.count === 1 ? "" : "s"} asked for them`}
                   />
                 )}
                 {aftercareStats.sent > 0 && (
@@ -349,6 +413,30 @@ export default async function DashboardPage() {
                     sub={`${aftercareStats.skipped} skipped · ${aftercareStats.failed} failed`}
                   />
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Missed Opportunities — callers who didn't book, ripe for winback */}
+          {missedOpps.length > 0 && (
+            <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+                <div>
+                  <h2 className="font-semibold text-zinc-900 text-sm">Missed opportunities</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Callers who asked questions this week but didn't book. Draft a personalized follow-up with Vivienne.
+                  </p>
+                </div>
+              </div>
+              <div>
+                {missedOpps.map((call, i) => (
+                  <MissedRow
+                    key={call.id}
+                    call={call}
+                    isLast={i === missedOpps.length - 1}
+                    slug={slug}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -384,8 +472,25 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Right: Priority Queue */}
+        {/* Right: Priority Queue + Next-week pipeline */}
         <div className="space-y-4">
+          {(nextWeekEventsRes.count ?? 0) > 0 && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Next 7 days</p>
+              <p className="text-2xl font-bold text-zinc-900 tabular-nums mt-1">
+                {nextWeekEventsRes.count}
+              </p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                appointment{nextWeekEventsRes.count === 1 ? "" : "s"} on the books
+              </p>
+              <Link
+                href={`/${slug}/dashboard/calendar`}
+                className="text-xs font-semibold text-amber-900 hover:text-amber-700 mt-3 inline-block"
+              >
+                Open calendar →
+              </Link>
+            </div>
+          )}
           <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
             <div className="px-5 py-3.5 border-b border-zinc-100">
               <h2 className="font-semibold text-zinc-900 text-sm">What needs attention</h2>
@@ -541,6 +646,52 @@ function CallRow({
   );
 }
 
+function MissedRow({
+  call,
+  isLast,
+  slug,
+}: {
+  call: CallLog;
+  isLast: boolean;
+  slug: string;
+}) {
+  // First sentence of the call summary is usually the ask — what the caller
+  // wanted. Fallback to a generic line when we have nothing.
+  const ask = call.summary
+    ? call.summary.split(/(?<=[.!?])\s+/)[0].slice(0, 140)
+    : "No summary captured — review the transcript to see what they needed.";
+  return (
+    <div
+      className={`flex items-center gap-4 px-6 py-3.5 ${
+        isLast ? "" : "border-b border-zinc-50"
+      }`}
+    >
+      <div className="w-8 h-8 bg-gradient-to-br from-sky-100 to-sky-200 rounded-full flex items-center justify-center shrink-0">
+        <svg className="w-3.5 h-3.5 text-sky-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-zinc-900">
+          {formatPhone(call.caller_number) || "Unknown caller"}
+          <span className="text-xs font-normal text-zinc-400 ml-2">
+            {formatRelative(new Date(call.created_at))}
+            {" · "}
+            {formatDuration(call.duration_seconds)}
+          </span>
+        </p>
+        <p className="text-xs text-zinc-500 truncate leading-snug mt-0.5">{ask}</p>
+      </div>
+      <Link
+        href={`/${slug}/dashboard/calls/${call.id}/followup`}
+        className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-amber-400 text-amber-900 hover:bg-amber-50 transition-colors"
+      >
+        Draft follow-up →
+      </Link>
+    </div>
+  );
+}
+
 interface ActionItem {
   severity: "warn" | "info";
   title: string;
@@ -575,6 +726,21 @@ function formatDuration(seconds: number | null): string {
   const s = seconds % 60;
   if (m === 0) return `${s}s`;
   return `${m}m ${s}s`;
+}
+
+function formatDurationLong(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  if (hours === 0) return `${mins}m`;
+  return `${hours}h ${mins}m`;
+}
+
+function describeTimeSaved(totalSeconds: number): string {
+  const mins = Math.round(totalSeconds / 60);
+  if (mins < 30) return "Warming up — Vivienne's logged some live minutes.";
+  if (mins < 120) return "Roughly a full break for your front desk.";
+  if (mins < 240) return "About a half-shift you didn't have to staff.";
+  return "A full receptionist shift handled by Vivienne.";
 }
 
 function formatPhone(phone: string | null | undefined): string {
