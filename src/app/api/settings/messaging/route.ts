@@ -14,6 +14,7 @@ export async function GET() {
     sms_reminder_hours: tenant.sms_reminder_hours || 24,
     sms_followup_enabled: tenant.sms_followup_enabled || false,
     sms_followup_hours: tenant.sms_followup_hours || 24,
+    sms_checkin_enabled: tenant.sms_checkin_enabled || false,
     integration_platform: tenant.integration_platform || null,
     integration_mode: tenant.integration_mode || null,
   });
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     sms_reminder_hours,
     sms_followup_enabled,
     sms_followup_hours,
+    sms_checkin_enabled,
   } = body;
 
   const { error } = await supabaseAdmin
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
       sms_reminder_hours,
       sms_followup_enabled,
       sms_followup_hours,
+      sms_checkin_enabled,
     })
     .eq("id", tenant.id);
 

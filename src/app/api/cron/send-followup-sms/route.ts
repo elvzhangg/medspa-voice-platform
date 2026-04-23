@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { SMS_TEMPLATES, renderTemplate } from "@/lib/sms/templates";
+import { SMS_TEMPLATES, renderTemplate, SmsTemplateType } from "@/lib/sms/templates";
 import { sendTwilioSms, isPhoneOptedOut } from "@/lib/sms/send";
 
 /**
- * Post-visit aftercare SMS dispatcher.
+ * Post-visit SMS dispatcher — handles two distinct templates on the same tick:
  *
- * Scans for calendar_events that have been marked completed (manually by
- * staff or by a platform webhook) and whose tenant has configured a delay
- * that has now elapsed. For each match, renders the fixed followup wrapper
- * with the tenant's per-treatment guideline body and sends via Twilio.
+ *   1. 'followup' — clinical aftercare (2/24/48h after completion).
+ *      Uses the tenant's per-treatment post_procedure_templates body.
+ *      Opt-in via sms_followup_enabled.
  *
- * Guardrails:
+ *   2. 'checkin' — one-week wellness check (168h after completion).
+ *      Fixed generic template, no procedure name, no clinical content.
+ *      Opt-in via sms_checkin_enabled (separate add-on).
+ *
+ * Both templates share the same guardrails:
  *   - Must have explicit sms_consent_granted_at on the event.
  *   - Must not be on sms_opt_outs for the tenant.
- *   - sms_sent_log UNIQUE(event, 'followup') prevents duplicate sends on
- *     overlapping cron ticks — we INSERT the log row BEFORE the send and
- *     UPDATE it with the outcome after.
- *   - Missing post_procedure_template for the service → status='skipped_no_consent'
- *     reused with error='no_template'. Tenant hasn't authored guidelines yet.
+ *   - sms_sent_log UNIQUE(event, template_type) prevents duplicate sends
+ *     on overlapping cron ticks — we INSERT the log row BEFORE the send
+ *     and UPDATE it with the outcome after.
  *
  * Protected by CRON_SECRET — Vercel forwards it on scheduled runs.
  */
 
 export const maxDuration = 300;
+
+const CHECKIN_HOURS = 168;
 
 interface EventRow {
   id: string;
@@ -41,9 +44,16 @@ interface TenantRow {
   name: string;
   sms_followup_enabled: boolean;
   sms_followup_hours: number;
+  sms_checkin_enabled: boolean;
   twilio_account_sid: string | null;
   twilio_auth_token: string | null;
   twilio_phone_number: string | null;
+}
+
+interface PassStats {
+  sent: number;
+  skipped: number;
+  failed: number;
 }
 
 export async function GET(req: NextRequest) {
@@ -55,81 +65,114 @@ export async function GET(req: NextRequest) {
 
   const started = Date.now();
 
-  // Only tenants who have the feature on. Followup_hours is used to compute
-  // the earliest eligible completed_at (NOW - followup_hours).
+  // Pull any tenant opted in to either feature. Per-pass filters below key
+  // off the specific toggle + delay.
   const { data: tenants } = await supabaseAdmin
     .from("tenants")
     .select(
-      "id, name, sms_followup_enabled, sms_followup_hours, twilio_account_sid, twilio_auth_token, twilio_phone_number"
+      "id, name, sms_followup_enabled, sms_followup_hours, sms_checkin_enabled, twilio_account_sid, twilio_auth_token, twilio_phone_number"
     )
-    .eq("sms_followup_enabled", true);
+    .or("sms_followup_enabled.eq.true,sms_checkin_enabled.eq.true");
 
   const tenantList = (tenants ?? []) as TenantRow[];
-  let sent = 0;
-  let skipped = 0;
-  let failed = 0;
+  const stats: Record<SmsTemplateType, PassStats> = {
+    confirmation: { sent: 0, skipped: 0, failed: 0 },
+    reminder: { sent: 0, skipped: 0, failed: 0 },
+    followup: { sent: 0, skipped: 0, failed: 0 },
+    checkin: { sent: 0, skipped: 0, failed: 0 },
+  };
 
   for (const tenant of tenantList) {
-    const delayMs = tenant.sms_followup_hours * 60 * 60 * 1000;
-    const completedBefore = new Date(Date.now() - delayMs).toISOString();
+    if (tenant.sms_followup_enabled) {
+      await runPass({
+        tenant,
+        templateType: "followup",
+        delayHours: tenant.sms_followup_hours,
+        stats: stats.followup,
+      });
+    }
+    if (tenant.sms_checkin_enabled) {
+      await runPass({
+        tenant,
+        templateType: "checkin",
+        delayHours: CHECKIN_HOURS,
+        stats: stats.checkin,
+      });
+    }
+  }
 
-    // Candidates: completed, past delay, we don't yet have a followup log row
-    // for. LEFT JOIN via NOT EXISTS would be cleaner in raw SQL; Supabase JS
-    // doesn't expose it so we fetch + filter in-process. Volume is bounded
-    // by tick frequency × tenant size, which is fine at this scale.
-    const { data: candidates, error } = await supabaseAdmin
-      .from("calendar_events")
-      .select(
-        "id, tenant_id, customer_name, customer_phone, service_type, completed_at, sms_consent_granted_at, sms_consent_phone"
-      )
-      .eq("tenant_id", tenant.id)
-      .eq("status", "completed")
-      .lte("completed_at", completedBefore);
+  return NextResponse.json({
+    durationMs: Date.now() - started,
+    tenantsChecked: tenantList.length,
+    followup: stats.followup,
+    checkin: stats.checkin,
+  });
+}
 
-    if (error) {
-      console.error("FOLLOWUP_CRON_FETCH_ERR:", tenant.id, error);
+async function runPass(args: {
+  tenant: TenantRow;
+  templateType: "followup" | "checkin";
+  delayHours: number;
+  stats: PassStats;
+}) {
+  const { tenant, templateType, delayHours, stats } = args;
+  const delayMs = delayHours * 60 * 60 * 1000;
+  const completedBefore = new Date(Date.now() - delayMs).toISOString();
+
+  const { data: candidates, error } = await supabaseAdmin
+    .from("calendar_events")
+    .select(
+      "id, tenant_id, customer_name, customer_phone, service_type, completed_at, sms_consent_granted_at, sms_consent_phone"
+    )
+    .eq("tenant_id", tenant.id)
+    .eq("status", "completed")
+    .lte("completed_at", completedBefore);
+
+  if (error) {
+    console.error("FOLLOWUP_CRON_FETCH_ERR:", tenant.id, templateType, error);
+    return;
+  }
+
+  for (const ev of (candidates ?? []) as EventRow[]) {
+    const recipient = ev.sms_consent_phone || ev.customer_phone;
+
+    // Claim the (event, templateType) pair first. If another tick beat us,
+    // the unique constraint will reject — we just skip.
+    const { error: claimErr } = await supabaseAdmin.from("sms_sent_log").insert({
+      tenant_id: tenant.id,
+      calendar_event_id: ev.id,
+      template_type: templateType,
+      to_phone: recipient || "",
+      status: "pending",
+    });
+    if (claimErr) {
+      if (!String(claimErr.message).includes("duplicate")) {
+        console.error("FOLLOWUP_CLAIM_ERR:", ev.id, templateType, claimErr);
+      }
       continue;
     }
 
-    for (const ev of (candidates ?? []) as EventRow[]) {
-      const recipient = ev.sms_consent_phone || ev.customer_phone;
+    // Consent check (explicit).
+    if (!ev.sms_consent_granted_at) {
+      await finalizeLog(tenant.id, ev.id, templateType, "skipped_no_consent", null, "no_consent_on_file");
+      stats.skipped++;
+      continue;
+    }
 
-      // Try to claim this (event, followup) pair. If another tick beat us
-      // to it, the unique constraint will reject — we just skip.
-      const { error: claimErr } = await supabaseAdmin.from("sms_sent_log").insert({
-        tenant_id: tenant.id,
-        calendar_event_id: ev.id,
-        template_type: "followup",
-        to_phone: recipient || "",
-        status: "pending",
-      });
-      if (claimErr) {
-        // 23505 = unique_violation → already handled. Any other error we log
-        // and move on; better to miss this tick than to retry in a loop.
-        if (!String(claimErr.message).includes("duplicate")) {
-          console.error("FOLLOWUP_CLAIM_ERR:", ev.id, claimErr);
-        }
-        continue;
-      }
+    // Opt-out check (persistent across bookings).
+    if (recipient && (await isPhoneOptedOut(tenant.id, recipient))) {
+      await finalizeLog(tenant.id, ev.id, templateType, "skipped_opted_out", null, "phone_opted_out");
+      stats.skipped++;
+      continue;
+    }
 
-      // Consent check (explicit): must have granted timestamp.
-      if (!ev.sms_consent_granted_at) {
-        await finalizeLog(tenant.id, ev.id, "skipped_no_consent", null, "no_consent_on_file");
-        skipped++;
-        continue;
-      }
-
-      // Opt-out check (persistent across bookings).
-      if (recipient && (await isPhoneOptedOut(tenant.id, recipient))) {
-        await finalizeLog(tenant.id, ev.id, "skipped_opted_out", null, "phone_opted_out");
-        skipped++;
-        continue;
-      }
-
-      // Service → guideline lookup (case-insensitive match).
+    // Render body — aftercare needs a per-service guideline lookup;
+    // check-in uses a fixed template with no clinical content.
+    let body: string;
+    if (templateType === "followup") {
       if (!ev.service_type) {
-        await finalizeLog(tenant.id, ev.id, "failed", null, "no_service_on_event");
-        failed++;
+        await finalizeLog(tenant.id, ev.id, templateType, "failed", null, "no_service_on_event");
+        stats.failed++;
         continue;
       }
       const { data: tmpl } = await supabaseAdmin
@@ -139,48 +182,44 @@ export async function GET(req: NextRequest) {
         .ilike("service_name", ev.service_type)
         .eq("active", true)
         .maybeSingle();
-
       if (!tmpl) {
-        await finalizeLog(tenant.id, ev.id, "failed", null, "no_template_for_service");
-        failed++;
+        await finalizeLog(tenant.id, ev.id, templateType, "failed", null, "no_template_for_service");
+        stats.failed++;
         continue;
       }
-
-      const body = renderTemplate(SMS_TEMPLATES.followupWrapper, {
+      body = renderTemplate(SMS_TEMPLATES.followupWrapper, {
         Customer: ev.customer_name?.split(" ")[0] || "there",
         Clinic: tenant.name,
-        Guideline: (tmpl as any).guideline_text,
+        Guideline: (tmpl as { guideline_text: string }).guideline_text,
       });
+    } else {
+      body = renderTemplate(SMS_TEMPLATES.checkInWeek, {
+        Customer: ev.customer_name?.split(" ")[0] || "there",
+        Clinic: tenant.name,
+      });
+    }
 
-      if (!recipient) {
-        await finalizeLog(tenant.id, ev.id, "failed", null, "no_recipient_phone");
-        failed++;
-        continue;
-      }
+    if (!recipient) {
+      await finalizeLog(tenant.id, ev.id, templateType, "failed", null, "no_recipient_phone");
+      stats.failed++;
+      continue;
+    }
 
-      const send = await sendTwilioSms(tenant, recipient, body);
-      if (send.ok) {
-        await finalizeLog(tenant.id, ev.id, "sent", send.providerMessageId ?? null, null, body);
-        sent++;
-      } else {
-        await finalizeLog(tenant.id, ev.id, "failed", null, send.error ?? "send_failed");
-        failed++;
-      }
+    const send = await sendTwilioSms(tenant, recipient, body);
+    if (send.ok) {
+      await finalizeLog(tenant.id, ev.id, templateType, "sent", send.providerMessageId ?? null, null, body);
+      stats.sent++;
+    } else {
+      await finalizeLog(tenant.id, ev.id, templateType, "failed", null, send.error ?? "send_failed");
+      stats.failed++;
     }
   }
-
-  return NextResponse.json({
-    durationMs: Date.now() - started,
-    tenantsChecked: tenantList.length,
-    sent,
-    skipped,
-    failed,
-  });
 }
 
 async function finalizeLog(
   tenantId: string,
   calendarEventId: string,
+  templateType: "followup" | "checkin",
   status: "sent" | "failed" | "skipped_no_consent" | "skipped_opted_out",
   providerMessageId: string | null,
   error: string | null,
@@ -197,5 +236,5 @@ async function finalizeLog(
     })
     .eq("tenant_id", tenantId)
     .eq("calendar_event_id", calendarEventId)
-    .eq("template_type", "followup");
+    .eq("template_type", templateType);
 }

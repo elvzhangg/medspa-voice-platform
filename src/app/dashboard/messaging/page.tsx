@@ -12,6 +12,7 @@ interface SMSSettings {
   sms_reminder_hours: number;
   sms_followup_enabled: boolean;
   sms_followup_hours: number;
+  sms_checkin_enabled: boolean;
   integration_platform: string | null;
   integration_mode: string | null;
 }
@@ -98,6 +99,7 @@ export default function MessagingPage() {
     sms_reminder_hours: 24,
     sms_followup_enabled: false,
     sms_followup_hours: 24,
+    sms_checkin_enabled: false,
     integration_platform: null,
     integration_mode: null,
   });
@@ -129,6 +131,7 @@ export default function MessagingPage() {
         sms_reminder_hours: settings.sms_reminder_hours,
         sms_followup_enabled: settings.sms_followup_enabled,
         sms_followup_hours: settings.sms_followup_hours,
+        sms_checkin_enabled: settings.sms_checkin_enabled,
       }),
     });
     setSaved(true);
@@ -169,17 +172,6 @@ export default function MessagingPage() {
           </p>
         </div>
       )}
-
-      <div className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
-        <p className="text-xs text-zinc-700 leading-relaxed">
-          <span className="font-semibold">Why can't I edit the wording?</span>{" "}
-          To keep your messages compliant with HIPAA (no procedure names or sensitive info in the SMS
-          envelope) and TCPA (consistent STOP language), we ship pre-vetted templates. You control{" "}
-          <span className="font-semibold">when</span> messages go out and the per-treatment{" "}
-          <span className="font-semibold">aftercare guidance</span>. Questions? Email{" "}
-          <a className="underline" href="mailto:founders@vauxvoice.com">founders@vauxvoice.com</a>.
-        </p>
-      </div>
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Instant Booking Confirmations */}
@@ -255,7 +247,6 @@ export default function MessagingPage() {
               <option value={2}>2 hours after appointment</option>
               <option value={24}>24 hours after appointment</option>
               <option value={48}>48 hours after appointment</option>
-              <option value={168}>1 week after appointment</option>
             </select>
           </div>
           <MessagePreview template={SMS_TEMPLATES.followupWrapper} />
@@ -273,6 +264,26 @@ export default function MessagingPage() {
               Manage guidelines →
             </Link>
           </div>
+        </SectionCard>
+
+        {/* Week-Later Check-In (optional add-on) */}
+        <SectionCard
+          title="Week-Later Check-In"
+          description="A short, generic wellness check sent 1 week after the appointment."
+          enabled={settings.sms_checkin_enabled}
+          onToggle={() => set({ sms_checkin_enabled: !settings.sms_checkin_enabled })}
+          badge={
+            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-700 font-semibold">
+              Add-on
+            </span>
+          }
+        >
+          <MessagePreview template={SMS_TEMPLATES.checkInWeek} />
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Separate from clinical aftercare — this is a relationship touchpoint, not treatment
+            information. It intentionally doesn't name the procedure or include any medical
+            guidance, keeping PHI exposure to a minimum.
+          </p>
         </SectionCard>
 
         <div className="flex justify-end items-center gap-4 pt-2">
