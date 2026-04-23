@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
+import OpsChat from "./OpsChat";
 
 interface Prospect {
   id: string;
@@ -141,6 +142,7 @@ export default function ProspectDetailPage({
   const [draftingEmail, setDraftingEmail] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [opsChatOpen, setOpsChatOpen] = useState(false);
 
   async function load() {
     try {
@@ -349,6 +351,16 @@ export default function ProspectDetailPage({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            <button
+              onClick={() => setOpsChatOpen(true)}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 flex items-center gap-1.5"
+              title="Open Ops Chat — talk to the agent about this prospect"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Ops Chat
+            </button>
             <button
               onClick={provisionDemo}
               disabled={provisioning || !!prospect.demo_tenant_id}
@@ -694,6 +706,13 @@ export default function ProspectDetailPage({
           </Panel>
         </div>
       </div>
+
+      <OpsChat
+        prospectId={prospect.id}
+        open={opsChatOpen}
+        onClose={() => setOpsChatOpen(false)}
+        onDataChanged={load}
+      />
 
       {/* Draft preview modal */}
       {showDraftPreview && prospect.email_draft_body && (
