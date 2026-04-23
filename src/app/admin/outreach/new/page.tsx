@@ -27,6 +27,7 @@ export default function NewCampaignPage() {
       const res = await fetch("/api/admin/outreach-campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           name: form.name.trim(),
           description: form.description.trim() || null,
@@ -34,13 +35,21 @@ export default function NewCampaignPage() {
           target_platforms: form.target_platforms.split(",").map((s) => s.trim()).filter(Boolean),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? `Server returned ${res.status}`);
         setSaving(false);
         return;
       }
-      router.push(`/admin/outreach/${data.campaign.id}`);
+      if (!data.campaign?.id) {
+        setError("Campaign created but response was malformed — check the campaigns list");
+        setSaving(false);
+        return;
+      }
+      // Redirect to list (not detail) — avoids race where the new campaign isn't
+      // yet visible to the detail endpoint's follow-up read. User clicks in from the list.
+      router.push("/admin/outreach");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setSaving(false);

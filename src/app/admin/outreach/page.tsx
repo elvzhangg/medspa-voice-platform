@@ -29,10 +29,21 @@ export default function OutreachPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/admin/outreach-campaigns", { cache: "no-store" });
-    const json = await res.json();
-    setCampaigns(json.campaigns ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/outreach-campaigns", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error("Failed to load campaigns:", json.error ?? res.status);
+        setCampaigns([]);
+      } else {
+        setCampaigns(json.campaigns ?? []);
+      }
+    } catch (err) {
+      console.error("Campaigns fetch threw:", err);
+      setCampaigns([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
