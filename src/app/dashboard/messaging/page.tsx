@@ -1,18 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import Toggle from "../_components/Toggle";
+import { SMS_TEMPLATES } from "@/lib/sms/templates";
 
 interface SMSSettings {
+  sms_confirmation_enabled: boolean;
   sms_reminders_enabled: boolean;
   sms_reminder_hours: number;
-  sms_reminder_template: string;
-  sms_confirmation_enabled: boolean;
-  sms_confirmation_message: string;
   sms_followup_enabled: boolean;
   sms_followup_hours: number;
-  sms_followup_message: string;
+  integration_platform: string | null;
+  integration_mode: string | null;
 }
+
+// Platforms that send their own confirmation/reminder SMS natively. When the
+// tenant is connected to one of these, we steer them away from duplicating
+// those messages and emphasize aftercare (which most platforms don't cover).
+const PLATFORMS_WITH_NATIVE_SMS: Record<string, string> = {
+  boulevard: "Boulevard",
+  mindbody: "Mindbody",
+  square: "Square",
+  vagaro: "Vagaro",
+  acuity: "Acuity Scheduling",
+  jane: "Jane",
+  zenoti: "Zenoti",
+  wellnessliving: "WellnessLiving",
+};
 
 function SectionCard({
   title,
@@ -20,18 +36,23 @@ function SectionCard({
   enabled,
   onToggle,
   children,
+  badge,
 }: {
   title: string;
   description: string;
   enabled: boolean;
   onToggle: () => void;
   children?: React.ReactNode;
+  badge?: React.ReactNode;
 }) {
   return (
     <div className={`bg-white rounded-xl border overflow-hidden transition-all ${enabled ? "border-amber-200 shadow-sm shadow-amber-50" : "border-zinc-200"}`}>
       <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100">
-        <div>
-          <h2 className="font-semibold text-zinc-900 text-sm">{title}</h2>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-zinc-900 text-sm">{title}</h2>
+            {badge}
+          </div>
           <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
         </div>
         <Toggle enabled={enabled} onChange={onToggle} />
@@ -50,16 +71,35 @@ function SectionCard({
   );
 }
 
+function MessagePreview({ template }: { template: string }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+        Message preview
+      </label>
+      <div className="px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">
+        {template}
+      </div>
+      <p className="text-[11px] text-zinc-400 mt-1.5">
+        We use a fixed, vetted message to keep your texts compliant with HIPAA and SMS regulations.
+        Tokens like <code className="bg-zinc-100 px-1 rounded">{"{Customer}"}</code> and{" "}
+        <code className="bg-zinc-100 px-1 rounded">{"{Clinic}"}</code> are filled in automatically.
+      </p>
+    </div>
+  );
+}
+
 export default function MessagingPage() {
+  const params = useParams();
+  const slug = (params?.tenant as string) || "";
   const [settings, setSettings] = useState<SMSSettings>({
+    sms_confirmation_enabled: true,
     sms_reminders_enabled: false,
     sms_reminder_hours: 24,
-    sms_reminder_template: "",
-    sms_confirmation_enabled: true,
-    sms_confirmation_message: "Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]. We look forward to seeing you!",
     sms_followup_enabled: false,
     sms_followup_hours: 24,
-    sms_followup_message: "Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results. Don't hesitate to reach out if you have any questions — we'd love to see you again soon.",
+    integration_platform: null,
+    integration_mode: null,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,7 +123,13 @@ export default function MessagingPage() {
     await fetch("/api/settings/messaging", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
+      body: JSON.stringify({
+        sms_confirmation_enabled: settings.sms_confirmation_enabled,
+        sms_reminders_enabled: settings.sms_reminders_enabled,
+        sms_reminder_hours: settings.sms_reminder_hours,
+        sms_followup_enabled: settings.sms_followup_enabled,
+        sms_followup_hours: settings.sms_followup_hours,
+      }),
     });
     setSaved(true);
     setSaving(false);
@@ -96,42 +142,61 @@ export default function MessagingPage() {
 
   if (loading) return <div className="p-10 text-zinc-400 text-sm">Loading messaging settings...</div>;
 
+  const platformKey = settings.integration_platform?.toLowerCase() || "";
+  const platformName = PLATFORMS_WITH_NATIVE_SMS[platformKey];
+  const platformSendsNativeSms =
+    Boolean(platformName) && settings.integration_mode === "direct_book";
+
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
         <h1 className="font-serif text-3xl text-zinc-900 mb-1">Messaging & SMS</h1>
         <p className="text-sm text-zinc-500">
-          Configure automated texts sent to clients before and after their appointments.
+          Automated texts sent to clients before and after their appointments.
+        </p>
+      </div>
+
+      {platformSendsNativeSms && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <p className="text-sm text-amber-900 font-semibold mb-1">
+            You're connected to {platformName}
+          </p>
+          <p className="text-xs text-amber-800/90 leading-relaxed">
+            {platformName} sends its own appointment confirmations and reminders. To avoid
+            double-texting your clients, we recommend keeping ours off and turning on{" "}
+            <span className="font-semibold">Post-Visit Aftercare</span> — that's the part {platformName}{" "}
+            doesn't cover.
+          </p>
+        </div>
+      )}
+
+      <div className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
+        <p className="text-xs text-zinc-700 leading-relaxed">
+          <span className="font-semibold">Why can't I edit the wording?</span>{" "}
+          To keep your messages compliant with HIPAA (no procedure names or sensitive info in the SMS
+          envelope) and TCPA (consistent STOP language), we ship pre-vetted templates. You control{" "}
+          <span className="font-semibold">when</span> messages go out and the per-treatment{" "}
+          <span className="font-semibold">aftercare guidance</span>. Questions? Email{" "}
+          <a className="underline" href="mailto:founders@vauxvoice.com">founders@vauxvoice.com</a>.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-5">
-
         {/* Instant Booking Confirmations */}
         <SectionCard
           title="Instant Booking Confirmations"
           description="Send a text immediately after an appointment is booked."
           enabled={settings.sms_confirmation_enabled}
           onToggle={() => set({ sms_confirmation_enabled: !settings.sms_confirmation_enabled })}
+          badge={
+            platformSendsNativeSms ? (
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-700 font-semibold">
+                {platformName} sends this
+              </span>
+            ) : null
+          }
         >
-          <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Confirmation Message
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
-              value={settings.sms_confirmation_message}
-              onChange={(e) => set({ sms_confirmation_message: e.target.value })}
-              placeholder="Hi [Customer]! Your appointment at [Clinic] is confirmed for [Date] at [Time]..."
-            />
-            <p className="text-[11px] text-zinc-400 mt-1.5">
-              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Date]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Time]</code>
-            </p>
-          </div>
+          <MessagePreview template={SMS_TEMPLATES.confirmation} />
         </SectionCard>
 
         {/* Appointment Reminders */}
@@ -140,10 +205,17 @@ export default function MessagingPage() {
           description="Send an automatic reminder before a scheduled appointment."
           enabled={settings.sms_reminders_enabled}
           onToggle={() => set({ sms_reminders_enabled: !settings.sms_reminders_enabled })}
+          badge={
+            platformSendsNativeSms ? (
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-700 font-semibold">
+                {platformName} sends this
+              </span>
+            ) : null
+          }
         >
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Send Reminder
+              Send reminder
             </label>
             <select
               value={settings.sms_reminder_hours}
@@ -156,36 +228,24 @@ export default function MessagingPage() {
               <option value={48}>48 hours before</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Custom Reminder Message
-            </label>
-            <textarea
-              rows={3}
-              placeholder="e.g. Reminder: You have an appointment at [Clinic] on [Date] at [Time]. Please avoid alcohol 24 hours prior."
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
-              value={settings.sms_reminder_template}
-              onChange={(e) => set({ sms_reminder_template: e.target.value })}
-            />
-            <p className="text-[11px] text-zinc-400 mt-1.5">
-              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Date]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Time]</code>
-            </p>
-          </div>
+          <MessagePreview template={SMS_TEMPLATES.reminder} />
         </SectionCard>
 
-        {/* Post-Visit Follow-Up */}
+        {/* Post-Visit Aftercare Follow-Up */}
         <SectionCard
-          title="Post-Visit Follow-Up"
-          description="Send a personalized message after a client's appointment to encourage rebooking."
+          title="Post-Visit Aftercare"
+          description="Send treatment-specific aftercare instructions after the appointment."
           enabled={settings.sms_followup_enabled}
           onToggle={() => set({ sms_followup_enabled: !settings.sms_followup_enabled })}
+          badge={
+            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+              VauxVoice exclusive
+            </span>
+          }
         >
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Send Follow-Up
+              Send aftercare
             </label>
             <select
               value={settings.sms_followup_hours}
@@ -198,21 +258,20 @@ export default function MessagingPage() {
               <option value={168}>1 week after appointment</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Follow-Up Message
-            </label>
-            <textarea
-              rows={4}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none transition-all resize-none"
-              value={settings.sms_followup_message}
-              onChange={(e) => set({ sms_followup_message: e.target.value })}
-              placeholder="Hi [Customer], it was wonderful having you at [Clinic]! We hope you're loving your results..."
-            />
-            <p className="text-[11px] text-zinc-400 mt-1.5">
-              Available tokens: <code className="bg-zinc-100 px-1 rounded">[Customer]</code>{" "}
-              <code className="bg-zinc-100 px-1 rounded">[Clinic]</code>
-            </p>
+          <MessagePreview template={SMS_TEMPLATES.followupWrapper} />
+          <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-4 flex items-start justify-between gap-4">
+            <div className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold">Author guidelines per treatment.</span> The{" "}
+              <code className="bg-white/60 px-1 rounded">{"{Guideline}"}</code> in the message is the
+              aftercare body you write for each service (e.g., Botox, microneedling). Without these,
+              we won't send.
+            </div>
+            <Link
+              href={`/${slug}/dashboard/messaging/post-procedure`}
+              className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-50 transition-colors"
+            >
+              Manage guidelines →
+            </Link>
           </div>
         </SectionCard>
 

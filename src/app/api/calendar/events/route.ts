@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("calendar_events")
     .select(
-      "id, title, description, start_time, end_time, customer_name, customer_phone, service_type, status, external_source, external_id, last_synced_at"
+      "id, title, description, start_time, end_time, customer_name, customer_phone, service_type, status, external_source, external_id, last_synced_at, completed_at"
     )
     .eq("tenant_id", tenant.id)
     .gte("start_time", start.toISOString())

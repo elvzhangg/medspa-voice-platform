@@ -16,6 +16,7 @@ interface CalEvent {
   external_source: string | null;
   external_id: string | null;
   last_synced_at: string | null;
+  completed_at?: string | null;
 }
 
 const PLATFORM_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -80,6 +81,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CalEvent | null>(null);
   const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     fetch("/api/integrations/me")
@@ -90,6 +92,46 @@ export default function CalendarPage() {
 
   const closeSelected = useCallback(() => setSelected(null), []);
   useDismiss(selected !== null, closeSelected);
+
+  const applyCompletionToState = useCallback(
+    (eventId: string, undo: boolean) => {
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === eventId
+            ? {
+                ...ev,
+                status: undo ? "confirmed" : "completed",
+                completed_at: undo ? null : new Date().toISOString(),
+              }
+            : ev
+        )
+      );
+      setSelected((prev) =>
+        prev && prev.id === eventId
+          ? {
+              ...prev,
+              status: undo ? "confirmed" : "completed",
+              completed_at: undo ? null : new Date().toISOString(),
+            }
+          : prev
+      );
+    },
+    []
+  );
+
+  const markCompleted = useCallback(
+    async (eventId: string, undo: boolean) => {
+      setCompleting(true);
+      const res = await fetch(`/api/calendar/events/${eventId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo }),
+      });
+      setCompleting(false);
+      if (res.ok) applyCompletionToState(eventId, undo);
+    },
+    [applyCompletionToState]
+  );
 
   const loadMonth = useCallback(async (anchor: Date) => {
     setLoading(true);
@@ -430,6 +472,43 @@ export default function CalendarPage() {
                 <p className="text-[10px] text-zinc-400 pt-2 border-t border-zinc-100">
                   Synced from {selected.external_source} · {new Date(selected.last_synced_at).toLocaleString()}
                 </p>
+              )}
+
+              {new Date(selected.start_time).getTime() <= Date.now() && selected.status !== "cancelled" && (
+                <div className="pt-3 border-t border-zinc-100">
+                  {selected.status === "completed" ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                          Completed
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {selected.completed_at
+                            ? new Date(selected.completed_at).toLocaleString()
+                            : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => markCompleted(selected.id, true)}
+                        disabled={completing}
+                        className="text-xs text-zinc-500 hover:text-zinc-800 underline disabled:opacity-50"
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => markCompleted(selected.id, false)}
+                      disabled={completing}
+                      className="w-full px-4 py-2.5 bg-white text-emerald-800 border border-emerald-400 font-semibold rounded-lg hover:bg-emerald-50 transition-colors text-sm disabled:opacity-50"
+                    >
+                      {completing ? "Marking..." : "Mark completed"}
+                    </button>
+                  )}
+                  <p className="text-[10px] text-zinc-400 mt-2 leading-relaxed">
+                    Marking complete triggers the post-visit aftercare SMS (if enabled and consent on file) at the tenant's configured delay.
+                  </p>
+                </div>
               )}
             </div>
           </div>

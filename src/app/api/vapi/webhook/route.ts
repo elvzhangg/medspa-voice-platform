@@ -369,6 +369,77 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           break;
         }
 
+        case "record_sms_consent": {
+          if (!tenant) {
+            result = "Noted.";
+            break;
+          }
+          const { phone_number, consent_excerpt } = toolCall.parameters as Record<string, string>;
+          const callerNumber = (call?.customer as any)?.number || null;
+          const vapiCallId = (call?.id as string) || null;
+
+          // Find the call_logs row for this Vapi call so we can pin consent
+          // to a specific transcript. handleEndOfCallReport inserts this row
+          // at call-end — during the call itself it may not exist yet, so we
+          // still record consent and link the call_log on the end-of-call
+          // pass via vapi_call_id lookup below.
+          let callLogId: string | null = null;
+          if (vapiCallId) {
+            const { data: cl } = await supabaseAdmin
+              .from("call_logs")
+              .select("id")
+              .eq("vapi_call_id", vapiCallId)
+              .maybeSingle();
+            callLogId = (cl as any)?.id ?? null;
+          }
+
+          // Attach consent to the most recent booking_request for this
+          // caller; the end-of-call handler later propagates it onto the
+          // calendar_events row once the booking materializes.
+          let appliedToEventId: string | null = null;
+          if (callerNumber) {
+            const { data: recent } = await supabaseAdmin
+              .from("calendar_events")
+              .select("id")
+              .eq("tenant_id", tenant.id)
+              .eq("customer_phone", callerNumber)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            const recentId = (recent as any)?.id ?? null;
+            if (recentId) {
+              await supabaseAdmin
+                .from("calendar_events")
+                .update({
+                  sms_consent_granted_at: new Date().toISOString(),
+                  sms_consent_source: "verbal_call",
+                  sms_consent_call_id: callLogId,
+                  sms_consent_phone: phone_number || callerNumber,
+                })
+                .eq("id", recentId);
+              appliedToEventId = recentId;
+            }
+          }
+
+          // Always write the audit row, even if no event exists yet. The
+          // excerpt is our HIPAA/TCPA proof of the verbal grant.
+          await supabaseAdmin.from("appointment_audit_log").insert({
+            tenant_id: tenant.id,
+            calendar_event_id: appliedToEventId,
+            action: "consent_granted",
+            source: "verbal_call",
+            metadata: {
+              phone_number: phone_number || callerNumber,
+              excerpt: (consent_excerpt || "").slice(0, 500),
+              vapi_call_id: vapiCallId,
+              call_log_id: callLogId,
+            },
+          });
+
+          result = "Consent recorded. Thanks — we'll only text you about your appointments.";
+          break;
+        }
+
         case "send_sms": {
           const { message: smsBody } = toolCall.parameters as Record<string, string>;
           const customerNumber = (call?.customer as any)?.number;

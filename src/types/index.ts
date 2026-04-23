@@ -13,8 +13,9 @@ export interface Tenant {
   directions_parking_info?: string;
   sms_reminders_enabled?: boolean;
   sms_reminder_hours?: number;
-  sms_reminder_template?: string;
   sms_confirmation_enabled?: boolean;
+  sms_followup_enabled?: boolean;
+  sms_followup_hours?: number;
   // Staff-forward booking notification workflow
   booking_forward_enabled?: boolean;
   booking_forward_phones?: string[];

@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+// Templates are fixed in code (src/lib/sms/templates.ts) for HIPAA-compliant
+// copy — only on/off toggles and delay timing are tenant-configurable.
 export async function GET() {
   const tenant: any = await getCurrentTenant();
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   return NextResponse.json({
+    sms_confirmation_enabled: tenant.sms_confirmation_enabled ?? true,
     sms_reminders_enabled: tenant.sms_reminders_enabled || false,
     sms_reminder_hours: tenant.sms_reminder_hours || 24,
-    sms_reminder_template: tenant.sms_reminder_template || "",
-    sms_confirmation_enabled: tenant.sms_confirmation_enabled ?? true,
+    sms_followup_enabled: tenant.sms_followup_enabled || false,
+    sms_followup_hours: tenant.sms_followup_hours || 24,
+    integration_platform: tenant.integration_platform || null,
+    integration_mode: tenant.integration_mode || null,
   });
 }
 
@@ -19,15 +24,22 @@ export async function POST(req: Request) {
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { sms_reminders_enabled, sms_reminder_hours, sms_reminder_template, sms_confirmation_enabled } = body;
+  const {
+    sms_confirmation_enabled,
+    sms_reminders_enabled,
+    sms_reminder_hours,
+    sms_followup_enabled,
+    sms_followup_hours,
+  } = body;
 
   const { error } = await supabaseAdmin
     .from("tenants")
     .update({
+      sms_confirmation_enabled,
       sms_reminders_enabled,
       sms_reminder_hours,
-      sms_reminder_template,
-      sms_confirmation_enabled,
+      sms_followup_enabled,
+      sms_followup_hours,
     })
     .eq("id", tenant.id);
 

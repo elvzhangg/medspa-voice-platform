@@ -106,7 +106,18 @@ export async function buildAssistantConfig(
   // toward specialists based on ai_notes/specialties.
   const providerRoster = await buildProviderRoster(tenant.id);
 
-  const systemPrompt = buildSystemPrompt(tenant, "", callerContext, providerRoster);
+  // SMS consent capture is only relevant when at least one outbound SMS
+  // feature is on for this tenant. We add both the prompt block and the
+  // record_sms_consent tool conditionally so calls stay short for tenants
+  // who rely entirely on their booking platform's native SMS.
+  const smsAny = Boolean(
+    tenant.sms_confirmation_enabled ||
+      tenant.sms_reminders_enabled ||
+      tenant.sms_followup_enabled
+  );
+  const consentBlock = smsAny ? buildConsentPromptBlock(tenant) : "";
+
+  const systemPrompt = buildSystemPrompt(tenant, "", callerContext, providerRoster, consentBlock);
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
   const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
@@ -265,6 +276,34 @@ export async function buildAssistantConfig(
     },
   ];
 
+  if (smsAny) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "record_sms_consent",
+        description:
+          "Record that the caller verbally agreed to receive SMS from the clinic (appointment confirmations, reminders, and/or aftercare instructions). Only call this AFTER you've explicitly asked for consent and the caller has clearly said yes. Never assume consent.",
+        parameters: {
+          type: "object",
+          properties: {
+            phone_number: {
+              type: "string",
+              description:
+                "The phone number the caller agreed to be texted at. Confirm this with them out loud before logging.",
+            },
+            consent_excerpt: {
+              type: "string",
+              description:
+                "A brief verbatim excerpt (1–2 sentences) of how the caller granted consent, e.g. 'Yes, that's fine, you can text me.'",
+            },
+          },
+          required: ["phone_number", "consent_excerpt"],
+        },
+      },
+      server: { url: serverUrl },
+    });
+  }
+
   return {
     name: `${tenant.name} AI Clientele Specialist`,
     model: {
@@ -283,11 +322,37 @@ export async function buildAssistantConfig(
   };
 }
 
+function buildConsentPromptBlock(tenant: Tenant): string {
+  const parts: string[] = [];
+  if (tenant.sms_confirmation_enabled) parts.push("appointment confirmations");
+  if (tenant.sms_reminders_enabled) parts.push("appointment reminders");
+  if (tenant.sms_followup_enabled) parts.push("aftercare instructions after your visit");
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : parts.length === 2
+      ? `${parts[0]} and ${parts[1]}`
+      : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+
+  return `
+## SMS Consent (MANDATORY — only skip if caller has no phone number)
+Before ending the call, explicitly ask for SMS consent. Do NOT assume it.
+
+1. Read back their phone number: "Before we wrap up — can I confirm the best number to text you at is [phone]?"
+2. Ask: "Is it okay if we text you at that number with ${list}? You can reply STOP anytime to opt out."
+3. If they clearly say yes → call the 'record_sms_consent' tool with phone_number and a short verbatim excerpt of their affirmative response.
+4. If they hesitate, say no, or want to think about it → do NOT call the tool. Say "no problem, we won't text you" and proceed.
+5. Never read long disclaimers. Keep the ask conversational.
+6. Never send a text under any other tool before consent is recorded.
+`;
+}
+
 function buildSystemPrompt(
   tenant: Tenant,
   kbContext: string,
   callerContext: string = "",
-  providerRoster: string = ""
+  providerRoster: string = "",
+  consentBlock: string = ""
 ): string {
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", {
@@ -474,6 +539,7 @@ ${forwardInstruction}
 ${depositInstruction}
 - For any other payments or billing questions, use the create_payment_link tool as well
 
+${consentBlock}
 ${tenant.system_prompt_override ? `## Special Instructions\n${tenant.system_prompt_override}\n` : ""}
 
 ## Knowledge Base
