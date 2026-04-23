@@ -111,7 +111,59 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   }
 
   try {
-    if (event.cancelled) {
+    if (event.eventType === "appointment.completed") {
+      // Two writes on completion:
+      //   1) Flip the calendar_events row so the aftercare cron picks it
+      //      up (same effect as a manual "Mark completed").
+      //   2) Upsert a client_visits row so weekly revenue rollups have
+      //      an authoritative record — the price is only present on
+      //      completion, not on the earlier create/update events.
+      const completedAt = new Date().toISOString();
+
+      await supabaseAdmin
+        .from("calendar_events")
+        .update({
+          status: "completed",
+          completed_at: completedAt,
+          completion_source: `webhook_${platform}`,
+          last_synced_at: completedAt,
+        })
+        .eq("tenant_id", tenantId)
+        .eq("external_source", platform)
+        .eq("external_id", event.externalId);
+
+      // Look up the client_profile_id by phone (if we have one) so the
+      // client_visits row is joinable back to our intelligence layer.
+      let clientProfileId: string | null = null;
+      if (event.customerPhone) {
+        const { data: profile } = await supabaseAdmin
+          .from("client_profiles")
+          .select("id")
+          .eq("tenant_id", tenantId)
+          .eq("phone", event.customerPhone)
+          .maybeSingle();
+        clientProfileId = (profile as { id: string } | null)?.id ?? null;
+      }
+
+      if (event.startTime) {
+        await supabaseAdmin.from("client_visits").upsert(
+          {
+            tenant_id: tenantId,
+            client_profile_id: clientProfileId,
+            platform,
+            external_id: event.externalId,
+            service: event.serviceName ?? null,
+            provider: event.staffName ?? null,
+            price_cents: typeof event.priceCents === "number" ? event.priceCents : null,
+            visit_at: event.startTime,
+            status: event.platformStatus ?? "completed",
+            raw: parsedBody as object | null,
+            synced_at: completedAt,
+          },
+          { onConflict: "tenant_id,platform,external_id" }
+        );
+      }
+    } else if (event.cancelled) {
       await supabaseAdmin
         .from("calendar_events")
         .update({ status: "cancelled", last_synced_at: new Date().toISOString() })

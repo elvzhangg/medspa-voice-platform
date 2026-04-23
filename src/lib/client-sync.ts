@@ -133,6 +133,36 @@ export async function syncClientFromPlatform(
     if (!profile.last_provider && favoriteStaff) update.last_provider = favoriteStaff;
 
     await supabaseAdmin.from("client_profiles").update(update).eq("id", profile.id);
+
+    // Persist each visit individually so the dashboard can do weekly
+    // revenue math without re-fetching from the platform. Upsert by
+    // (tenant, platform, external_id) — a subsequent sync for the same
+    // appointment updates price/status in place (platforms retroactively
+    // flip state from BOOKED → COMPLETED once the visit closes).
+    const platform = integration.adapter.platform;
+    const visitRows = sortedVisits
+      .filter((v) => v.externalId && v.date)
+      .map((v) => ({
+        tenant_id: tenantId,
+        client_profile_id: profile.id,
+        platform,
+        external_id: v.externalId as string,
+        service: v.service ?? null,
+        provider: v.staff ?? null,
+        price_cents: typeof v.priceCents === "number" ? v.priceCents : null,
+        visit_at: v.date,
+        status: v.status ?? null,
+        raw: (v.raw ?? null) as object | null,
+        synced_at: now,
+      }));
+    if (visitRows.length > 0) {
+      const { error: visitErr } = await supabaseAdmin
+        .from("client_visits")
+        .upsert(visitRows, { onConflict: "tenant_id,platform,external_id" });
+      if (visitErr) {
+        console.error("CLIENT_VISITS_UPSERT_ERR:", visitErr);
+      }
+    }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("CLIENT_SYNC_ERR:", detail);

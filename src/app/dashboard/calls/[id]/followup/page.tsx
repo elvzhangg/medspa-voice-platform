@@ -30,12 +30,13 @@ export default async function FollowupPage({ params }: PageProps) {
 
   // Caller profile for pre-populating what we already know. Graceful when
   // we've never met this number before.
-  let callerProfile: {
+  type CallerProfile = {
     first_name: string | null;
     last_name: string | null;
     last_service: string | null;
     total_calls: number | null;
-  } | null = null;
+  };
+  let callerProfile: CallerProfile | null = null;
   if (call.caller_number) {
     const { data: profile } = await supabaseAdmin
       .from("client_profiles")
@@ -43,7 +44,7 @@ export default async function FollowupPage({ params }: PageProps) {
       .eq("tenant_id", tenant.id)
       .eq("phone", call.caller_number)
       .maybeSingle();
-    callerProfile = profile as typeof callerProfile;
+    callerProfile = profile as CallerProfile | null;
   }
 
   return (

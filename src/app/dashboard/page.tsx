@@ -73,6 +73,8 @@ export default async function DashboardPage() {
     weeklyAftercareRes,
     providerDemandRes,
     nextWeekEventsRes,
+    revenueThisWeekRes,
+    revenuePriorWeekRes,
   ] = await Promise.all([
     supabaseAdmin
       .from("call_logs")
@@ -163,6 +165,20 @@ export default async function DashboardPage() {
         new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString()
       )
       .neq("status", "cancelled"),
+    // Per-visit revenue from connected platforms (Boulevard today). Null
+    // price_cents rows — rare but possible when the platform hasn't
+    // returned a price — are ignored in the SUM by Postgres.
+    supabaseAdmin
+      .from("client_visits")
+      .select("price_cents")
+      .eq("tenant_id", tenant.id)
+      .gte("visit_at", weekStart),
+    supabaseAdmin
+      .from("client_visits")
+      .select("price_cents")
+      .eq("tenant_id", tenant.id)
+      .gte("visit_at", priorWeekStart)
+      .lt("visit_at", weekStart),
   ]);
 
   // ── Derived metrics ─────────────────────────────────────────────────────
@@ -196,6 +212,13 @@ export default async function DashboardPage() {
   const bookings: Delta = { current: bookingsCount, prior: priorWeekBookings };
   const afterHours: Delta = { current: afterHoursCount, prior: afterHoursPrior };
   const conv: Delta = { current: conversion, prior: priorConversion };
+
+  const sumCents = (rows: Array<{ price_cents: number | null }> | null) =>
+    (rows ?? []).reduce((acc, r) => acc + (r.price_cents ?? 0), 0);
+  const revenue: Delta = {
+    current: sumCents(revenueThisWeekRes.data as Array<{ price_cents: number | null }> | null),
+    prior: sumCents(revenuePriorWeekRes.data as Array<{ price_cents: number | null }> | null),
+  };
 
   // ── Today strip ─────────────────────────────────────────────────────────
   const todayEvents = (todayEventsRes.data ?? []) as CalendarEvent[];
@@ -308,11 +331,22 @@ export default async function DashboardPage() {
 
       {/* Hero: 4 ROI cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
+        <RevenueCard
+          label="Revenue booked"
+          cents={revenue.current}
+          delta={revenue}
+          emptyState="Real transaction amounts will appear here once your platform (Boulevard today) syncs a completed visit."
+        />
         <RoiCard
           accent="emerald"
           label="Booked this week"
           value={bookings.current}
           unit={bookings.current === 1 ? "appointment" : "appointments"}
+          suffix={
+            callsThisWeek.length && conv.current > 0
+              ? `${conv.current}% · ${bookings.current} of ${callsThisWeek.length} calls`
+              : ""
+          }
           delta={bookings}
           emptyState="Your first AI-booked appointment will show up here."
         />
@@ -330,17 +364,7 @@ export default async function DashboardPage() {
           value={newClients.current}
           unit={newClients.current === 1 ? "first-time caller" : "first-time callers"}
           delta={newClients}
-          emptyState="New voices the AI met this week."
-        />
-        <RoiCard
-          accent="violet"
-          label="Booking conversion"
-          value={conv.current}
-          unit="%"
-          suffix={callsThisWeek.length ? `· ${bookings.current} of ${callsThisWeek.length} calls` : ""}
-          delta={conv}
-          emptyState="How often calls turn into bookings."
-          isPercent
+          emptyState="New voices Vivienne met this week."
         />
       </div>
 
@@ -520,6 +544,67 @@ export default async function DashboardPage() {
 }
 
 // ─── Components ───────────────────────────────────────────────────────────
+
+function RevenueCard({
+  label,
+  cents,
+  delta,
+  emptyState,
+}: {
+  label: string;
+  cents: number;
+  delta: Delta;
+  emptyState: string;
+}) {
+  const isZero = delta.current === 0 && delta.prior === 0;
+  const diffCents = delta.current - delta.prior;
+  return (
+    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden hover:shadow-sm transition-all">
+      <div className="h-1 bg-gradient-to-r from-lime-300 to-emerald-500" />
+      <div className="p-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+        {isZero ? (
+          <>
+            <p className="text-xl font-serif text-zinc-900 mt-2">—</p>
+            <p className="text-xs text-zinc-500 mt-1.5 leading-snug">{emptyState}</p>
+          </>
+        ) : (
+          <>
+            <p className="text-3xl font-bold text-zinc-900 tabular-nums mt-2">
+              {formatCurrency(cents)}
+            </p>
+            <p className="text-xs text-zinc-500 mt-0.5">completed visits this week</p>
+            {delta.prior > 0 && <RevenueDeltaChip diffCents={diffCents} />}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RevenueDeltaChip({ diffCents }: { diffCents: number }) {
+  if (diffCents === 0) {
+    return <p className="text-[11px] text-zinc-400 mt-2">= same as last week</p>;
+  }
+  const positive = diffCents > 0;
+  const arrow = positive ? "↑" : "↓";
+  const color = positive ? "text-emerald-700" : "text-rose-600";
+  return (
+    <p className={`text-[11px] font-semibold ${color} mt-2`}>
+      {arrow} {formatCurrency(Math.abs(diffCents))} vs last week
+    </p>
+  );
+}
+
+function formatCurrency(cents: number): string {
+  const dollars = cents / 100;
+  if (dollars >= 10000) return `$${Math.round(dollars).toLocaleString()}`;
+  return dollars.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
 
 function RoiCard({
   accent,

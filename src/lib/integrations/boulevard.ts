@@ -188,6 +188,7 @@ const adapter: BookingAdapter = {
         bookableItems?: Array<{
           service?: { name?: string };
           staff?: { firstName?: string; lastName?: string };
+          price?: { amount?: number; currency?: string };
         }>;
       };
     };
@@ -198,15 +199,22 @@ const adapter: BookingAdapter = {
     }
 
     const rawType = (payload.event || payload.type || "").toLowerCase();
+    const platformStatus = (payload.data?.state ?? "").toString();
     const externalId = payload.data?.id;
     if (!externalId) return null;
 
     // Normalize Boulevard event names to our neutral enum. Anything we
     // don't recognize returns null so the route quietly 200s without
-    // touching calendar_events.
+    // touching calendar_events. Completion is inferred from either an
+    // explicit event name OR an update event whose payload state reads
+    // like a terminal paid/closed status (Boulevard sometimes sends it
+    // as an appointment.updated with a state change rather than a
+    // dedicated completed event).
     let eventType: AdapterWebhookEventType | null = null;
+    const looksCompleted = /COMPLETED|CLOSED|PAID|FINISHED/i.test(platformStatus);
     if (rawType.includes("cancel")) eventType = "appointment.cancelled";
     else if (rawType.includes("reschedul")) eventType = "appointment.rescheduled";
+    else if (rawType.includes("complete") || looksCompleted) eventType = "appointment.completed";
     else if (rawType.includes("create")) eventType = "appointment.created";
     else if (rawType.includes("update")) eventType = "appointment.updated";
     if (!eventType) return null;
@@ -219,6 +227,10 @@ const adapter: BookingAdapter = {
       ? `${payload.data.client.firstName ?? ""} ${payload.data.client.lastName ?? ""}`.trim() ||
         undefined
       : undefined;
+    const priceCents =
+      typeof item?.price?.amount === "number"
+        ? Math.round(item.price.amount * 100)
+        : undefined;
 
     return {
       signatureOk,
@@ -231,6 +243,8 @@ const adapter: BookingAdapter = {
       customerName,
       customerPhone: payload.data?.client?.mobilePhone,
       cancelled: eventType === "appointment.cancelled",
+      priceCents,
+      platformStatus: platformStatus || undefined,
     };
   },
 
@@ -373,6 +387,7 @@ const adapter: BookingAdapter = {
           ? `${item.staff.firstName ?? ""} ${item.staff.lastName ?? ""}`.trim()
           : undefined;
         return {
+          externalId: n.id,
           date: n.startAt,
           service: item?.service?.name,
           staff,
@@ -381,6 +396,7 @@ const adapter: BookingAdapter = {
               ? Math.round(item.price.amount * 100)
               : undefined,
           status: n.state,
+          raw: n,
         };
       });
       const lifetimeValueCents = visits

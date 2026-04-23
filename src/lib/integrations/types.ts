@@ -57,7 +57,8 @@ export type AdapterWebhookEventType =
   | "appointment.created"
   | "appointment.updated"
   | "appointment.cancelled"
-  | "appointment.rescheduled";
+  | "appointment.rescheduled"
+  | "appointment.completed";
 
 export interface AdapterWebhookEvent {
   signatureOk: boolean;
@@ -72,9 +73,15 @@ export interface AdapterWebhookEvent {
   customerPhone?: string;
   /** true when the event signals the appointment should be removed from our calendar */
   cancelled?: boolean;
+  /** Price in cents — present on completion events that carry payment info */
+  priceCents?: number;
+  /** Raw platform status string (e.g. "COMPLETED", "CLOSED", "PAID") for audit */
+  platformStatus?: string;
 }
 
 export interface AdapterClientVisit {
+  /** Platform-side appointment id — used as external_id for client_visits upsert */
+  externalId?: string;
   /** ISO date of the visit (completed appointment) */
   date: string;
   service?: string;
@@ -82,6 +89,8 @@ export interface AdapterClientVisit {
   /** Price in cents if the platform reports it */
   priceCents?: number;
   status?: string;
+  /** Full raw platform payload for the visit, stored for future re-derivation */
+  raw?: unknown;
 }
 
 export interface AdapterClientHistory {
