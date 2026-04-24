@@ -558,14 +558,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Email Draft</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Progress</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-5 py-3.5">
-                    <p className="font-semibold text-gray-900">{p.business_name}</p>
+                    <a
+                      href={`/admin/outreach/${id}/prospect/${p.id}`}
+                      className="font-semibold text-gray-900 hover:text-indigo-600 hover:underline block"
+                    >
+                      {p.business_name}
+                    </a>
                     {p.website && (
                       <a href={p.website.startsWith("http") ? p.website : `https://${p.website}`} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline truncate block max-w-[160px]">
                         {p.website.replace(/^https?:\/\//, "")}
@@ -630,9 +635,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     <div className="flex items-center gap-3">
                       <a
                         href={`/admin/outreach/${id}/prospect/${p.id}`}
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                        className="px-2.5 py-1 rounded-md bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
                       >
-                        Details
+                        Open
                       </a>
                       <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-indigo-600 transition-colors" title="Edit">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
