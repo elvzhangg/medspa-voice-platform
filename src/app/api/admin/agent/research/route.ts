@@ -14,6 +14,43 @@ function normalizeWebsite(website: string): string {
     .replace(/\/$/, "");
 }
 
+/**
+ * Inserts a prospect with all requested fields. If Postgres rejects the insert
+ * because a column doesn't exist (pending migration), strips that column and
+ * retries. Returns the saved id + which columns got dropped, or null on fatal error.
+ *
+ * Without this, a single missing migration column destroys the whole research run —
+ * no rows save, so the global dedup has no memory on retry, forcing the agent to
+ * redo every web search.
+ */
+async function safeInsertProspect(
+  row: Record<string, unknown>
+): Promise<{ id: string | null; droppedColumns: string[]; error?: string }> {
+  let toInsert = { ...row };
+  const dropped: string[] = [];
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const { data, error } = await supabaseAdmin
+      .from("outreach_prospects")
+      .insert(toInsert)
+      .select("id")
+      .single();
+    if (!error && data) return { id: data.id, droppedColumns: dropped };
+
+    if (!error) return { id: null, droppedColumns: dropped, error: "Unknown insert error" };
+
+    const missingColMatch = error.message.match(/column "?([a-z_][a-z0-9_]*)"?\s+of relation/i);
+    if (missingColMatch && toInsert[missingColMatch[1]] !== undefined) {
+      const col = missingColMatch[1];
+      dropped.push(col);
+      delete toInsert[col];
+      continue;
+    }
+
+    return { id: null, droppedColumns: dropped, error: error.message };
+  }
+  return { id: null, droppedColumns: dropped, error: "Too many missing columns — giving up" };
+}
+
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
@@ -428,67 +465,85 @@ Start now.`,
               });
 
               if (!wasDedup) {
-                const { data: saved, error: saveErr } = await supabaseAdmin
-                  .from("outreach_prospects")
-                  .insert({
-                    campaign_id,
-                    business_name: businessName,
-                    website: websiteRaw || null,
-                    email: rawInput.email ?? null,
-                    phone: rawInput.phone ?? null,
-                    city,
-                    state,
-                    address: rawInput.address ?? null,
-                    booking_platform: rawInput.booking_platform ?? "Unknown",
-                    owner_name: rawInput.owner_name ?? null,
-                    owner_email: rawInput.owner_email ?? null,
-                    owner_title: rawInput.owner_title ?? null,
-                    locations: rawInput.locations ?? null,
-                    procedures: rawInput.procedures ?? null,
-                    providers: rawInput.providers ?? null,
-                    business_hours: rawInput.business_hours ?? null,
-                    directions_parking_info: rawInput.directions_parking_info ?? null,
-                    booking_config: rawInput.booking_config ?? null,
-                    faqs: rawInput.faqs ?? null,
-                    system_prompt_override: rawInput.system_prompt_override ?? null,
-                    social_links: rawInput.social_links ?? null,
-                    research_sources: rawInput.research_sources ?? null,
-                    research_confidence: confidenceBreakdown.score,
-                    researched_at: new Date().toISOString(),
-                    services_summary: rawInput.services_summary ?? null,
-                    pricing_notes: rawInput.pricing_notes ?? null,
-                    notes: rawInput.notes ?? null,
-                    status: "researched",
-                  })
-                  .select("id")
-                  .single();
+                const insertResult = await safeInsertProspect({
+                  campaign_id,
+                  business_name: businessName,
+                  website: websiteRaw || null,
+                  email: rawInput.email ?? null,
+                  phone: rawInput.phone ?? null,
+                  city,
+                  state,
+                  address: rawInput.address ?? null,
+                  booking_platform: rawInput.booking_platform ?? "Unknown",
+                  owner_name: rawInput.owner_name ?? null,
+                  owner_email: rawInput.owner_email ?? null,
+                  owner_title: rawInput.owner_title ?? null,
+                  locations: rawInput.locations ?? null,
+                  procedures: rawInput.procedures ?? null,
+                  providers: rawInput.providers ?? null,
+                  business_hours: rawInput.business_hours ?? null,
+                  directions_parking_info: rawInput.directions_parking_info ?? null,
+                  booking_config: rawInput.booking_config ?? null,
+                  faqs: rawInput.faqs ?? null,
+                  system_prompt_override: rawInput.system_prompt_override ?? null,
+                  social_links: rawInput.social_links ?? null,
+                  research_sources: rawInput.research_sources ?? null,
+                  research_confidence: confidenceBreakdown.score,
+                  researched_at: new Date().toISOString(),
+                  services_summary: rawInput.services_summary ?? null,
+                  pricing_notes: rawInput.pricing_notes ?? null,
+                  notes: rawInput.notes ?? null,
+                  status: "researched",
+                });
 
-                if (saveErr || !saved) {
+                if (!insertResult.id) {
+                  console.error(
+                    `[research-agent] Insert failed for ${businessName}: ${insertResult.error}`,
+                    insertResult.droppedColumns.length
+                      ? `(dropped columns tried: ${insertResult.droppedColumns.join(", ")})`
+                      : ""
+                  );
                   toolResults.push({
                     type: "tool_result",
                     tool_use_id: toolUse.id,
-                    content: `Error saving: ${saveErr?.message ?? "unknown error"}`,
+                    content: `Error saving: ${insertResult.error ?? "unknown error"}`,
                     is_error: true,
                   });
                   continue;
                 }
 
-                savedId = saved.id;
+                savedId = insertResult.id;
                 await supabaseAdmin
                   .from("prospect_campaign_memberships")
-                  .upsert({ prospect_id: saved.id, campaign_id });
+                  .upsert({ prospect_id: savedId, campaign_id });
+
+                if (insertResult.droppedColumns.length) {
+                  // Tell the admin via a timeline event so they know to re-run migrations.
+                  await logProspectEvent({
+                    prospect_id: savedId,
+                    event_type: "note_added",
+                    summary: `Research saved core fields; skipped ${insertResult.droppedColumns.length} missing column(s) — run pending migration to capture: ${insertResult.droppedColumns.join(", ")}`,
+                    payload: { dropped_columns: insertResult.droppedColumns },
+                    actor: "agent:research",
+                  });
+                  send({
+                    type: "step",
+                    step_type: "decision",
+                    message: `⚠ Saved core fields only — ${insertResult.droppedColumns.length} column(s) missing in DB: ${insertResult.droppedColumns.join(", ")} — run the latest migration`,
+                  });
+                }
 
                 const proceduresLen = Array.isArray(rawInput.procedures) ? rawInput.procedures.length : 0;
                 const providersLen = Array.isArray(rawInput.providers) ? rawInput.providers.length : 0;
                 await logProspectEvent({
-                  prospect_id: saved.id,
+                  prospect_id: savedId,
                   event_type: "researched",
                   summary: `Research agent saved ${businessName} — ${proceduresLen} procedures, ${providersLen} providers, confidence ${Math.round(confidenceBreakdown.score * 100)}%`,
                   actor: "agent:research",
                 });
                 send({
                   type: "prospect_saved",
-                  prospect_id: saved.id,
+                  prospect_id: savedId,
                   business_name: businessName,
                   confidence: confidenceBreakdown.score,
                 });
