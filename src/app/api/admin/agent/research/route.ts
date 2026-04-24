@@ -208,10 +208,10 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-// Server-side tool (web_search) - handled automatically by Claude
+// Server-side tool (web_search) - handled automatically by Claude (now GA, no beta header needed)
 const SERVER_TOOLS = [
   {
-    type: "web_search_20260209" as const,
+    type: "web_search_20250305" as const,
     name: "web_search",
   },
 ];
@@ -323,13 +323,12 @@ Start now.`,
 
         let continueLoop = true;
         while (continueLoop) {
-          const response = await anthropic.beta.messages.create({
+          const response = await anthropic.messages.create({
             model: "claude-opus-4-6",
             max_tokens: 8000,
             thinking: { type: "enabled", budget_tokens: 4000 },
             tools: [...SERVER_TOOLS, ...CUSTOM_TOOLS] as Anthropic.Tool[],
             messages,
-            betas: ["web-search-2026-02-09"],
           });
 
           // Process content blocks
