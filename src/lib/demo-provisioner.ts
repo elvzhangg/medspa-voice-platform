@@ -185,17 +185,20 @@ async function buyPhoneNumber(
     if (seen.has(ac)) continue;
     seen.add(ac);
 
-    // Be polite to Vapi — small delay between attempts to avoid tripping rate limits
+    // Be polite to Vapi — small delay between attempts
     if (!isFirst) await sleep(DELAY_BETWEEN_ATTEMPTS_MS);
     isFirst = false;
 
-    const res = await fetch("https://api.vapi.ai/phone-number/buy", {
+    // Modern Vapi endpoint: POST /phone-number with provider:"vapi"
+    // (the legacy /phone-number/buy endpoint is deprecated as of late 2025 with 410 Gone)
+    const res = await fetch("https://api.vapi.ai/phone-number", {
       method: "POST",
       headers: { Authorization: `Bearer ${VAPI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        areaCode: ac,
+        provider: "vapi",
+        numberDesiredAreaCode: ac,
         name: `DEMO - ${name}`,
-        server: { url: WEBHOOK_URL },
+        serverUrl: WEBHOOK_URL,
       }),
     });
     if (res.ok) {
@@ -205,7 +208,6 @@ async function buyPhoneNumber(
     const errText = await res.text().catch(() => "");
     errors.push(`area ${ac}: ${res.status} ${errText.slice(0, 200)}`);
 
-    // Bail immediately on hard errors — no point cycling
     if (res.status === 401 || res.status === 402 || res.status === 403 || res.status === 429) {
       console.error("[demo-provisioner] Vapi hard error, stopping retries", errors);
       return { error: `Vapi rejected: ${res.status} ${errText.slice(0, 300)}` };

@@ -26,16 +26,18 @@ export async function POST(req: NextRequest) {
     const areaCodesToTry = [area_code || "415", "628", "510", "408", "323", "478"];
 
     for (const ac of areaCodesToTry) {
-      const vapiRes = await fetch("https://api.vapi.ai/phone-number/buy", {
+      // Modern Vapi endpoint — /phone-number/buy was deprecated late 2025
+      const vapiRes = await fetch("https://api.vapi.ai/phone-number", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${VAPI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          areaCode: ac,
+          provider: "vapi",
+          numberDesiredAreaCode: ac,
           name: name,
-          server: { url: WEBHOOK_URL },
+          serverUrl: WEBHOOK_URL,
         }),
       });
 
@@ -44,8 +46,7 @@ export async function POST(req: NextRequest) {
         phoneNumber = { id: data.id, number: data.number };
         break;
       }
-      // If 400 (area code not available), try next
-      const err = await vapiRes.json();
+      const err = await vapiRes.json().catch(() => ({}));
       console.log(`Area code ${ac} not available:`, err.message);
     }
 
