@@ -257,25 +257,56 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   const slugBase = `demo-${slugify(prospect.business_name)}-${prospect_id.slice(0, 8)}`;
   const greeting = `Hi, thank you for calling ${prospect.business_name}! I'm your AI receptionist. How can I help you today?`;
 
-  const { data: tenant, error: tErr } = await supabaseAdmin
-    .from("tenants")
-    .insert({
-      name: prospect.business_name,
-      slug: slugBase,
-      phone_number: phone.number,
-      vapi_phone_number_id: phone.id,
-      voice_id: "EXAVITQu4vr4xnSDxMaL",
-      greeting_message: greeting,
-      status: "prospect",
-      business_hours: prospect.business_hours ?? null,
-      directions_parking_info: prospect.directions_parking_info ?? null,
-      system_prompt_override: prospect.system_prompt_override ?? null,
-      booking_config: prospect.booking_config ?? null,
-    })
-    .select()
-    .single();
+  // Column-tolerant insert: strips any column the tenants table doesn't have
+  // (e.g. if older migrations haven't been run yet). Required core columns
+  // (name, slug, phone_number, vapi_phone_number_id) must exist or we fail loud.
+  let tenantPayload: Record<string, unknown> = {
+    name: prospect.business_name,
+    slug: slugBase,
+    phone_number: phone.number,
+    vapi_phone_number_id: phone.id,
+    voice_id: "EXAVITQu4vr4xnSDxMaL",
+    greeting_message: greeting,
+    status: "prospect",
+    business_hours: prospect.business_hours ?? null,
+    directions_parking_info: prospect.directions_parking_info ?? null,
+    system_prompt_override: prospect.system_prompt_override ?? null,
+    booking_config: prospect.booking_config ?? null,
+  };
 
-  if (tErr || !tenant) return { ok: false, error: `Failed to create demo tenant: ${tErr?.message}` };
+  const droppedTenantCols: string[] = [];
+  let tenant: { id: string; phone_number: string } | null = null;
+  let lastErr = "";
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { data, error } = await supabaseAdmin
+      .from("tenants")
+      .insert(tenantPayload)
+      .select("id, phone_number")
+      .single();
+    if (!error && data) {
+      tenant = data;
+      break;
+    }
+    lastErr = error?.message ?? "unknown";
+    const missingCol = error?.message.match(/column "?([a-z_][a-z0-9_]*)"?\s+(?:of relation|in the schema cache)/i)
+      ?? error?.message.match(/find the '([a-z_][a-z0-9_]*)' column/i);
+    const colName = missingCol?.[1];
+    if (colName && tenantPayload[colName] !== undefined) {
+      droppedTenantCols.push(colName);
+      delete tenantPayload[colName];
+      continue;
+    }
+    break;
+  }
+
+  if (!tenant) return { ok: false, error: `Failed to create demo tenant: ${lastErr}` };
+
+  if (droppedTenantCols.length) {
+    console.warn(
+      `[demo-provisioner] tenant created without columns: ${droppedTenantCols.join(", ")} — run pending migrations`
+    );
+  }
 
   // Seed KB (skip gracefully if no OPENAI_API_KEY)
   const chunks = buildKnowledgeChunks(prospect);
