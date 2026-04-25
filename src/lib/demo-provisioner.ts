@@ -149,17 +149,37 @@ function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string
   return chunks;
 }
 
+// Broad pool of common US area codes. Vapi requires `areaCode` and there's no
+// "any number" mode — so we just cycle through a wide enough pool that at least
+// one usually has stock.
+const FALLBACK_AREA_CODES = [
+  // California
+  "628", "415", "510", "408", "650",
+  "213", "310", "323", "424", "818", "626", "562", "619", "858", "949", "714", "805", "661",
+  "916", "209", "559", "707", "530",
+  // New York
+  "646", "212", "917", "718", "347", "631", "516", "914",
+  // Florida (lots of med spas)
+  "305", "786", "954", "561", "407", "813",
+  // Texas (lots of med spas)
+  "214", "469", "972", "713", "281", "832", "512", "210",
+  // Other major markets
+  "404", "678", "770", // Atlanta
+  "312", "773", "847", // Chicago
+  "602", "480", // Phoenix
+  "702", // Las Vegas
+  "303", "720", // Denver
+];
+
 async function buyPhoneNumber(
   name: string,
   preferredAreaCode: string | null
 ): Promise<{ id: string; number: string } | { error: string }> {
-  const areaCodesToTry = [preferredAreaCode, "628", "415", "510", "408", "323", "646", "212", "917"]
-    .filter(Boolean) as string[];
+  const ordered = [preferredAreaCode, ...FALLBACK_AREA_CODES].filter(Boolean) as string[];
   const seen = new Set<string>();
   const errors: string[] = [];
 
-  // First pass: try preferred + popular area codes
-  for (const ac of areaCodesToTry) {
+  for (const ac of ordered) {
     if (seen.has(ac)) continue;
     seen.add(ac);
     const res = await fetch("https://api.vapi.ai/phone-number/buy", {
@@ -177,28 +197,21 @@ async function buyPhoneNumber(
     }
     const errText = await res.text().catch(() => "");
     errors.push(`area ${ac}: ${res.status} ${errText.slice(0, 200)}`);
+
+    // If we get a non-availability error (auth/billing/rate-limit), bail immediately
+    // — no point cycling through all area codes
+    if (res.status === 401 || res.status === 402 || res.status === 403 || res.status === 429) {
+      console.error("[demo-provisioner] Vapi rejected with hard error, stopping retries", errors);
+      return { error: `Vapi rejected: ${res.status} ${errText.slice(0, 300)}` };
+    }
   }
 
-  // Last resort: let Vapi pick any available US number (no areaCode constraint)
-  const res = await fetch("https://api.vapi.ai/phone-number/buy", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${VAPI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: `DEMO - ${name}`,
-      server: { url: WEBHOOK_URL },
-    }),
-  });
-  if (res.ok) {
-    const data = await res.json();
-    return { id: data.id, number: data.number };
-  }
-  const errText = await res.text().catch(() => "");
-  errors.push(`any-area-code fallback: ${res.status} ${errText.slice(0, 300)}`);
-
-  // Bubble up the actual Vapi errors so the admin sees what's wrong
-  const summary = errors[errors.length - 1] ?? "Unknown Vapi error";
-  console.error("[demo-provisioner] Vapi phone-number buy failed", errors);
-  return { error: `Vapi rejected number purchase. Last error — ${summary}` };
+  // Surface the FIRST area-code error (most informative — fallback codes often share the cause)
+  console.error("[demo-provisioner] Vapi phone-number buy failed across all area codes", errors);
+  const first = errors[0] ?? "Unknown Vapi error";
+  return {
+    error: `No Vapi numbers available across ${seen.size} area codes. First error — ${first}`,
+  };
 }
 
 /**
