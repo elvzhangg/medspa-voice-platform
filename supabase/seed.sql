@@ -8,7 +8,7 @@ values (
   'glow-med-spa',
   '+15550001234',  -- Replace with actual Vapi phone number
   'rachel',
-  'Thanks so much for calling Glow Med Spa! Hope you''re having a great day — how can I help?',
+  'Welcome to Glow Med Spa! We''re delighted to hear from you. Anything I can help you with today?',
   '{
     "monday":    {"open": "09:00", "close": "18:00"},
     "tuesday":   {"open": "09:00", "close": "18:00"},

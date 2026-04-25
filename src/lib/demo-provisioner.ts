@@ -259,7 +259,7 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   // so it works for any spa). The spa can override this any time via the
   // greeting_message column. If asked "are you an AI?" the agent answers honestly
   // via the system prompt — but doesn't lead with that.
-  const greeting = `Thanks so much for calling ${prospect.business_name}! Hope you're having a great day — how can I help?`;
+  const greeting = `Welcome to ${prospect.business_name}! We're delighted to hear from you. Anything I can help you with today?`;
 
   // Column-tolerant insert: strips any column the tenants table doesn't have
   // (e.g. if older migrations haven't been run yet). Required core columns
