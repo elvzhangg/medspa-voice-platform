@@ -372,7 +372,7 @@ After collecting data from the spa's own website, do 2–3 cross-source web_sear
 2. Search "[business_name] [city] yelp" — find their Yelp listing
 3. (Optional) Search "[business_name] [city] reviews 2026" — recent activity
 
-Then populate `verification_notes`:
+Then populate verification_notes:
 - google_business_profile_url and yelp_url if found
 - address_confirmed_by: list which sources confirmed the address — e.g. ["website", "google", "yelp"]
 - phone_confirmed_by: same for phone
