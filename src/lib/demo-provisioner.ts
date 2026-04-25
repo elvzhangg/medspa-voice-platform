@@ -149,9 +149,16 @@ function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string
   return chunks;
 }
 
-async function buyPhoneNumber(name: string, preferredAreaCode: string | null): Promise<{ id: string; number: string } | null> {
-  const areaCodesToTry = [preferredAreaCode, "628", "415", "510", "408", "323", "646", "212", "917"].filter(Boolean) as string[];
+async function buyPhoneNumber(
+  name: string,
+  preferredAreaCode: string | null
+): Promise<{ id: string; number: string } | { error: string }> {
+  const areaCodesToTry = [preferredAreaCode, "628", "415", "510", "408", "323", "646", "212", "917"]
+    .filter(Boolean) as string[];
   const seen = new Set<string>();
+  const errors: string[] = [];
+
+  // First pass: try preferred + popular area codes
   for (const ac of areaCodesToTry) {
     if (seen.has(ac)) continue;
     seen.add(ac);
@@ -168,8 +175,30 @@ async function buyPhoneNumber(name: string, preferredAreaCode: string | null): P
       const data = await res.json();
       return { id: data.id, number: data.number };
     }
+    const errText = await res.text().catch(() => "");
+    errors.push(`area ${ac}: ${res.status} ${errText.slice(0, 200)}`);
   }
-  return null;
+
+  // Last resort: let Vapi pick any available US number (no areaCode constraint)
+  const res = await fetch("https://api.vapi.ai/phone-number/buy", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${VAPI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: `DEMO - ${name}`,
+      server: { url: WEBHOOK_URL },
+    }),
+  });
+  if (res.ok) {
+    const data = await res.json();
+    return { id: data.id, number: data.number };
+  }
+  const errText = await res.text().catch(() => "");
+  errors.push(`any-area-code fallback: ${res.status} ${errText.slice(0, 300)}`);
+
+  // Bubble up the actual Vapi errors so the admin sees what's wrong
+  const summary = errors[errors.length - 1] ?? "Unknown Vapi error";
+  console.error("[demo-provisioner] Vapi phone-number buy failed", errors);
+  return { error: `Vapi rejected number purchase. Last error — ${summary}` };
 }
 
 /**
@@ -201,8 +230,9 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   }
 
   const preferredArea = areaCodeFrom(prospect.phone) ?? areaCodeFrom(prospect.assigned_demo_number);
-  const phone = await buyPhoneNumber(prospect.business_name, preferredArea);
-  if (!phone) return { ok: false, error: "Vapi phone-number buy failed across all area codes" };
+  const buyResult = await buyPhoneNumber(prospect.business_name, preferredArea);
+  if ("error" in buyResult) return { ok: false, error: buyResult.error };
+  const phone = buyResult;
 
   const slugBase = `demo-${slugify(prospect.business_name)}-${prospect_id.slice(0, 8)}`;
   const greeting = `Hi, thank you for calling ${prospect.business_name}! I'm your AI receptionist. How can I help you today?`;
