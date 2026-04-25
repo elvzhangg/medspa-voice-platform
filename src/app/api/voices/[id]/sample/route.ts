@@ -33,8 +33,8 @@ const ALLOWED_VOICE_IDS = new Set<string>([
 
 function sampleTextFor(clinicName: string | null): string {
   return clinicName
-    ? `Thank you for calling ${clinicName}! I'm your AI Clientele Specialist. How can I help you today?`
-    : "Thank you for calling! I'm your AI Clientele Specialist. How can I help you today?";
+    ? `Welcome to ${clinicName}! We're delighted to hear from you. Anything I can help you with today?`
+    : "Welcome! We're delighted to hear from you. Anything I can help you with today?";
 }
 
 type Ctx = { params: Promise<{ id: string }> };

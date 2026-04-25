@@ -16,7 +16,7 @@ export default function OnboardPage() {
   const [form, setForm] = useState({
     name: "",
     voice_id: "EXAVITQu4vr4xnSDxMaL",
-    greeting_message: "Thank you for calling! How can I help you today?",
+    greeting_message: "Welcome! We're delighted to hear from you. Anything I can help you with today?",
     initial_kb: "",
     area_code: "415",
   });

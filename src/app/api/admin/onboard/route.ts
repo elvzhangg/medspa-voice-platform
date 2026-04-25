@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         phone_number: phoneNumber.number,
         vapi_phone_number_id: phoneNumber.id,
         voice_id: voice_id || "EXAVITQu4vr4xnSDxMaL",
-        greeting_message: greeting_message || `Thank you for calling ${name}! How can I help you today?`,
+        greeting_message: greeting_message || `Welcome to ${name}! We're delighted to hear from you. Anything I can help you with today?`,
       })
       .select()
       .single();
