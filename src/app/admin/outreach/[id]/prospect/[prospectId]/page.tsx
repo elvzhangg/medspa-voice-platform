@@ -36,9 +36,9 @@ interface Prospect {
   owner_email: string | null;
   owner_title: string | null;
   locations: Array<{ label?: string; address?: string; phone?: string; hours?: string }> | null;
-  procedures: Array<{ name: string; description?: string; duration_min?: number; price?: string | number; notes?: string }> | null;
+  procedures: Array<{ name: string; description?: string; duration_min?: number; price?: string | number; notes?: string; source_url?: string }> | null;
   pricing: Record<string, Array<{ item: string; price: string | number; notes?: string }>> | Array<{ item: string; price: string | number }> | null;
-  providers: Array<{ name: string; title?: string; specialties?: string[]; bio?: string }> | null;
+  providers: Array<{ name: string; title?: string; specialties?: string[]; bio?: string; source_url?: string }> | null;
   business_hours: Record<string, { open: string; close: string } | string> | null;
   directions_parking_info: string | null;
   booking_config: {
@@ -50,10 +50,18 @@ interface Prospect {
     financing_options?: string[];
     membership_program?: string;
   } | null;
-  faqs: Array<{ question: string; answer: string }> | null;
+  faqs: Array<{ question: string; answer: string; source_url?: string }> | null;
   system_prompt_override: string | null;
   social_links: Record<string, string> | null;
-  research_sources: Array<{ url: string; fetched_at?: string }> | null;
+  research_sources: Array<{ url: string; fetched_at?: string; fields_extracted?: string[] }> | null;
+  verification_notes: {
+    google_business_profile_url?: string;
+    yelp_url?: string;
+    address_confirmed_by?: string[];
+    phone_confirmed_by?: string[];
+    still_operating?: boolean;
+    discrepancies?: string[];
+  } | null;
   research_confidence: number | null;
   agent_notes: string | null;
   demo_tenant_id: string | null;
@@ -516,7 +524,10 @@ export default function ProspectDetailPage({
                   {procedures.map((p, i) => (
                     <div key={i} className="flex items-start justify-between gap-3 text-sm py-1.5 border-b border-gray-50 last:border-0">
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-800">{p.name}</p>
+                        <p className="font-medium text-gray-800 flex items-center gap-1.5">
+                          {p.name}
+                          {p.source_url && <SourceLink url={p.source_url} />}
+                        </p>
                         {p.description && <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>}
                       </div>
                       <div className="text-right text-xs text-gray-500 shrink-0">
@@ -535,7 +546,10 @@ export default function ProspectDetailPage({
                 <div className="flex flex-wrap gap-2">
                   {providers.map((prov, i) => (
                     <div key={i} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5 text-xs">
-                      <p className="font-medium text-gray-800">{prov.name}</p>
+                      <p className="font-medium text-gray-800 flex items-center gap-1.5">
+                        {prov.name}
+                        {prov.source_url && <SourceLink url={prov.source_url} />}
+                      </p>
                       {prov.title && <p className="text-gray-500">{prov.title}</p>}
                       {prov.specialties && prov.specialties.length > 0 && (
                         <p className="text-gray-400 mt-0.5">{prov.specialties.join(", ")}</p>
@@ -608,10 +622,41 @@ export default function ProspectDetailPage({
                     <details key={i} className="rounded-lg border border-gray-100 px-3 py-2 text-sm group">
                       <summary className="font-medium text-gray-800 cursor-pointer list-none flex items-center gap-2">
                         <span className="text-gray-400 text-xs group-open:rotate-90 transition-transform">▸</span>
-                        {faq.question}
+                        <span className="flex-1">{faq.question}</span>
+                        {faq.source_url && <SourceLink url={faq.source_url} />}
                       </summary>
                       <p className="text-xs text-gray-600 mt-2 ml-5 whitespace-pre-wrap">{faq.answer}</p>
                     </details>
+                  ))}
+                </div>
+              </Subsection>
+            )}
+
+            {/* Verification — independent confirmation of the prospect's existence + accuracy */}
+            {prospect.verification_notes && (
+              <Subsection title="Verification">
+                <VerificationDisplay v={prospect.verification_notes} />
+              </Subsection>
+            )}
+
+            {/* Sources — every URL the research agent fetched */}
+            {prospect.research_sources && prospect.research_sources.length > 0 && (
+              <Subsection title={`Research sources (${prospect.research_sources.length})`}>
+                <div className="space-y-1">
+                  {prospect.research_sources.map((s, i) => (
+                    <div key={i} className="text-xs flex items-start gap-2">
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline truncate flex-1 min-w-0"
+                      >
+                        {s.url.replace(/^https?:\/\//, "").slice(0, 80)}
+                      </a>
+                      {s.fields_extracted && s.fields_extracted.length > 0 && (
+                        <span className="text-gray-400 shrink-0">→ {s.fields_extracted.join(", ")}</span>
+                      )}
+                    </div>
                   ))}
                 </div>
               </Subsection>
@@ -877,6 +922,101 @@ function PolicyLine({ label, value }: { label: string; value: string }) {
     <div className="flex items-start gap-3">
       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-32 shrink-0 pt-0.5">{label}</span>
       <span className="text-sm text-gray-700 flex-1">{value}</span>
+    </div>
+  );
+}
+
+function SourceLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title={`Source: ${url}`}
+      className="inline-flex items-center text-gray-300 hover:text-indigo-600 transition-colors"
+    >
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      </svg>
+    </a>
+  );
+}
+
+function VerificationDisplay({ v }: { v: NonNullable<Prospect["verification_notes"]> }) {
+  const addressSources = v.address_confirmed_by ?? [];
+  const phoneSources = v.phone_confirmed_by ?? [];
+  const stillOperating = v.still_operating;
+  const hasDiscrepancies = v.discrepancies && v.discrepancies.length > 0;
+
+  return (
+    <div className="space-y-2 text-sm">
+      {stillOperating !== undefined && (
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className={`px-2 py-0.5 rounded-full font-semibold ${
+              stillOperating ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+            }`}
+          >
+            {stillOperating ? "✓ Currently operating" : "⚠ No recent activity"}
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <p className="text-gray-400 mb-0.5">Address confirmed by</p>
+          {addressSources.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {addressSources.map((s) => (
+                <span key={s} className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                  {s}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-300">— not cross-checked</span>
+          )}
+        </div>
+        <div>
+          <p className="text-gray-400 mb-0.5">Phone confirmed by</p>
+          {phoneSources.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {phoneSources.map((s) => (
+                <span key={s} className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                  {s}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-300">— not cross-checked</span>
+          )}
+        </div>
+      </div>
+
+      {(v.google_business_profile_url || v.yelp_url) && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {v.google_business_profile_url && (
+            <a href={v.google_business_profile_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+              Google Business Profile ↗
+            </a>
+          )}
+          {v.yelp_url && (
+            <a href={v.yelp_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+              Yelp ↗
+            </a>
+          )}
+        </div>
+      )}
+
+      {hasDiscrepancies && (
+        <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+          <p className="text-xs font-semibold text-amber-700 mb-1">Discrepancies found:</p>
+          <ul className="text-xs text-amber-700 list-disc list-inside space-y-0.5">
+            {v.discrepancies?.map((d, i) => <li key={i}>{d}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

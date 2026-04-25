@@ -28,6 +28,7 @@ interface Prospect {
   email_sent_at: string | null;
   email_opened_at: string | null;
   email_reply_at: string | null;
+  verification_notes: { still_operating?: boolean; address_confirmed_by?: string[] } | null;
 }
 
 interface Campaign {

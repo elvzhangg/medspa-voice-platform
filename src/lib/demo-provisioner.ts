@@ -255,7 +255,10 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   const phone = buyResult;
 
   const slugBase = `demo-${slugify(prospect.business_name)}-${prospect_id.slice(0, 8)}`;
-  const greeting = `Hi, thank you for calling ${prospect.business_name}! I'm your AI Clientele Specialist. How can I help you today?`;
+  // Customer-facing greeting — no self-identification as AI by default. Reads natural;
+  // if a caller explicitly asks "are you an AI?" the agent should answer honestly via
+  // the system prompt. The spa can override this any time via the greeting_message column.
+  const greeting = `Thank you for calling ${prospect.business_name}! How can I help you today?`;
 
   // Column-tolerant insert: strips any column the tenants table doesn't have
   // (e.g. if older migrations haven't been run yet). Required core columns

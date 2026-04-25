@@ -116,7 +116,7 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         },
         procedures: {
           type: "array",
-          description: "Individual procedures/services with details. Each: { name, description, duration_min, price, notes }",
+          description: "Individual procedures/services with details. Each MUST include a source_url — the page you actually fetched the price/details from. Drop the field entirely if you can't cite a URL.",
           items: {
             type: "object",
             properties: {
@@ -125,13 +125,14 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
               duration_min: { type: "number" },
               price: { type: "string", description: "e.g. '$300' or 'from $12/unit'" },
               notes: { type: "string" },
+              source_url: { type: "string", description: "URL where this procedure's name + (especially) price was verified. REQUIRED if price is set." },
             },
             required: ["name"],
           },
         },
         providers: {
           type: "array",
-          description: "Medical/aesthetic providers on staff. Each: { name, title, specialties }",
+          description: "Medical/aesthetic providers on staff. Each MUST include a source_url pointing to the team/about page where you found them.",
           items: {
             type: "object",
             properties: {
@@ -139,6 +140,7 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
               title: { type: "string" },
               specialties: { type: "array", items: { type: "string" } },
               bio: { type: "string" },
+              source_url: { type: "string", description: "URL where this provider's name and title was found (typically the spa's team/about page)." },
             },
             required: ["name"],
           },
@@ -169,12 +171,13 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         faqs: {
           type: "array",
           description:
-            "FAQ entries lifted from their FAQ or policies page. Each: { question, answer }. Prioritize questions a first-time caller might ask (consultation cost, downtime for popular procedures, age restrictions, numbing options, etc.). Up to 10 entries.",
+            "FAQ entries lifted directly from their FAQ or policies page. Each MUST cite a source_url. Prioritize questions a first-time caller might ask (consultation cost, downtime for popular procedures, age restrictions, numbing options, etc.). Up to 10 entries.",
           items: {
             type: "object",
             properties: {
               question: { type: "string" },
               answer: { type: "string" },
+              source_url: { type: "string", description: "URL where this Q/A was found." },
             },
             required: ["question", "answer"],
           },
@@ -214,6 +217,34 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         research_confidence: {
           type: "number",
           description: "Your overall confidence in the accuracy of this prospect's data, 0.0 to 1.0. Be honest — if you had to guess pricing, lower this.",
+        },
+        verification_notes: {
+          type: "object",
+          description:
+            "After gathering data from the spa's own website, run cross-check searches: Google Business Profile, Yelp, the spa's actual phone number — confirm address, phone, and that the business is currently operating. Record what matched and what didn't.",
+          properties: {
+            google_business_profile_url: { type: "string" },
+            yelp_url: { type: "string" },
+            address_confirmed_by: {
+              type: "array",
+              items: { type: "string" },
+              description: "List of sources that confirmed the address (e.g. ['google', 'yelp', 'website']). Empty if no cross-source verification was possible.",
+            },
+            phone_confirmed_by: {
+              type: "array",
+              items: { type: "string" },
+              description: "Sources that confirmed the phone number.",
+            },
+            still_operating: {
+              type: "boolean",
+              description: "Did you find evidence the business is currently operating (recent reviews, recent posts, active website)?",
+            },
+            discrepancies: {
+              type: "array",
+              items: { type: "string" },
+              description: "Any contradictions found between sources (e.g. 'website lists 1234 Main St but Google says 1240 Main St').",
+            },
+          },
         },
         services_summary: { type: "string", description: "Short free-text summary for scanning" },
         pricing_notes: { type: "string", description: "Free-text pricing summary if structured pricing wasn't available" },
@@ -324,18 +355,44 @@ For each prospect:
 
 You do NOT need to call draft_email. The system automatically drafts personalized outreach emails for every prospect whose data is complete enough (data completeness ≥ 70% — driven by procedures with prices, owner email, hours, and provider list). Focus your effort on extraction quality — completeness directly determines whether a demo number gets provisioned and an email gets drafted for that prospect.
 
-Structured data rules:
-- procedures[]: list each distinct service as its own entry with name, short description, duration_min if stated, price if stated ("from $12/unit", "$300", etc.). Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
-- providers[]: each staff member on the "Our Team" / "Providers" page. Include title (MD, NP, PA, RN, Aesthetician) and specialties.
+## Source-citation requirements (HARD RULES)
+
+Every fact you save MUST be traceable to a real URL you actually fetched. The schema requires a source_url on each procedure, provider, and FAQ. **If you can't cite a source URL for a field, omit that field entirely. Do not guess.**
+
+Rules of thumb:
+- A procedure with a price MUST have a source_url showing that price. No source = drop the price (you can still keep the procedure name if found elsewhere).
+- A provider MUST have a source_url showing their name + title (typically the Team/About page).
+- An FAQ entry MUST have a source_url. If you can't find a real FAQ on their site, return an empty faqs array.
+- research_sources[] is your global audit trail — every URL you fetched, with the fields you got from each.
+
+## Verification pass (REQUIRED before save_prospect)
+
+After collecting data from the spa's own website, do 2–3 cross-source web_searches to confirm the business is real and currently operating:
+1. Search "[business_name] [city] google business" — find their Google Business Profile listing
+2. Search "[business_name] [city] yelp" — find their Yelp listing
+3. (Optional) Search "[business_name] [city] reviews 2026" — recent activity
+
+Then populate `verification_notes`:
+- google_business_profile_url and yelp_url if found
+- address_confirmed_by: list which sources confirmed the address — e.g. ["website", "google", "yelp"]
+- phone_confirmed_by: same for phone
+- still_operating: true only if you saw recent reviews/posts/activity (within ~6 months)
+- discrepancies: any contradictions ("website says 1234 Main St; Google says 1240 Main St"). Empty array if none.
+
+If still_operating is false OR address can't be confirmed by at least one external source, do NOT save_prospect — the lead is too risky for outreach. Log a step explaining why you skipped it.
+
+## Field-by-field guidance
+
+- procedures[]: list each distinct service as its own entry with source_url. Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
+- providers[]: each staff member on the Team page, with source_url to that page.
 - business_hours: keyed by day (monday..sunday). Use display strings like "9am–6pm" or "Closed" — don't invent values.
 - owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
-- directions_parking_info: lifted from Contact / Location / Visit pages. Include validation, garage info, building-entry notes.
-- booking_config: cancellation, deposit, late-arrival policies usually live on a dedicated "Policies" page. Payment methods are often on FAQ or footer. Financing options (CareCredit, Cherry, Afterpay) usually have logos at checkout or a dedicated financing page.
-- faqs[]: the spa's actual FAQ page, verbatim-ish. Prioritize questions first-time callers ask: consultation cost, downtime, age limits, numbing, tipping, packages. Up to 10 entries.
-- system_prompt_override: a short paragraph describing who they serve, their aesthetic philosophy, brand vibe, and standout procedures. This drives the voice agent's tone. Write it in your own words based on what you read, not a direct quote.
-- research_sources[]: record which URLs you actually fetched and which fields came from each. This becomes the audit trail.
+- directions_parking_info: lifted from Contact / Location / Visit pages.
+- booking_config: cancellation, deposit, late-arrival, payment methods, financing — usually on a dedicated Policies or FAQ page.
+- faqs[]: the spa's actual FAQ page, with source_urls.
+- system_prompt_override: a short paragraph describing who they serve, brand vibe, standout procedures. Your interpretation of what you read, not a direct quote. No source_url required (it's interpretive).
 
-Completeness > inventing. A populated prospect with verified owner_email, pricing, policies, and FAQs beats a "full-looking" row with made-up values. Confidence is scored deterministically from which of these fields you actually filled — so leave fields empty rather than guessing.
+Completeness > fabrication. An empty field beats a wrong field. Confidence scores deterministically from real fields filled — leaving a field blank just lowers the score; lying about it can ruin a real customer relationship.
 
 Hard rules:
 - Only save real, verifiable businesses
@@ -488,6 +545,7 @@ Start now.`,
                   system_prompt_override: rawInput.system_prompt_override ?? null,
                   social_links: rawInput.social_links ?? null,
                   research_sources: rawInput.research_sources ?? null,
+                  verification_notes: rawInput.verification_notes ?? null,
                   research_confidence: confidenceBreakdown.score,
                   researched_at: new Date().toISOString(),
                   services_summary: rawInput.services_summary ?? null,
