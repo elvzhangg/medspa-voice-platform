@@ -7,7 +7,7 @@ ALTER TABLE tenants
   ADD COLUMN IF NOT EXISTS booking_forward_enabled boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS booking_forward_phones text[] NOT NULL DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS booking_forward_sms_template text NOT NULL DEFAULT
-    '📋 New booking request via AI receptionist
+    '📋 New booking request via AI Clientele Specialist
 
 Patient: [CustomerName]
 Phone: [CustomerPhone]

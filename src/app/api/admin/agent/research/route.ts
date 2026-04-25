@@ -182,7 +182,7 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         system_prompt_override: {
           type: "string",
           description:
-            "Free-text notes that describe the spa's vibe, selling points, and voice tone. Examples: 'Luxury brand targeting 35-55 professional women; warm, discreet tone. Known for natural-looking injectables and the latest in regenerative aesthetics (PRP, exosomes). Emphasize consultation-first approach.' Keep under 300 words. This shapes how the AI receptionist sounds.",
+            "Free-text notes that describe the spa's vibe, selling points, and voice tone. Examples: 'Luxury brand targeting 35-55 professional women; warm, discreet tone. Known for natural-looking injectables and the latest in regenerative aesthetics (PRP, exosomes). Emphasize consultation-first approach.' Keep under 300 words. This shapes how the AI Clientele Specialist sounds.",
         },
         social_links: {
           type: "object",

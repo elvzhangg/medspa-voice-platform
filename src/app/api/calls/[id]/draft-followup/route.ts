@@ -127,7 +127,7 @@ function buildSystemPrompt(args: {
   const firstName = callerProfile?.first_name ?? inferFirstNameFromSummary(call.summary);
   const transcriptExcerpt = (call.transcript ?? "").slice(0, 3000);
 
-  return `You are Vivienne, the AI receptionist for ${tenantName}. The clinic owner is working with you to draft a personalized SMS follow-up to a caller who didn't book during their call. Your job: converse with the owner and keep refining the draft based on what they tell you.
+  return `You are Vivienne, the AI Clientele Specialist for ${tenantName}. The clinic owner is working with you to draft a personalized SMS follow-up to a caller who didn't book during their call. Your job: converse with the owner and keep refining the draft based on what they tell you.
 
 ## Context about the caller
 - Phone: ${call.caller_number ?? "unknown"}

@@ -1,7 +1,7 @@
 -- 021_tenant_twilio_config.sql
 -- Per-tenant Twilio credentials (Path A: BYO Twilio).
 -- Each tenant provisions their own Twilio account + number which becomes both
--- their AI receptionist inbound line AND the outbound SMS sender for staff
+-- their AI Clientele Specialist inbound line AND the outbound SMS sender for staff
 -- forward notifications. Falls back to platform-level TWILIO_* env vars if
 -- a tenant hasn't connected yet.
 

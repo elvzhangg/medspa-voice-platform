@@ -640,7 +640,7 @@ export default function ProspectDetailPage({
           </Panel>
 
           {/* Panel 2: Demo Agent */}
-          <Panel title="Demo Agent" subtitle="The AI receptionist provisioned for this prospect">
+          <Panel title="Demo Agent" subtitle="The AI Clientele Specialist provisioned for this prospect">
             {prospect.demo_tenant_id && demoTenant ? (
               <>
                 <div className="grid grid-cols-2 gap-4 text-sm">

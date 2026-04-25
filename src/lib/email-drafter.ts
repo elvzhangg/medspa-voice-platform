@@ -75,12 +75,12 @@ Constraints:
 - Under 180 words
 - No cheesy subject lines, no "Quick question" clichés
 - Reference at least one concrete detail from the brief (a specific procedure, provider, booking platform, or location) to prove this isn't a mass blast
-- The main call-to-action is: **"Call the demo number to hear your own AI receptionist speak."** Make that number stand out on its own line.
+- The main call-to-action is: **"Call the demo number to hear your own AI Clientele Specialist speak."** Make that number stand out on its own line.
 - Secondary CTA: reply to this email to book a 15-min walkthrough
 ${opts.free_trial_hint ? `- You may mention that we're offering a free trial window for early customers — keep it light, don't anchor on pricing` : `- Do NOT mention pricing, plans, or discounts. Keep pricing conversations for a live call.`}
 - Sign off as "The VauxVoice team" (no fake names)
 
-VauxVoice in one line: An AI receptionist that answers every call 24/7, books into ${prospect.booking_platform && prospect.booking_platform !== "Unknown" ? prospect.booking_platform : "your existing booking system"}, and never misses a lead — trained specifically on your spa's services, providers, and hours.
+VauxVoice in one line: An AI Clientele Specialist that answers every call 24/7, books into ${prospect.booking_platform && prospect.booking_platform !== "Unknown" ? prospect.booking_platform : "your existing booking system"}, and never misses a lead — trained specifically on your spa's services, providers, and hours.
 
 Return two fields: subject (under 55 chars, specific, lowercase-style OK) and body (plain text).`;
 

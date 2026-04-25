@@ -10,7 +10,7 @@ Customer Call → Vapi → Webhook (Next.js) → Tenant Lookup → KB Search →
 
 Each med spa gets:
 - Their own phone number (Vapi)
-- A personalized AI receptionist (name, voice, greeting)
+- A personalized AI Clientele Specialist (name, voice, greeting)
 - A private knowledge base (services, pricing, policies, FAQs)
 - A booking handler (extensible to Acuity, Mindbody, etc.)
 
