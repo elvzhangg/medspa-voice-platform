@@ -89,6 +89,7 @@ export async function syncProvidersForTenant(tenantId: string): Promise<SyncResu
       title: p.title ?? null,
       services: p.services ?? [],
       working_hours: p.workingHours ?? null,
+      bio: p.bio ?? null,
       active: p.active !== false,
       last_synced_at: now,
     };

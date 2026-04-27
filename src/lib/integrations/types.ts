@@ -159,6 +159,12 @@ export interface AdapterProvider {
   workingHours?: Record<string, { open: string; close: string }>;
   /** False when the platform reports the staff as disabled/terminated. */
   active?: boolean;
+  /**
+   * About-me / bio prose pulled from the platform's staff record.
+   * Platform-sourced — overwritten on each sync. Adapters omit this if
+   * the platform doesn't surface a bio.
+   */
+  bio?: string;
 }
 
 export interface BookingAdapter {

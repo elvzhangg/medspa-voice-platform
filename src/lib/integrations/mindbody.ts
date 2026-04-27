@@ -35,6 +35,55 @@ import type {
 
 const BASE_URL = "https://api.mindbodyonline.com/public/v6";
 
+/**
+ * Coerce a Mindbody time value to "HH:MM". Mindbody is inconsistent —
+ * sometimes "09:00", sometimes "1900-01-01T09:00:00" (an arbitrary date
+ * with the time of day). Returns null when the input doesn't parse so
+ * the caller can decide whether to drop the day.
+ */
+function toHHMM(t: string | undefined | null): string | null {
+  if (!t) return null;
+  // Already short form
+  const short = /^(\d{2}):(\d{2})/.exec(t);
+  if (short) return `${short[1]}:${short[2]}`;
+  // ISO-ish — pull the time portion after the T
+  const iso = /T(\d{2}):(\d{2})/.exec(t);
+  if (iso) return `${iso[1]}:${iso[2]}`;
+  return null;
+}
+
+/**
+ * Map Mindbody's per-staff `Availabilities` array to our weekly
+ * working_hours JSONB shape. Returns undefined if nothing parseable so
+ * the writer falls through to null (sync preserves "no schedule data"
+ * rather than fabricating one).
+ */
+function parseAvailabilities(
+  rows: Array<{ DayOfWeek?: string; StartTime?: string; EndTime?: string }> | undefined
+): Record<string, { open: string; close: string }> | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  const out: Record<string, { open: string; close: string }> = {};
+  for (const r of rows) {
+    const day = r.DayOfWeek?.toLowerCase();
+    const open = toHHMM(r.StartTime);
+    const close = toHHMM(r.EndTime);
+    if (!day || !open || !close) continue;
+    // Multiple ranges per day collapse to widest open–close (rare for
+    // appointment-style staff; common for class instructors with split
+    // morning/afternoon shifts). Keep the earliest open and latest close.
+    const existing = out[day];
+    if (!existing) {
+      out[day] = { open, close };
+    } else {
+      out[day] = {
+        open: open < existing.open ? open : existing.open,
+        close: close > existing.close ? close : existing.close,
+      };
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 async function getStaffToken(ctx: AdapterContext): Promise<string> {
   const { api_key, site_id, staff_username, staff_password } = ctx.credentials;
   if (!api_key || !site_id || !staff_username || !staff_password) {
@@ -182,24 +231,42 @@ const adapter: BookingAdapter = {
 
   async listProviders(ctx): Promise<AdapterProvider[]> {
     // /staff/staff returns active staff for the site (scoped to LocationId
-    // when supplied). Mindbody also has /staff/staffpermissions but we
-    // don't need that detail — just name + title.
+    // when supplied). Filters=AppointmentInstructor narrows to staff who
+    // actually take bookings (skips reception/owner/sentinel rows).
+    //
+    // Two Mindbody-specific quirks worth knowing:
+    //   1. JobTitles isn't returned by default — would need a separate
+    //      /staff/staffpermissions call. Title stays null until that work.
+    //   2. Mindbody doesn't return an `Active` field on default-listed
+    //      staff (the endpoint pre-filters to active). active=true is
+    //      therefore the safe default; deactivation is detected at sync
+    //      time when a previously-seen externalId disappears from the
+    //      response (handled in provider-sync.ts).
+    //   3. Services per staff are NOT on /staff/staff. They live in the
+    //      session-type ↔ staff matrix that requires a /sale/services
+    //      join. Left empty here — see the "richer staff" follow-up.
     const locationId = ctx.config.location_id;
-    const path = locationId
-      ? `/staff/staff?LocationId=${encodeURIComponent(locationId)}&Limit=200`
-      : "/staff/staff?Limit=200";
+    const filterClause = "Filters=AppointmentInstructor";
+    const locClause = locationId ? `&LocationId=${encodeURIComponent(locationId)}` : "";
+    const path = `/staff/staff?${filterClause}${locClause}&Limit=200`;
 
+    interface MbAvailability {
+      DayOfWeek?: string;       // "Monday" | "Tuesday" | ...
+      StartTime?: string;       // "1900-01-01T09:00:00" or "09:00"
+      EndTime?: string;
+    }
     interface MbStaffRow {
       Id: number;
       FirstName?: string;
       LastName?: string;
       Name?: string;
+      DisplayName?: string;
       Bio?: string;
       AlwaysAllowDoubleBooking?: boolean;
-      IsIndependentContractor?: boolean;
-      Active?: boolean;
-      /** Mindbody returns a JobTitles array per staffer */
+      IndependentContractor?: boolean;
+      /** Mindbody returns a JobTitles array per staffer when permissioned */
       JobTitles?: Array<{ Name?: string }>;
+      Availabilities?: MbAvailability[];
     }
     const res = await mbFetch<{ StaffMembers?: MbStaffRow[] }>(ctx, path);
     const rows = res?.StaffMembers ?? [];
@@ -207,15 +274,19 @@ const adapter: BookingAdapter = {
     return rows
       .map((s) => {
         const name =
+          s.DisplayName?.trim() ||
           s.Name?.trim() ||
           `${s.FirstName ?? ""} ${s.LastName ?? ""}`.trim();
         if (!name) return null;
-        const title = s.JobTitles?.[0]?.Name;
         return {
           externalId: String(s.Id),
           name,
-          title,
-          active: s.Active !== false,
+          title: s.JobTitles?.[0]?.Name,
+          bio: s.Bio?.trim() || undefined,
+          workingHours: parseAvailabilities(s.Availabilities),
+          // No Active field on /staff/staff — provider-sync handles
+          // deactivation by tracking which IDs disappear between syncs.
+          active: true,
         } as AdapterProvider;
       })
       .filter((p): p is AdapterProvider => p !== null);
