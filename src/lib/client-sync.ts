@@ -185,3 +185,177 @@ export async function syncClientFromPlatform(
 export function syncClientFromPlatformBackground(tenantId: string, phone: string): void {
   void syncClientFromPlatform(tenantId, phone);
 }
+
+// ─── Bulk pre-warm of recent + VIP clients ──────────────────────────────────
+//
+// Runs as part of the full tenant sync (after appointment-sync has
+// populated calendar_events). Pre-creates client_profiles for everyone
+// who's visited recently or visits often, so the AI greets them with
+// grounded context on their first call after integration setup —
+// instead of waiting for the lazy on-call sync to run.
+//
+// Source: calendar_events (platform-sourced rows only). No extra API
+// round-trip — pure DB aggregation. The appointment backfill is what
+// gets the data into calendar_events in the first place.
+//
+// Eligibility (a phone qualifies for pre-warm if EITHER):
+//   - Recent: at least 1 visit in the last RECENT_WINDOW_DAYS
+//   - VIP:    at least VIP_VISIT_THRESHOLD visits in the scan window
+//
+// Anyone not qualifying still gets the lazy on-call sync via
+// syncClientFromPlatform — this just covers the warm cases up front.
+
+const RECENT_WINDOW_DAYS = 30;       // "recent" = visited within the last month
+const SCAN_WINDOW_DAYS = 90;         // VIP scoring looks back this far
+const VIP_VISIT_THRESHOLD = 3;       // visits needed to qualify as VIP
+
+export interface RecentClientSyncResult {
+  tenantId: string;
+  scanned: number;     // unique phones found in calendar_events window
+  upserted: number;    // client_profiles written
+  errored: boolean;
+  errorMessage?: string;
+}
+
+interface CalRow {
+  customer_phone: string | null;
+  customer_name: string | null;
+  service_type: string | null;
+  description: string | null;
+  start_time: string;
+  external_source: string | null;
+}
+
+interface PhoneAgg {
+  phone: string;
+  name?: string;
+  services: string[];
+  staffs: string[];
+  visits: string[];          // ISO timestamps, unsorted
+  platform: string;          // first external_source we see for this phone
+}
+
+export async function syncRecentClientsForTenant(
+  tenantId: string
+): Promise<RecentClientSyncResult> {
+  const result: RecentClientSyncResult = {
+    tenantId,
+    scanned: 0,
+    upserted: 0,
+    errored: false,
+  };
+
+  try {
+    const scanCutoff = new Date(
+      Date.now() - SCAN_WINDOW_DAYS * 86_400_000
+    ).toISOString();
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("calendar_events")
+      .select(
+        "customer_phone, customer_name, service_type, description, start_time, external_source"
+      )
+      .eq("tenant_id", tenantId)
+      .not("customer_phone", "is", null)
+      .not("external_source", "is", null)
+      .gte("start_time", scanCutoff);
+
+    if (error) {
+      result.errored = true;
+      result.errorMessage = error.message;
+      return result;
+    }
+
+    // Aggregate per normalized phone
+    const agg = new Map<string, PhoneAgg>();
+    for (const row of (rows ?? []) as CalRow[]) {
+      const phone = normalizePhone(row.customer_phone);
+      if (!phone) continue;
+
+      let entry = agg.get(phone);
+      if (!entry) {
+        entry = {
+          phone,
+          services: [],
+          staffs: [],
+          visits: [],
+          platform: row.external_source ?? "unknown",
+        };
+        agg.set(phone, entry);
+      }
+      if (!entry.name && row.customer_name) entry.name = row.customer_name;
+      if (row.service_type) entry.services.push(row.service_type);
+      // Calendar events store provider as "With Dr. Smith" in description —
+      // strip the "With " prefix written by both the webhook and backfill.
+      if (row.description?.startsWith("With ")) {
+        entry.staffs.push(row.description.slice("With ".length));
+      }
+      entry.visits.push(row.start_time);
+    }
+
+    result.scanned = agg.size;
+
+    const recentCutoffMs = Date.now() - RECENT_WINDOW_DAYS * 86_400_000;
+    const now = new Date().toISOString();
+
+    for (const entry of agg.values()) {
+      const visitCount = entry.visits.length;
+      const lastVisit = entry.visits.reduce((latest, v) =>
+        new Date(v).getTime() > new Date(latest).getTime() ? v : latest
+      );
+      const recent = new Date(lastVisit).getTime() >= recentCutoffMs;
+      const vip = visitCount >= VIP_VISIT_THRESHOLD;
+      if (!recent && !vip) continue;
+
+      const profile = await ensureClientProfile(tenantId, entry.phone);
+      if (!profile) continue;
+
+      const favoriteService = mostFrequent(entry.services);
+      const favoriteStaff = mostFrequent(entry.staffs);
+
+      const update: Record<string, unknown> = {
+        last_synced_at: now,
+        // Distinct from "boulevard" / "mindbody" — we want audit clarity
+        // that this row was warmed from aggregate calendar data, not
+        // from a platform getClientHistory pull. Future calls to
+        // syncClientFromPlatform can overwrite with richer per-client data.
+        sync_source: `aggregate_${entry.platform}`,
+        sync_error: null,
+        platform_visit_count: visitCount,
+        platform_last_visit_at: lastVisit,
+        favorite_service: favoriteService ?? null,
+        favorite_staff: favoriteStaff ?? null,
+      };
+
+      // Identity fields: only seed when blank — staff edits in our
+      // dashboard win over platform values.
+      if (!profile.first_name && entry.name) {
+        const [first, ...rest] = entry.name.trim().split(/\s+/);
+        if (first) update.first_name = first;
+        if (rest.length > 0) update.last_name = rest.join(" ");
+      }
+      if (!profile.last_service && favoriteService) {
+        update.last_service = favoriteService;
+      }
+      if (!profile.last_provider && favoriteStaff) {
+        update.last_provider = favoriteStaff;
+      }
+
+      const { error: upErr } = await supabaseAdmin
+        .from("client_profiles")
+        .update(update)
+        .eq("id", profile.id);
+      if (upErr) {
+        console.error("RECENT_CLIENT_SYNC_UPDATE_ERR:", upErr.message);
+        continue;
+      }
+      result.upserted++;
+    }
+  } catch (err) {
+    result.errored = true;
+    result.errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("RECENT_CLIENT_SYNC_ERR:", result.errorMessage);
+  }
+
+  return result;
+}

@@ -2,6 +2,10 @@ import { addMinutes } from "date-fns";
 import { supabaseAdmin } from "./supabase";
 import { loadTenantIntegration } from "./integrations";
 import { syncProvidersForTenant, type SyncResult as ProviderSyncResult } from "./provider-sync";
+import {
+  syncRecentClientsForTenant,
+  type RecentClientSyncResult,
+} from "./client-sync";
 import type { AdapterAppointment } from "./integrations/types";
 
 /**
@@ -222,6 +226,7 @@ export interface FullSyncResult {
   syncedAt: string;
   providers: ProviderSyncResult;
   appointments: AppointmentSyncResult;
+  clients: RecentClientSyncResult;
 }
 
 /**
@@ -233,21 +238,32 @@ export interface FullSyncResult {
  *   4. Dashboard bootstrap (any tenant in connected-but-never-synced —
  *      catches SQL bootstraps, dev seeds, failed initial syncs).
  *
+ * Phases run sequentially so a flaky platform doesn't double-load itself:
+ *   1. providers   — pull staff roster from platform
+ *   2. appointments — backfill -90/+90d into calendar_events
+ *   3. clients      — aggregate calendar_events to pre-warm client_profiles
+ *                     for recent (last 30d) and VIP (≥3 visits in window)
+ *                     callers. Pure DB work, no platform round-trip.
+ *
  * Always bumps tenant_integrations.last_synced_at — even on partial
  * failure — so the bootstrap path doesn't infinite-retry on every
  * dashboard load. If you genuinely want to retry, click "Sync now".
  *
- * Sequential (provider then appointment) so a flaky platform doesn't
- * double-load itself; both phases share the same staff token cache via
- * adapter context.
+ * Past window is -90d (rather than -30d) so the client-aggregate step
+ * has enough signal to identify VIPs who visit on a 2-3 month cadence.
+ * Future window stays +90d (forward booking visibility).
  */
 export async function runFullTenantSync(tenantId: string): Promise<FullSyncResult> {
   const nowMs = Date.now();
-  const since = new Date(nowMs - 30 * 86_400_000).toISOString();
+  const since = new Date(nowMs - 90 * 86_400_000).toISOString();
   const until = new Date(nowMs + 90 * 86_400_000).toISOString();
 
   const providers = await syncProvidersForTenant(tenantId);
   const appointments = await syncAppointmentsForTenant(tenantId, { since, until });
+  // Client aggregation reads from calendar_events the appointment phase
+  // just populated. If appointments errored we still try this — there
+  // may be calendar data from prior syncs or webhooks that's worth aggregating.
+  const clients = await syncRecentClientsForTenant(tenantId);
 
   const syncedAt = new Date().toISOString();
   await supabaseAdmin
@@ -255,5 +271,5 @@ export async function runFullTenantSync(tenantId: string): Promise<FullSyncResul
     .update({ last_synced_at: syncedAt })
     .eq("tenant_id", tenantId);
 
-  return { syncedAt, providers, appointments };
+  return { syncedAt, providers, appointments, clients };
 }

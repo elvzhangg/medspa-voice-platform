@@ -65,8 +65,10 @@ export async function POST() {
 
   const result = await runFullTenantSync(tenant.id);
 
-  // If both phases errored, surface the error to the caller so the UI
-  // can show a toast. If only one errored, treat as success-with-warning.
+  // If both platform-touching phases errored, surface the failure so
+  // the UI can show a toast. Client aggregation is a pure DB pass; an
+  // error there doesn't indicate platform trouble, so it doesn't gate
+  // the response status.
   const bothErrored = result.providers.errored && result.appointments.errored;
   const status = bothErrored ? 502 : 200;
   return NextResponse.json(
@@ -86,6 +88,12 @@ export async function POST() {
         upserted: result.appointments.upserted,
         errored: result.appointments.errored,
         error: result.appointments.errorMessage,
+      },
+      clients: {
+        scanned: result.clients.scanned,
+        upserted: result.clients.upserted,
+        errored: result.clients.errored,
+        error: result.clients.errorMessage,
       },
     },
     { status }
