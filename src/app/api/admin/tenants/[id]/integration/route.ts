@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { syncProvidersForTenant } from "@/lib/provider-sync";
+import { runFullTenantSync } from "@/lib/appointment-sync";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -116,12 +116,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  // Fire-and-forget roster sync when the admin flips status to 'connected'.
-  // Don't block the response — initial sync can take a few seconds against
-  // a platform with many staff. Errors are logged by provider-sync itself.
+  // Fire-and-forget initial sync when the admin flips status to 'connected'.
+  // We don't make the admin wait on a roster fetch and a 4-month appointment
+  // backfill. Tenants who'd otherwise wait for the 9am cron see staff +
+  // the appointment book populated immediately on connect.
   if (status === "connected") {
-    void syncProvidersForTenant(id).catch((err) => {
-      console.error("PROVIDER_SYNC_ON_CONNECT_ERR:", id, err);
+    void runFullTenantSync(id).catch((err) => {
+      console.error("FULL_SYNC_ON_CONNECT_ERR:", id, err);
     });
   }
 

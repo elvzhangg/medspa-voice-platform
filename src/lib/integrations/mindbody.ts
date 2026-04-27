@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
+  AdapterAppointment,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
@@ -218,6 +219,94 @@ const adapter: BookingAdapter = {
         } as AdapterProvider;
       })
       .filter((p): p is AdapterProvider => p !== null);
+  },
+
+  async listAppointments(ctx, { since, until }): Promise<AdapterAppointment[]> {
+    // Mindbody's /appointment/staffappointments requires StaffIds. We
+    // pull the active roster first, then page through appointments per
+    // 30-day window (the endpoint caps date ranges at 31 days). Staff
+    // tokens are required — addclient/staff appointment data is gated.
+    const locationId = ctx.config.location_id;
+    const staffPath = locationId
+      ? `/staff/staff?LocationId=${encodeURIComponent(locationId)}&Limit=200`
+      : "/staff/staff?Limit=200";
+    const staffRes = await mbFetch<{ StaffMembers?: { Id: number }[] }>(ctx, staffPath);
+    const staffIds = (staffRes?.StaffMembers ?? []).map((s) => s.Id);
+    if (staffIds.length === 0) return [];
+    const staffParam = staffIds.join(",");
+
+    interface MbAppointment {
+      Id: number;
+      StartDateTime: string;
+      EndDateTime?: string;
+      Status?: string;
+      ClientId?: string;
+      Client?: { FirstName?: string; LastName?: string; MobilePhone?: string; Phone?: string };
+      Staff?: { Id?: number; Name?: string };
+      SessionType?: { Name?: string };
+    }
+
+    const out: AdapterAppointment[] = [];
+    const chunkDays = 30;
+    let cursor = new Date(since);
+    const end = new Date(until);
+
+    while (cursor < end) {
+      const chunkEnd = new Date(Math.min(cursor.getTime() + chunkDays * 86_400_000, end.getTime()));
+      const startDate = cursor.toISOString().slice(0, 10);
+      const endDate = chunkEnd.toISOString().slice(0, 10);
+
+      let offset = 0;
+      const PAGE = 200;
+      while (true) {
+        const params = new URLSearchParams({
+          StaffIds: staffParam,
+          StartDate: startDate,
+          EndDate: endDate,
+          Limit: String(PAGE),
+          Offset: String(offset),
+        });
+        if (locationId) params.set("LocationIds", locationId);
+
+        const page = await mbFetch<{ StaffAppointments?: MbAppointment[] }>(
+          ctx,
+          `/appointment/staffappointments?${params}`,
+          { authed: true }
+        );
+        const rows = page?.StaffAppointments ?? [];
+        for (const a of rows) {
+          if (!a.StartDateTime) continue;
+          const raw = (a.Status || "").trim();
+          let status: AdapterAppointment["status"] = "confirmed";
+          if (/cancel|no ?show/i.test(raw)) status = "cancelled";
+          else if (/complet|closed|paid/i.test(raw)) status = "completed";
+
+          const customerName = [a.Client?.FirstName, a.Client?.LastName]
+            .filter(Boolean)
+            .join(" ") || undefined;
+
+          out.push({
+            externalId: String(a.Id),
+            startTime: a.StartDateTime,
+            endTime: a.EndDateTime,
+            serviceName: a.SessionType?.Name,
+            staffName: a.Staff?.Name,
+            customerName,
+            customerPhone: a.Client?.MobilePhone || a.Client?.Phone,
+            status,
+            platformStatus: raw || undefined,
+          });
+        }
+        if (rows.length < PAGE) break;
+        offset += PAGE;
+      }
+
+      // Advance cursor by chunkDays (exclusive of the prior endDate to
+      // avoid double-counting an appointment that straddles midnight)
+      cursor = new Date(chunkEnd.getTime() + 86_400_000);
+    }
+
+    return out;
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {

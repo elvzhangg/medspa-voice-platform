@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAdapter } from "@/lib/integrations";
-import { syncProvidersForTenant } from "@/lib/provider-sync";
+import { runFullTenantSync } from "@/lib/appointment-sync";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -132,10 +132,12 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     })
     .eq("id", id);
 
-  // Kick off the initial roster sync in the background — don't block the
-  // test-connection response. Next call to the AI will have the full staff list.
-  void syncProvidersForTenant(id).catch((err) => {
-    console.error("PROVIDER_SYNC_ON_TEST_ERR:", id, err);
+  // Kick off the initial roster + appointment backfill in the background —
+  // don't block the test-connection response. By the time the admin
+  // refreshes the tenant dashboard, staff + the appointment book are
+  // populated.
+  void runFullTenantSync(id).catch((err) => {
+    console.error("FULL_SYNC_ON_TEST_ERR:", id, err);
   });
 
   return NextResponse.json({ ok: true, platform: integration.platform, mode: integration.mode });

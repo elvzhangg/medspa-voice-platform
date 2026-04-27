@@ -105,6 +105,39 @@ export interface AdapterClientHistory {
 }
 
 /**
+ * One appointment as returned by a backfill / pull-style listAppointments
+ * call. Same shape we eventually upsert to calendar_events. The webhook
+ * path normalizes its own payload to this shape too, so both ingestion
+ * routes funnel through one writer.
+ *
+ * `status` is the adapter's normalized rollup — "confirmed" covers
+ * booked/scheduled/checked-in, "cancelled" covers cancel + no-show + late
+ * cancel, "completed" is paid/closed. `platformStatus` keeps the raw
+ * string for audit.
+ */
+export interface AdapterAppointment {
+  /** Platform-side appointment id — upsert key */
+  externalId: string;
+  /**
+   * ISO 8601 start. Always set on listAppointments rows; may be absent on
+   * webhook-derived cancellations where the platform omits the timestamp.
+   * The writer drops "confirmed" appointments without a start; "cancelled"
+   * and "completed" tolerate it (they only update existing rows).
+   */
+  startTime?: string;
+  endTime?: string;
+  serviceName?: string;
+  staffName?: string;
+  customerName?: string;
+  customerPhone?: string;
+  status: "confirmed" | "cancelled" | "completed";
+  /** Price in cents — present on completed appointments that carry payment info */
+  priceCents?: number;
+  /** Raw platform status string (e.g. "Booked", "Late Cancel") for audit */
+  platformStatus?: string;
+}
+
+/**
  * Provider/staff record pulled from a booking platform. Used by the
  * periodic roster sync to keep our `staff` table current — tenant-authored
  * ai_notes + specialties are layered on top and never overwritten.
@@ -168,6 +201,21 @@ export interface BookingAdapter {
    * failed rather than silently wiping the roster.
    */
   listProviders?(ctx: AdapterContext): Promise<AdapterProvider[]>;
+
+  /**
+   * Optional — pull every appointment in [since, until] from the platform.
+   * Used by the manual "Sync now" button as a webhook safety net so dropped
+   * or unsigned events still reconcile into calendar_events. Adapters
+   * should chunk by whatever window the platform allows and paginate
+   * internally — return the flat list. Throw on auth/network failure.
+   *
+   * Adapters that don't expose a list endpoint may omit this; the sync
+   * orchestrator skips them silently.
+   */
+  listAppointments?(
+    ctx: AdapterContext,
+    args: { since: string; until: string }
+  ): Promise<AdapterAppointment[]>;
 
   /**
    * Query the platform for bookable slots on a given date.

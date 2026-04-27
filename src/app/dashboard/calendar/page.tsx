@@ -82,6 +82,8 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<CalEvent | null>(null);
   const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/integrations/me")
@@ -132,6 +134,43 @@ export default function CalendarPage() {
     },
     [applyCompletionToState]
   );
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/integrations/me/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        // 429 = cooldown; surface a friendlier message than the raw error.
+        const msg =
+          res.status === 429
+            ? `Just synced — try again in ${data.retryAfterSec ?? "a few"}s`
+            : data.error || "Sync failed";
+        setSyncError(msg);
+      } else {
+        setIntegration((prev) =>
+          prev ? { ...prev, last_synced_at: data.last_synced_at } : prev
+        );
+        // Refetch the visible month so any backfilled appointments show up
+        const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+        const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+        const qs = new URLSearchParams({
+          start: start.toISOString(),
+          end: end.toISOString(),
+        });
+        const evRes = await fetch(`/api/calendar/events?${qs}`);
+        if (evRes.ok) {
+          const evData = await evRes.json();
+          setEvents(evData.events ?? []);
+        }
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }, [cursor]);
 
   const loadMonth = useCallback(async (anchor: Date) => {
     setLoading(true);
@@ -281,16 +320,30 @@ export default function CalendarPage() {
 
       {/* Sync status strip — read-only status for the connected booking platform */}
       {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          <span className="text-xs font-bold text-zinc-800">
-            {PLATFORM_COLORS[integration.platform].label}
-          </span>
-          <span className="text-[11px] text-zinc-500">·</span>
-          <span className="text-[11px] text-zinc-500">{formatSyncAgo(integration.last_synced_at)}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-xs font-bold text-zinc-800">
+              {PLATFORM_COLORS[integration.platform].label}
+            </span>
+            <span className="text-[11px] text-zinc-500">·</span>
+            <span className="text-[11px] text-zinc-500">
+              {syncing ? "syncing…" : formatSyncAgo(integration.last_synced_at)}
+            </span>
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {syncing ? "Syncing…" : "Sync now"}
+          </button>
+          {syncError && (
+            <span className="text-[11px] text-rose-600 font-medium">{syncError}</span>
+          )}
         </div>
       )}
 
