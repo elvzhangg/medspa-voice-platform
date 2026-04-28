@@ -20,6 +20,13 @@ import { runFullTenantSync } from "@/lib/appointment-sync";
 
 const COOLDOWN_MS = 30_000;
 
+// First sync against a fresh tenant fans out N pages of platform pulls
+// + bulk upserts; the longest path observed is ~30s on a populated
+// Mindbody site. Set the ceiling to 5 min so we don't truncate on
+// outliers (large directories, slow platform responses). Vercel only
+// bills for actual run-time, not the ceiling.
+export const maxDuration = 300;
+
 export async function POST() {
   const tenant = (await getCurrentTenant()) as
     | { id: string; integration_status?: string | null }

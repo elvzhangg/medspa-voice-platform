@@ -442,50 +442,100 @@ export async function syncClientDirectoryForTenant(
     const platform = integration.adapter.platform;
     const now = new Date().toISOString();
 
+    // Collapse to one record per phone (last-wins on dupes) and drop
+    // anything we can't join on. This is the in-memory step that makes
+    // bulk upserts safe — platform_clients can carry the same phone on
+    // multiple records (e.g. duplicate accounts) and Postgres' ON
+    // CONFLICT would otherwise raise on the second copy in the batch.
+    const phoneToRecord = new Map<string, AdapterClientRecord>();
     for (const r of records) {
       const phone = normalizePhone(r.phone);
       if (!phone) {
         result.skippedNoPhone++;
         continue;
       }
+      phoneToRecord.set(phone, r);
+    }
 
-      // ensureClientProfile is the (tenant, phone) upsert key. Returns
-      // the existing profile if there is one, otherwise creates it.
-      const profile = await ensureClientProfile(tenantId, phone);
-      if (!profile) continue;
+    // Chunked bulk-fetch + bulk-upsert. 200 per chunk keeps payload size
+    // sane (~30KB) and lets one bad chunk fail without taking down the
+    // rest of the sync.
+    const CHUNK = 200;
+    const phones = Array.from(phoneToRecord.keys());
 
-      const providerRefs = {
-        ...((profile.provider_refs ?? {}) as Record<string, string>),
-        [platform]: r.externalId,
-      };
+    for (let i = 0; i < phones.length; i += CHUNK) {
+      const chunkPhones = phones.slice(i, i + CHUNK);
 
-      const update: Record<string, unknown> = {
-        last_synced_at: now,
-        sync_source: `directory_${platform}`,
-        sync_error: null,
-        provider_refs: providerRefs,
-      };
-
-      // Only seed identity when blank — staff edits in the dashboard
-      // win over platform values. Same policy as syncClientFromPlatform.
-      if (!profile.first_name && r.firstName) update.first_name = r.firstName;
-      if (!profile.last_name && r.lastName) update.last_name = r.lastName;
-      if (!profile.email && r.email) update.email = r.email;
-
-      const { error } = await supabaseAdmin
+      // 1. Fetch existing rows in this chunk so we can preserve staff-
+      //    edited identity fields (first_name/last_name/email) and merge
+      //    the provider_refs jsonb cleanly. One round-trip per chunk
+      //    instead of one per record.
+      const { data: existingRows, error: fetchErr } = await supabaseAdmin
         .from("client_profiles")
-        .update(update)
-        .eq("id", profile.id);
-      if (error) {
-        console.error(
-          "CLIENT_DIRECTORY_UPDATE_ERR:",
-          tenantId,
-          r.externalId,
-          error.message
-        );
+        .select("phone, first_name, last_name, email, provider_refs")
+        .eq("tenant_id", tenantId)
+        .in("phone", chunkPhones);
+
+      if (fetchErr) {
+        console.error("CLIENT_DIRECTORY_BULK_FETCH_ERR:", fetchErr.message);
+        continue; // try the next chunk; don't abort the whole sync
+      }
+
+      const existingByPhone = new Map<
+        string,
+        {
+          phone: string;
+          first_name: string | null;
+          last_name: string | null;
+          email: string | null;
+          provider_refs: Record<string, string> | null;
+        }
+      >();
+      for (const e of (existingRows ?? []) as Array<{
+        phone: string;
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+        provider_refs: Record<string, string> | null;
+      }>) {
+        existingByPhone.set(e.phone, e);
+      }
+
+      // 2. Build payloads. Identity-preservation policy: existing values
+      //    win over platform values (staff edits stick); blank existing
+      //    values fall through to platform values; both blank → null.
+      const upserts = chunkPhones.map((phone) => {
+        const r = phoneToRecord.get(phone)!;
+        const existing = existingByPhone.get(phone);
+        const providerRefs = {
+          ...((existing?.provider_refs ?? {}) as Record<string, string>),
+          [platform]: r.externalId,
+        };
+        return {
+          tenant_id: tenantId,
+          phone,
+          first_name: existing?.first_name ?? r.firstName ?? null,
+          last_name: existing?.last_name ?? r.lastName ?? null,
+          email: existing?.email ?? r.email ?? null,
+          provider_refs: providerRefs,
+          last_synced_at: now,
+          sync_source: `directory_${platform}`,
+          sync_error: null,
+        };
+      });
+
+      // 3. One bulk upsert per chunk. Conflict on (tenant_id, phone) —
+      //    PostgREST infers the constraint from the column list. New
+      //    rows get default null for any column we don't include here.
+      const { error: upsertErr } = await supabaseAdmin
+        .from("client_profiles")
+        .upsert(upserts, { onConflict: "tenant_id,phone" });
+
+      if (upsertErr) {
+        console.error("CLIENT_DIRECTORY_BULK_UPSERT_ERR:", upsertErr.message);
         continue;
       }
-      result.upserted++;
+      result.upserted += upserts.length;
     }
   } catch (err) {
     result.errored = true;
