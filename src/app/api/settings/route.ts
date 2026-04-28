@@ -36,6 +36,17 @@ export async function GET() {
     membership_details: tenant.booking_config?.membership_details || "",
     membership_signup_url: tenant.booking_config?.membership_signup_url || "",
     directions_parking_info: tenant.directions_parking_info || "",
+    // Intake form: clinic supplies any URL (Mindbody, IntakeQ, Jotform, their
+    // own portal). Vaux SMSes the link post-booking — platform-agnostic.
+    intake_form_enabled: tenant.booking_config?.intake_form_enabled ?? false,
+    intake_form_url: tenant.booking_config?.intake_form_url || "",
+    intake_form_message:
+      tenant.booking_config?.intake_form_message ||
+      "Hi {first_name}, please complete your intake form before your appointment: {link}",
+    // Free-form prose telling the AI about scheduling constraints it can't
+    // see in the platform (one CoolSculpting machine, shared laser room,
+    // etc.). Lightweight stand-in for full resource modeling.
+    booking_constraints: tenant.booking_config?.booking_constraints || "",
   });
 }
 
@@ -57,6 +68,10 @@ export async function POST(req: Request) {
     membership_details,
     membership_signup_url,
     directions_parking_info,
+    intake_form_enabled,
+    intake_form_url,
+    intake_form_message,
+    booking_constraints,
   } = body;
 
   const { error } = await supabaseAdmin
@@ -80,6 +95,12 @@ export async function POST(req: Request) {
         membership_enabled,
         membership_details,
         membership_signup_url,
+        intake_form_enabled: Boolean(intake_form_enabled),
+        intake_form_url: typeof intake_form_url === "string" ? intake_form_url.trim() : "",
+        intake_form_message:
+          typeof intake_form_message === "string" ? intake_form_message : "",
+        booking_constraints:
+          typeof booking_constraints === "string" ? booking_constraints : "",
       },
     })
     .eq("id", tenant.id);

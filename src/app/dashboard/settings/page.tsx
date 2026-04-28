@@ -93,6 +93,10 @@ interface IdentitySettings {
   membership_details: string;
   membership_signup_url: string;
   directions_parking_info: string;
+  intake_form_enabled: boolean;
+  intake_form_url: string;
+  intake_form_message: string;
+  booking_constraints: string;
 }
 
 interface CallSettings {
@@ -114,6 +118,10 @@ export default function ClinicSetupPage() {
     membership_details: "",
     membership_signup_url: "",
     directions_parking_info: "",
+    intake_form_enabled: false,
+    intake_form_url: "",
+    intake_form_message: "",
+    booking_constraints: "",
   });
   const [calls, setCalls] = useState<CallSettings>({
     voice_id: VOICE_OPTIONS[0].id,
@@ -399,6 +407,73 @@ export default function ClinicSetupPage() {
               </div>
             )}
           </Field>
+          <Field
+            label="Booking Constraints"
+            hint="Plain-English rules the AI can't see in your booking platform — usually equipment or room limits. The AI checks these before confirming a slot. Leave blank if you only have staff-level constraints."
+          >
+            <textarea
+              rows={3}
+              value={identity.booking_constraints}
+              onChange={(e) =>
+                setIdentity({ ...identity, booking_constraints: e.target.value })
+              }
+              className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm resize-none"
+              placeholder={`e.g.\n- We have only one CoolSculpting machine — never book two CoolSculpting appointments at the same time\n- Laser Room is shared between IPL and hair removal — only one laser treatment per hour\n- The injection room can't run a HydraFacial in parallel`}
+            />
+          </Field>
+        </Section>
+
+        <Section
+          title="Intake Forms"
+          subtitle="Send new patients an intake link via SMS right after booking. Works with any form host — Mindbody public form, IntakeQ, Jotform, your own portal."
+          icon={
+            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          }
+        >
+          <Field
+            label="Send intake link after booking"
+            hint="When on, every booking with a phone number gets the SMS below. Off by default — leave off if you do paper intake or rely on Mindbody's auto-send."
+          >
+            <div className="flex items-center gap-3">
+              <Toggle
+                enabled={identity.intake_form_enabled}
+                onChange={() =>
+                  setIdentity({ ...identity, intake_form_enabled: !identity.intake_form_enabled })
+                }
+                ariaLabel="Enable intake form SMS"
+              />
+              <span className="text-xs font-bold text-zinc-500">
+                {identity.intake_form_enabled ? "ON" : "OFF"}
+              </span>
+            </div>
+          </Field>
+          {identity.intake_form_enabled && (
+            <>
+              <Field label="Intake form URL" hint="Any HIPAA-safe form link your clinic already uses.">
+                <input
+                  type="url"
+                  value={identity.intake_form_url}
+                  onChange={(e) => setIdentity({ ...identity, intake_form_url: e.target.value })}
+                  placeholder="https://intakeq.com/forms/your-clinic-intake"
+                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm"
+                />
+              </Field>
+              <Field
+                label="SMS message"
+                hint="Use {first_name} for the patient's first name and {link} for the URL. Keep it under 160 characters to avoid carrier splitting."
+              >
+                <textarea
+                  rows={3}
+                  value={identity.intake_form_message}
+                  onChange={(e) => setIdentity({ ...identity, intake_form_message: e.target.value })}
+                  placeholder="Hi {first_name}, please complete your intake form before your appointment: {link}"
+                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 focus:ring-2 focus:ring-amber-400 focus:bg-white outline-none transition-all text-sm resize-none"
+                />
+              </Field>
+            </>
+          )}
         </Section>
 
         <div className="flex justify-end items-center gap-4 pt-1">

@@ -498,6 +498,9 @@ ${overrideLines}`
   const membershipEnabled = Boolean(bc?.membership_enabled);
   const membershipDetails = bc?.membership_details?.trim();
   const membershipSignupUrl = bc?.membership_signup_url?.trim();
+  const bookingConstraints = bc?.booking_constraints?.trim();
+  const intakeFormEnabled = Boolean(bc?.intake_form_enabled);
+  const intakeFormUrl = bc?.intake_form_url?.trim();
 
   const locationBlock = directions
     ? `\n## Location & Parking\n${directions}\nWhen callers ask "where are you?" or about parking, answer directly using this info.\n`
@@ -516,6 +519,21 @@ ${overrideLines}`
         }When cost, loyalty, or returning-client topics come up — especially if the caller sounds like they'd be a fit — warmly mention the membership. If they're interested, offer to text them the signup link via the send_sms tool. Don't push; one mention is enough unless they ask for more.\n`
       : "";
 
+  // Plain-English booking constraints — equipment/room/scheduling rules
+  // the platform can't enforce on its own. The AI checks these before
+  // confirming a slot. Stand-in for full resource modeling.
+  const bookingConstraintsBlock = bookingConstraints
+    ? `\n## Booking Constraints\nBefore confirming any slot, check these rules:\n${bookingConstraints}\nIf a requested slot would violate one, propose the next compatible time. Don't confirm a booking that breaks a constraint.\n`
+    : "";
+
+  // Intake form awareness — the URL itself goes out via SMS post-booking
+  // (see lib/intake-form.ts). The AI just needs to know to mention it
+  // when callers ask about pre-visit paperwork.
+  const intakeFormBlock =
+    intakeFormEnabled && intakeFormUrl
+      ? `\n## Intake Forms\nAfter every booking, we automatically text the caller a link to our intake form. When they ask about paperwork, what to bring, or pre-appointment prep, confirm the form will arrive by text shortly and they should fill it out before arriving. Don't read the URL out loud — the SMS handles delivery.\n`
+      : "";
+
   return `You are a friendly, professional AI Clientele Specialist for ${tenant.name}, a med spa business.
 
 ## Your Role
@@ -526,7 +544,7 @@ ${overrideLines}`
 
 ## Current Time
 ${timeStr} (Pacific Time)
-${callerContext}${providerRoster}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}
+${callerContext}${providerRoster}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}

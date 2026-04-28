@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import { loadTenantIntegration } from "./integrations";
 import { resolveCachedSlot } from "./availability";
+import { sendIntakeFormSms } from "./intake-form";
 
 /**
  * Booking integration layer supporting 5 modes:
@@ -528,6 +529,14 @@ async function bookViaAdapter(request: BookingRequest): Promise<BookingResult> {
       console.error("AI_ATTRIBUTION_WRITE_ERR:", e);
     }
   }
+
+  // Fire-and-forget intake form SMS. No-op if the tenant hasn't enabled it.
+  // Errors are logged inside; we don't block the booking on a Twilio hiccup.
+  void sendIntakeFormSms({
+    tenantId: request.tenantId,
+    customerName: request.customerName,
+    customerPhone: request.customerPhone,
+  }).catch((err) => console.error("INTAKE_FORM_SMS_ERR:", err));
 
   return {
     success: true,
