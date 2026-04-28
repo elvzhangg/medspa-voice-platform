@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDismiss } from "../_components/useDismiss";
+import SyncStatusBar from "../_components/SyncStatusBar";
+import { PLATFORM_COLORS } from "../_components/platforms";
 
 interface CalEvent {
   id: string;
@@ -19,34 +21,12 @@ interface CalEvent {
   completed_at?: string | null;
 }
 
-const PLATFORM_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  boulevard: { bg: "bg-rose-100", text: "text-rose-800", label: "Boulevard" },
-  acuity: { bg: "bg-gray-900", text: "text-white", label: "Acuity" },
-  mindbody: { bg: "bg-sky-100", text: "text-sky-800", label: "Mindbody" },
-  square: { bg: "bg-emerald-100", text: "text-emerald-800", label: "Square" },
-  zenoti: { bg: "bg-amber-100", text: "text-amber-800", label: "Zenoti" },
-  vagaro: { bg: "bg-orange-100", text: "text-orange-800", label: "Vagaro" },
-  jane: { bg: "bg-teal-100", text: "text-teal-800", label: "Jane" },
-  wellnessliving: { bg: "bg-lime-100", text: "text-lime-800", label: "WellnessLiving" },
-};
 const AI_COLOR = { bg: "bg-amber-100", text: "text-amber-900", label: "AI booked" };
 
 interface IntegrationStatus {
   platform: string | null;
   status: "pending" | "connected" | "error" | "disabled";
   last_synced_at: string | null;
-}
-
-function formatSyncAgo(iso: string | null): string {
-  if (!iso) return "awaiting first sync";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "synced just now";
-  if (mins < 60) return `synced ${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `synced ${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `synced ${days}d ago`;
 }
 
 function eventColor(ev: CalEvent) {
@@ -82,8 +62,6 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<CalEvent | null>(null);
   const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
   const [completing, setCompleting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/integrations/me")
@@ -134,43 +112,6 @@ export default function CalendarPage() {
     },
     [applyCompletionToState]
   );
-
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    setSyncError(null);
-    try {
-      const res = await fetch("/api/integrations/me/sync", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        // 429 = cooldown; surface a friendlier message than the raw error.
-        const msg =
-          res.status === 429
-            ? `Just synced — try again in ${data.retryAfterSec ?? "a few"}s`
-            : data.error || "Sync failed";
-        setSyncError(msg);
-      } else {
-        setIntegration((prev) =>
-          prev ? { ...prev, last_synced_at: data.last_synced_at } : prev
-        );
-        // Refetch the visible month so any backfilled appointments show up
-        const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-        const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        const qs = new URLSearchParams({
-          start: start.toISOString(),
-          end: end.toISOString(),
-        });
-        const evRes = await fetch(`/api/calendar/events?${qs}`);
-        if (evRes.ok) {
-          const evData = await evRes.json();
-          setEvents(evData.events ?? []);
-        }
-      }
-    } catch (err) {
-      setSyncError(err instanceof Error ? err.message : "Sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  }, [cursor]);
 
   const loadMonth = useCallback(async (anchor: Date) => {
     setLoading(true);
@@ -318,34 +259,8 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Sync status strip — read-only status for the connected booking platform */}
-      {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span className="text-xs font-bold text-zinc-800">
-              {PLATFORM_COLORS[integration.platform].label}
-            </span>
-            <span className="text-[11px] text-zinc-500">·</span>
-            <span className="text-[11px] text-zinc-500">
-              {syncing ? "syncing…" : formatSyncAgo(integration.last_synced_at)}
-            </span>
-          </div>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {syncing ? "Syncing…" : "Sync now"}
-          </button>
-          {syncError && (
-            <span className="text-[11px] text-rose-600 font-medium">{syncError}</span>
-          )}
-        </div>
-      )}
+      {/* Sync status pill + Sync now button — shared across calendar, providers, clients */}
+      <SyncStatusBar onSyncComplete={() => loadMonth(cursor)} />
 
       {/* Month header + legend */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

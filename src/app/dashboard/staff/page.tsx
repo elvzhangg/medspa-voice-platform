@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import SyncStatusBar from "../_components/SyncStatusBar";
 
 interface StaffMember {
   id: string;
@@ -94,7 +95,7 @@ export default function ProvidersPage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="font-serif text-3xl text-zinc-900">Providers</h1>
           <p className="text-sm text-zinc-500">
@@ -107,6 +108,11 @@ export default function ProvidersPage() {
         >
           <span>+</span> Add Provider
         </button>
+      </div>
+
+      {/* Sync status pill + Sync now button — pulls fresh roster + bios from the connected platform */}
+      <div className="mb-8">
+        <SyncStatusBar onSyncComplete={fetchStaff} />
       </div>
 
       {isAdding && (
