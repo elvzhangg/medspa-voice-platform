@@ -9,6 +9,7 @@ import type {
   AdapterWebhookEvent,
   AdapterWebhookEventType,
   AdapterProvider,
+  AdapterClientRecord,
   BookingAdapter,
 } from "./types";
 
@@ -375,6 +376,67 @@ const adapter: BookingAdapter = {
       // Advance cursor by chunkDays (exclusive of the prior endDate to
       // avoid double-counting an appointment that straddles midnight)
       cursor = new Date(chunkEnd.getTime() + 86_400_000);
+    }
+
+    return out;
+  },
+
+  async listClients(ctx, { modifiedSince, limit } = {}): Promise<AdapterClientRecord[]> {
+    // Mindbody's /client/clients returns the directory. Authed (PII).
+    // `LastModifiedDate` filters server-side to clients touched after a
+    // given ISO date — handy for incremental syncs after the first.
+    //
+    // Many records have null phones in `-99` and even in some real
+    // tenants who never collected mobile numbers; we still return them
+    // here and let the orchestrator decide whether to skip-on-no-phone.
+    interface MbClient {
+      Id?: string;
+      UniqueId?: number;
+      FirstName?: string;
+      LastName?: string;
+      Email?: string;
+      MobilePhone?: string;
+      HomePhone?: string;
+      WorkPhone?: string;
+      LastModifiedDateTime?: string;
+      CreationDate?: string;
+    }
+
+    const PAGE = 200;
+    const HARD_CAP = limit ?? 2000; // ceiling so a 50k-client clinic doesn't run forever
+    const out: AdapterClientRecord[] = [];
+    let offset = 0;
+
+    while (out.length < HARD_CAP) {
+      const params = new URLSearchParams({
+        Limit: String(Math.min(PAGE, HARD_CAP - out.length)),
+        Offset: String(offset),
+      });
+      if (modifiedSince) params.set("LastModifiedDate", modifiedSince);
+
+      const page = await mbFetch<{ Clients?: MbClient[] }>(
+        ctx,
+        `/client/clients?${params}`,
+        { authed: true }
+      );
+      const rows = page?.Clients ?? [];
+      for (const c of rows) {
+        const externalId = c.Id?.toString() || (c.UniqueId !== undefined ? String(c.UniqueId) : null);
+        if (!externalId) continue;
+        out.push({
+          externalId,
+          firstName: c.FirstName?.trim() || undefined,
+          lastName: c.LastName?.trim() || undefined,
+          email: c.Email?.trim() || undefined,
+          // Prefer mobile (more likely to match a voice call). Fall through
+          // to home/work so a clinic that only collected a single number
+          // still matches.
+          phone: c.MobilePhone || c.HomePhone || c.WorkPhone || undefined,
+          lastModified: c.LastModifiedDateTime,
+        });
+      }
+      if (rows.length < PAGE) break;
+      offset += PAGE;
     }
 
     return out;

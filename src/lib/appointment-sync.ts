@@ -4,7 +4,9 @@ import { loadTenantIntegration } from "./integrations";
 import { syncProvidersForTenant, type SyncResult as ProviderSyncResult } from "./provider-sync";
 import {
   syncRecentClientsForTenant,
+  syncClientDirectoryForTenant,
   type RecentClientSyncResult,
+  type ClientDirectorySyncResult,
 } from "./client-sync";
 import type { AdapterAppointment } from "./integrations/types";
 
@@ -226,6 +228,7 @@ export interface FullSyncResult {
   syncedAt: string;
   providers: ProviderSyncResult;
   appointments: AppointmentSyncResult;
+  clientDirectory: ClientDirectorySyncResult;
   clients: RecentClientSyncResult;
 }
 
@@ -239,11 +242,16 @@ export interface FullSyncResult {
  *      catches SQL bootstraps, dev seeds, failed initial syncs).
  *
  * Phases run sequentially so a flaky platform doesn't double-load itself:
- *   1. providers   — pull staff roster from platform
- *   2. appointments — backfill -90/+90d into calendar_events
- *   3. clients      — aggregate calendar_events to pre-warm client_profiles
- *                     for recent (last 30d) and VIP (≥3 visits in window)
- *                     callers. Pure DB work, no platform round-trip.
+ *   1. providers        — pull staff roster from platform
+ *   2. appointments     — backfill -90/+90d into calendar_events
+ *   3. clientDirectory  — pull the platform's client directory so clients
+ *                          who exist in the system but haven't booked
+ *                          recently still get a profile row (covers the
+ *                          "I added a client but it didn't show up" gap).
+ *   4. clients          — aggregate calendar_events to layer visit
+ *                          metrics (last visit, favorite service/staff,
+ *                          platform_visit_count) on top of the profiles
+ *                          created in phase 3. Pure DB work.
  *
  * Always bumps tenant_integrations.last_synced_at — even on partial
  * failure — so the bootstrap path doesn't infinite-retry on every
@@ -260,9 +268,13 @@ export async function runFullTenantSync(tenantId: string): Promise<FullSyncResul
 
   const providers = await syncProvidersForTenant(tenantId);
   const appointments = await syncAppointmentsForTenant(tenantId, { since, until });
-  // Client aggregation reads from calendar_events the appointment phase
+  // Directory pull first so phase 4 has rows to update with visit
+  // metrics; identity values (name/email) are seeded only when blank,
+  // so the order is forgiving but cleaner this way.
+  const clientDirectory = await syncClientDirectoryForTenant(tenantId);
+  // Aggregation reads from calendar_events that the appointment phase
   // just populated. If appointments errored we still try this — there
-  // may be calendar data from prior syncs or webhooks that's worth aggregating.
+  // may be calendar data from prior syncs or webhooks worth aggregating.
   const clients = await syncRecentClientsForTenant(tenantId);
 
   const syncedAt = new Date().toISOString();
@@ -271,5 +283,5 @@ export async function runFullTenantSync(tenantId: string): Promise<FullSyncResul
     .update({ last_synced_at: syncedAt })
     .eq("tenant_id", tenantId);
 
-  return { syncedAt, providers, appointments, clients };
+  return { syncedAt, providers, appointments, clientDirectory, clients };
 }

@@ -105,6 +105,29 @@ export interface AdapterClientHistory {
 }
 
 /**
+ * One row from a platform's client directory. Returned by listClients;
+ * we use these to pre-create client_profiles for clients who exist in
+ * the platform but haven't booked recently — so the AI greets them by
+ * name on a cold call instead of treating them as strangers.
+ *
+ * Visit metrics are deliberately omitted here (most platforms don't
+ * surface lifetime value on the client list endpoint without an extra
+ * per-client call). The recent-client aggregator fills those in from
+ * calendar_events later.
+ */
+export interface AdapterClientRecord {
+  /** Platform-side client id — stashed in client_profiles.provider_refs */
+  externalId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  /** Raw platform phone — caller normalizes via normalizePhone() on insert. */
+  phone?: string;
+  /** ISO timestamp; lets the caller optionally filter to recently-active records. */
+  lastModified?: string;
+}
+
+/**
  * One appointment as returned by a backfill / pull-style listAppointments
  * call. Same shape we eventually upsert to calendar_events. The webhook
  * path normalizes its own payload to this shape too, so both ingestion
@@ -207,6 +230,23 @@ export interface BookingAdapter {
    * failed rather than silently wiping the roster.
    */
   listProviders?(ctx: AdapterContext): Promise<AdapterProvider[]>;
+
+  /**
+   * Optional — pull the platform's client directory. Used by the manual
+   * "Sync now" full-sync to pre-populate client_profiles for callers who
+   * exist in the platform but haven't booked through us yet. Adapters
+   * paginate internally and return the flat list. Throw on auth/network
+   * failure. Adapters whose platforms don't expose a client list endpoint
+   * may omit this.
+   *
+   * `modifiedSince` lets callers narrow the pull to recently-active
+   * records to keep first-sync time bounded; ignored if the platform
+   * doesn't support that filter.
+   */
+  listClients?(
+    ctx: AdapterContext,
+    args: { modifiedSince?: string; limit?: number }
+  ): Promise<AdapterClientRecord[]>;
 
   /**
    * Optional — pull every appointment in [since, until] from the platform.

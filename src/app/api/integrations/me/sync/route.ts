@@ -89,6 +89,13 @@ export async function POST() {
         errored: result.appointments.errored,
         error: result.appointments.errorMessage,
       },
+      clientDirectory: {
+        fetched: result.clientDirectory.fetched,
+        upserted: result.clientDirectory.upserted,
+        skippedNoPhone: result.clientDirectory.skippedNoPhone,
+        errored: result.clientDirectory.errored,
+        error: result.clientDirectory.errorMessage,
+      },
       clients: {
         scanned: result.clients.scanned,
         upserted: result.clients.upserted,

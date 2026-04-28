@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import { loadTenantIntegration } from "./integrations";
 import { ensureClientProfile, normalizePhone } from "./client-intelligence";
-import type { AdapterClientHistory } from "./integrations/types";
+import type { AdapterClientHistory, AdapterClientRecord } from "./integrations/types";
 
 /**
  * Client Intelligence — Phase 2
@@ -355,6 +355,134 @@ export async function syncRecentClientsForTenant(
     result.errored = true;
     result.errorMessage = err instanceof Error ? err.message : String(err);
     console.error("RECENT_CLIENT_SYNC_ERR:", result.errorMessage);
+  }
+
+  return result;
+}
+
+// ─── Bulk pull of platform client directory ─────────────────────────────────
+//
+// Complements the recent-from-calendar aggregator above: that one only
+// finds clients who have an appointment in the backfill window. This
+// one pulls straight from the platform's client directory, so clients
+// who exist in the system but haven't booked in our window — or were
+// added via the front desk without ever booking — still get a profile
+// row created. The AI greets them by name on a cold call instead of
+// treating them as strangers.
+//
+// Volume control: hard cap of 2000 clients per sync (configurable via
+// HARD_LIMIT). For larger directories this is a "top-recent" slice; the
+// adapter's `modifiedSince` parameter narrows the server-side query to
+// recently-touched records when supported (Mindbody does, e.g.).
+//
+// Phone is the join key. Records without a phone are pulled but skipped
+// at the upsert step — we have no way to tie them to a future inbound
+// call.
+
+const DIRECTORY_HARD_LIMIT = 2000;
+const DIRECTORY_MODIFIED_SINCE_DAYS = 365;
+
+export interface ClientDirectorySyncResult {
+  tenantId: string;
+  fetched: number;       // total records returned by the platform
+  skippedNoPhone: number; // records dropped because no phone to use as join key
+  upserted: number;       // client_profiles written/updated
+  errored: boolean;
+  errorMessage?: string;
+}
+
+export async function syncClientDirectoryForTenant(
+  tenantId: string
+): Promise<ClientDirectorySyncResult> {
+  const result: ClientDirectorySyncResult = {
+    tenantId,
+    fetched: 0,
+    skippedNoPhone: 0,
+    upserted: 0,
+    errored: false,
+  };
+
+  try {
+    const integration = await loadTenantIntegration(tenantId);
+    if (!integration?.adapter?.listClients) {
+      // Adapter doesn't expose a client list endpoint — silent no-op.
+      return result;
+    }
+
+    const modifiedSince = new Date(
+      Date.now() - DIRECTORY_MODIFIED_SINCE_DAYS * 86_400_000
+    ).toISOString();
+
+    let records: AdapterClientRecord[];
+    try {
+      records = await integration.adapter.listClients(integration.ctx, {
+        modifiedSince,
+        limit: DIRECTORY_HARD_LIMIT,
+      });
+    } catch (err) {
+      result.errored = true;
+      result.errorMessage = err instanceof Error ? err.message : String(err);
+      console.error(
+        `CLIENT_DIRECTORY_FETCH_ERR[${integration.adapter.platform}]`,
+        tenantId,
+        result.errorMessage
+      );
+      return result;
+    }
+
+    result.fetched = records.length;
+    const platform = integration.adapter.platform;
+    const now = new Date().toISOString();
+
+    for (const r of records) {
+      const phone = normalizePhone(r.phone);
+      if (!phone) {
+        result.skippedNoPhone++;
+        continue;
+      }
+
+      // ensureClientProfile is the (tenant, phone) upsert key. Returns
+      // the existing profile if there is one, otherwise creates it.
+      const profile = await ensureClientProfile(tenantId, phone);
+      if (!profile) continue;
+
+      const providerRefs = {
+        ...((profile.provider_refs ?? {}) as Record<string, string>),
+        [platform]: r.externalId,
+      };
+
+      const update: Record<string, unknown> = {
+        last_synced_at: now,
+        sync_source: `directory_${platform}`,
+        sync_error: null,
+        provider_refs: providerRefs,
+      };
+
+      // Only seed identity when blank — staff edits in the dashboard
+      // win over platform values. Same policy as syncClientFromPlatform.
+      if (!profile.first_name && r.firstName) update.first_name = r.firstName;
+      if (!profile.last_name && r.lastName) update.last_name = r.lastName;
+      if (!profile.email && r.email) update.email = r.email;
+
+      const { error } = await supabaseAdmin
+        .from("client_profiles")
+        .update(update)
+        .eq("id", profile.id);
+      if (error) {
+        console.error(
+          "CLIENT_DIRECTORY_UPDATE_ERR:",
+          tenantId,
+          r.externalId,
+          error.message
+        );
+        continue;
+      }
+      result.upserted++;
+    }
+  } catch (err) {
+    result.errored = true;
+    result.errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("CLIENT_DIRECTORY_SYNC_ERR:", result.errorMessage);
   }
 
   return result;
