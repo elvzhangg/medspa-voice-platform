@@ -93,6 +93,32 @@ export interface AdapterClientVisit {
   raw?: unknown;
 }
 
+/**
+ * One active membership or remaining-balance package on a client. Both
+ * shapes look the same in our schema — distinguished by `kind`. Med
+ * spas often run both ("Glow Gold" recurring membership + a
+ * 6-pack of laser sessions, sold separately) so we surface them as
+ * separate jsonb arrays on client_profiles.
+ */
+export interface AdapterMembership {
+  /** Platform-side membership/package id */
+  externalId: string;
+  /** Human-readable name ("Glow Gold", "6-pack Laser Hair Removal") */
+  name: string;
+  /** "membership" = recurring; "package" = one-time bundle of sessions */
+  kind: "membership" | "package";
+  /** Sessions remaining if it's session-based; null for unlimited memberships */
+  remaining?: number;
+  /** Sessions originally purchased (denominator for "3 of 6 left") */
+  total?: number;
+  /** Platform-side category — "Classes", "Injectables", etc. */
+  program?: string;
+  /** Expiration date (ISO) — when the package/membership term ends */
+  expiresAt?: string;
+  /** Monthly cost in cents (only meaningful for recurring memberships) */
+  monthlyCostCents?: number;
+}
+
 export interface AdapterClientHistory {
   /** Platform-side client id — stashed in client_profiles.provider_refs */
   clientId: string;
@@ -100,8 +126,14 @@ export interface AdapterClientHistory {
   lastName?: string;
   email?: string;
   visits: AdapterClientVisit[];
-  /** Lifetime spend in cents, if computable */
+  /** Lifetime spend in cents, if computable from the platform's sales records */
   lifetimeValueCents?: number;
+  /** Most recent purchase timestamp (any sale type) */
+  lastPurchaseAt?: string;
+  /** Active recurring memberships ("Glow Gold," "Wellness Plus") */
+  activeMemberships?: AdapterMembership[];
+  /** One-time packages with sessions remaining ("6-pack laser") */
+  packageBalances?: AdapterMembership[];
 }
 
 /**

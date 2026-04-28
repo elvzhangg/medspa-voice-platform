@@ -5,6 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { useDismiss } from "../_components/useDismiss";
 import SyncStatusBar from "../_components/SyncStatusBar";
 
+interface MembershipRow {
+  externalId?: string;
+  name: string;
+  kind?: "membership" | "package";
+  remaining?: number;
+  total?: number;
+  program?: string;
+  expiresAt?: string;
+}
+
 interface Client {
   id: string;
   phone: string;
@@ -23,6 +33,16 @@ interface Client {
   tags: string[];
   staff_notes: string | null;
   no_personalization: boolean;
+  // Phase 2: platform-pulled spend + memberships (jsonb on the row).
+  total_sales_cents?: number | null;
+  last_purchase_at?: string | null;
+  active_memberships?: MembershipRow[] | null;
+  package_balances?: MembershipRow[] | null;
+}
+
+function fmtUsd(cents: number | null | undefined) {
+  if (typeof cents !== "number") return "—";
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 interface AuditRow {
@@ -318,6 +338,68 @@ function ClientDrawer({
                 <p className="text-xs text-zinc-400 italic">Couldn&apos;t load brief.</p>
               )}
             </section>
+
+            {/* Platform spend + memberships — only renders when we have at
+                least one signal, so empty placeholders don't clutter
+                self-managed (non-platform) tenants. */}
+            {(typeof profile.total_sales_cents === "number" ||
+              (profile.active_memberships && profile.active_memberships.length > 0) ||
+              (profile.package_balances && profile.package_balances.length > 0)) && (
+              <section className="space-y-3">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                  Memberships & Spend
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Stat label="Lifetime spend" value={fmtUsd(profile.total_sales_cents)} />
+                  <Stat
+                    label="Last purchase"
+                    value={profile.last_purchase_at ? fmtDate(profile.last_purchase_at) : "—"}
+                  />
+                </div>
+                {profile.active_memberships && profile.active_memberships.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Active memberships
+                    </p>
+                    {profile.active_memberships.map((m, i) => (
+                      <div
+                        key={`${m.externalId ?? i}`}
+                        className="flex items-baseline justify-between text-xs px-3 py-2 bg-amber-50/60 border border-amber-200 rounded-lg"
+                      >
+                        <span className="font-semibold text-zinc-800">{m.name}</span>
+                        <span className="text-zinc-500">
+                          {typeof m.remaining === "number"
+                            ? `${m.remaining}${typeof m.total === "number" ? `/${m.total}` : ""} remaining`
+                            : "Active"}
+                          {m.expiresAt ? ` · expires ${fmtDate(m.expiresAt)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {profile.package_balances && profile.package_balances.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Packages
+                    </p>
+                    {profile.package_balances.map((p, i) => (
+                      <div
+                        key={`${p.externalId ?? i}`}
+                        className="flex items-baseline justify-between text-xs px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg"
+                      >
+                        <span className="font-semibold text-zinc-800">{p.name}</span>
+                        <span className="text-zinc-500">
+                          {typeof p.remaining === "number"
+                            ? `${p.remaining}${typeof p.total === "number" ? `/${p.total}` : ""} remaining`
+                            : "Active"}
+                          {p.expiresAt ? ` · expires ${fmtDate(p.expiresAt)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="space-y-3">
               <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Identity</h3>

@@ -10,6 +10,8 @@ import type {
   AdapterWebhookEventType,
   AdapterProvider,
   AdapterClientRecord,
+  AdapterClientHistory,
+  AdapterMembership,
   BookingAdapter,
 } from "./types";
 
@@ -440,6 +442,145 @@ const adapter: BookingAdapter = {
     }
 
     return out;
+  },
+
+  async getClientHistory(ctx, { phone }): Promise<AdapterClientHistory | null> {
+    // Three-step pull keyed off the caller's phone:
+    //   1. /client/clients?SearchText=<phone>      → resolve to ClientId
+    //   2. /sale/sales?ClientId=<id>               → lifetime spend + last purchase
+    //   3. /client/clientservices?ClientId=<id>    → memberships + package balances
+    //
+    // Visits[] left empty: voice-call client context is well-served by the
+    // recent-from-calendar aggregator (which reads calendar_events
+    // populated by listAppointments). Pulling /appointment/clientappointments
+    // for every call would be a per-tenant hit on the Mindbody rate limit.
+    if (!phone) return null;
+
+    interface MbClientRow {
+      Id?: string;
+      UniqueId?: number;
+      FirstName?: string;
+      LastName?: string;
+      Email?: string;
+      MobilePhone?: string;
+      HomePhone?: string;
+    }
+    const search = await mbFetch<{ Clients?: MbClientRow[] }>(
+      ctx,
+      `/client/clients?SearchText=${encodeURIComponent(phone)}&Limit=5`,
+      { authed: true }
+    );
+    const matches = search?.Clients ?? [];
+    // Mindbody's SearchText is fuzzy across phones, names, emails. Tighten
+    // with an exact phone check (digits-only) to avoid grabbing a stranger
+    // whose name happens to match digits in the phone.
+    const digits = phone.replace(/\D/g, "");
+    const matched = matches.find((c) =>
+      [c.MobilePhone, c.HomePhone].some(
+        (p) => (p || "").replace(/\D/g, "") === digits
+      )
+    ) ?? matches[0];
+    if (!matched) return null;
+    const clientId = matched.Id || (matched.UniqueId !== undefined ? String(matched.UniqueId) : null);
+    if (!clientId) return null;
+
+    // ── Sales: lifetime spend + last purchase ────────────────────────────
+    interface MbSaleItem { TotalAmount?: number; Description?: string; IsService?: boolean }
+    interface MbSale {
+      Id?: number;
+      SaleDateTime?: string;
+      ClientId?: string;
+      PurchasedItems?: MbSaleItem[];
+    }
+    let totalCents = 0;
+    let lastPurchaseAt: string | undefined;
+    try {
+      // Pull all sales for this client. Mindbody pages 200 max; most
+      // returning clients have <50 sales lifetime, single page is enough.
+      const salesRes = await mbFetch<{ Sales?: MbSale[] }>(
+        ctx,
+        `/sale/sales?ClientId=${encodeURIComponent(clientId)}&Limit=200`,
+        { authed: true }
+      );
+      for (const s of salesRes?.Sales ?? []) {
+        const items = s.PurchasedItems ?? [];
+        for (const it of items) {
+          if (typeof it.TotalAmount === "number") {
+            totalCents += Math.round(it.TotalAmount * 100);
+          }
+        }
+        if (s.SaleDateTime) {
+          if (!lastPurchaseAt || new Date(s.SaleDateTime) > new Date(lastPurchaseAt)) {
+            lastPurchaseAt = s.SaleDateTime;
+          }
+        }
+      }
+    } catch (err) {
+      // Sales failure shouldn't kill the whole sync — log and continue
+      // with whatever we got. Memberships still get pulled.
+      console.error("MINDBODY_SALES_FETCH_ERR:", err);
+    }
+
+    // ── Memberships + packages from /client/clientservices ──────────────
+    interface MbClientService {
+      Id?: number;
+      Name?: string;
+      Count?: number;
+      Remaining?: number;
+      Current?: boolean;
+      ActiveDate?: string;
+      ExpirationDate?: string;
+      Program?: { Name?: string; ScheduleType?: string };
+    }
+    const memberships: AdapterMembership[] = [];
+    const packages: AdapterMembership[] = [];
+    try {
+      const csRes = await mbFetch<{ ClientServices?: MbClientService[] }>(
+        ctx,
+        `/client/clientservices?ClientId=${encodeURIComponent(clientId)}&Limit=200`,
+        { authed: true }
+      );
+      for (const cs of csRes?.ClientServices ?? []) {
+        if (!cs.Current) continue;        // skip expired/cancelled
+        if (!cs.Name || cs.Id === undefined) continue;
+
+        const programName = cs.Program?.Name;
+        // Mindbody doesn't have a clean "is this a recurring membership
+        // vs. a one-time package?" flag. Heuristic: if the program name
+        // contains "membership"/"contract" OR the count is null/undefined
+        // (unlimited), treat as membership. Everything else with a finite
+        // remaining count is a package.
+        const looksMembership =
+          /membership|contract|subscription/i.test(programName || "") ||
+          (cs.Count === undefined || cs.Count === null);
+
+        const item: AdapterMembership = {
+          externalId: String(cs.Id),
+          name: cs.Name,
+          kind: looksMembership ? "membership" : "package",
+          remaining: typeof cs.Remaining === "number" ? cs.Remaining : undefined,
+          total: typeof cs.Count === "number" ? cs.Count : undefined,
+          program: programName,
+          expiresAt: cs.ExpirationDate,
+        };
+        if (item.kind === "membership") memberships.push(item);
+        else packages.push(item);
+      }
+    } catch (err) {
+      console.error("MINDBODY_CLIENTSERVICES_FETCH_ERR:", err);
+    }
+
+    return {
+      clientId,
+      firstName: matched.FirstName?.trim() || undefined,
+      lastName: matched.LastName?.trim() || undefined,
+      email: matched.Email?.trim() || undefined,
+      visits: [],                        // intentionally empty — see header
+      lifetimeValueCents: totalCents > 0 ? totalCents : undefined,
+      lastPurchaseAt,
+      activeMemberships: memberships.length > 0 ? memberships : undefined,
+      packageBalances: packages.length > 0 ? packages : undefined,
+    };
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {

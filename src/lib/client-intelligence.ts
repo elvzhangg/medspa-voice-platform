@@ -47,6 +47,22 @@ export interface ClientProfile {
   platform_last_visit_at?: string | null;
   favorite_service?: string | null;
   favorite_staff?: string | null;
+  // Memberships + sales summary (mig 039). The AI reads these on call start
+  // to mention member benefits and remind callers of unused credits.
+  total_sales_cents?: number | null;
+  last_purchase_at?: string | null;
+  active_memberships?: MembershipSummary[] | null;
+  package_balances?: MembershipSummary[] | null;
+}
+
+export interface MembershipSummary {
+  externalId?: string;
+  name: string;
+  kind?: "membership" | "package";
+  remaining?: number;
+  total?: number;
+  program?: string;
+  expiresAt?: string;
 }
 
 export interface CallHistoryEntry {
@@ -293,6 +309,35 @@ export function buildCallerContext(profile: ClientProfile | null): string {
   if (profile.preferred_time) lines.push(`Preferred time: ${profile.preferred_time}`);
   if (profile.staff_notes) lines.push(`Staff notes: ${profile.staff_notes}`);
   if (profile.tags.length) lines.push(`Tags: ${profile.tags.join(", ")}`);
+
+  // Memberships + package balances — short, scannable lines so the AI can
+  // weave them into pricing conversations without sounding scripted.
+  const formatBalance = (m: MembershipSummary): string => {
+    const counts =
+      typeof m.remaining === "number"
+        ? typeof m.total === "number"
+          ? `${m.remaining}/${m.total} remaining`
+          : `${m.remaining} remaining`
+        : "active";
+    const expiry = m.expiresAt
+      ? ` (expires ${new Date(m.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
+      : "";
+    return `${m.name} — ${counts}${expiry}`;
+  };
+  if (profile.active_memberships?.length) {
+    lines.push(
+      `Active membership${profile.active_memberships.length > 1 ? "s" : ""}: ${profile.active_memberships
+        .map(formatBalance)
+        .join("; ")}`
+    );
+  }
+  if (profile.package_balances?.length) {
+    lines.push(
+      `Package balance${profile.package_balances.length > 1 ? "s" : ""}: ${profile.package_balances
+        .map(formatBalance)
+        .join("; ")}`
+    );
+  }
 
   if (lines.length === 0) return "";
 

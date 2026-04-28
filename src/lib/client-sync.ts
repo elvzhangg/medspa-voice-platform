@@ -119,6 +119,14 @@ export async function syncClientFromPlatform(
       lifetime_value_cents: history.lifetimeValueCents ?? null,
       favorite_service: favoriteService ?? null,
       favorite_staff: favoriteStaff ?? null,
+      // New: memberships + sales summary (Phase 2). Adapters that don't
+      // populate these leave the columns null. The AI reads
+      // active_memberships at call start to mention member benefits, and
+      // package_balances to remind callers of unused credits.
+      total_sales_cents: history.lifetimeValueCents ?? null,
+      last_purchase_at: history.lastPurchaseAt ?? null,
+      active_memberships: history.activeMemberships ?? null,
+      package_balances: history.packageBalances ?? null,
     };
 
     // Only fill identity fields if we don't already have them — staff
