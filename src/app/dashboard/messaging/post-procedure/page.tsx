@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 interface Template {
   id: string;
@@ -18,8 +18,11 @@ interface ApiResponse {
 }
 
 export default function PostProcedurePage() {
-  const params = useParams();
-  const slug = (params?.tenant as string) || "";
+  // See messaging/page.tsx — same routing quirk: the dashboard's file route
+  // is /dashboard/..., middleware rewrites /[slug]/dashboard/... onto it,
+  // useParams() can't see the slug. Read it off usePathname() instead.
+  const pathname = usePathname() ?? "";
+  const slug = pathname.split("/").filter(Boolean)[0] ?? "";
   const [templates, setTemplates] = useState<Template[]>([]);
   const [seenServices, setSeenServices] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

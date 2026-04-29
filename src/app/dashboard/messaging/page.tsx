@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Toggle from "../_components/Toggle";
 import { SMS_TEMPLATES } from "@/lib/sms/templates";
 
@@ -91,8 +91,12 @@ function MessagePreview({ template }: { template: string }) {
 }
 
 export default function MessagingPage() {
-  const params = useParams();
-  const slug = (params?.tenant as string) || "";
+  // The dashboard's file route is /dashboard/... — middleware rewrites
+  // /[slug]/dashboard/... onto it, but useParams() can only see file-route
+  // segments so it returns no tenant. Read the slug straight off the URL
+  // path instead (it's always the first segment).
+  const pathname = usePathname() ?? "";
+  const slug = pathname.split("/").filter(Boolean)[0] ?? "";
   const [settings, setSettings] = useState<SMSSettings>({
     sms_confirmation_enabled: true,
     sms_reminders_enabled: false,
