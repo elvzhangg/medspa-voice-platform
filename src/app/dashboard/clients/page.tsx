@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDismiss } from "../_components/useDismiss";
-import SyncStatusBar from "../_components/SyncStatusBar";
 
 interface MembershipRow {
   externalId?: string;
@@ -124,7 +123,7 @@ export default function ClientsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl text-zinc-900">Clients</h1>
         </div>
@@ -135,11 +134,6 @@ export default function ClientsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 px-3.5 py-2 text-sm rounded-lg border border-zinc-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
         />
-      </div>
-
-      {/* Sync status pill + Sync now button — pre-warms client_profiles for recent + VIP callers */}
-      <div className="mb-8">
-        <SyncStatusBar onSyncComplete={refresh} />
       </div>
 
       {loading ? (
