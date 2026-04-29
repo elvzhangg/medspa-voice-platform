@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import PdfUploadButton from "../_components/PdfUploadButton";
 
 interface KBDoc {
   id: string;
@@ -150,7 +151,20 @@ export default function KnowledgeBasePage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Content</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-zinc-700">Content</label>
+                <PdfUploadButton
+                  label="Import from PDF"
+                  onExtracted={({ text, filename }) => {
+                    setAddForm((prev) => ({
+                      ...prev,
+                      content: text,
+                      // Pre-fill the title with the filename if it's still blank.
+                      title: prev.title || filename.replace(/\.pdf$/i, ""),
+                    }));
+                  }}
+                />
+              </div>
               <textarea
                 value={addForm.content}
                 onChange={(e) => setAddForm({ ...addForm, content: e.target.value })}
@@ -159,6 +173,9 @@ export default function KnowledgeBasePage() {
                 placeholder="Write the information your AI should know..."
                 required
               />
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Upload a handbook PDF and we&apos;ll fill the content for you — review before saving.
+              </p>
             </div>
             <div className="flex gap-3">
               <button
@@ -322,7 +339,15 @@ function DocCard({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Content</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-zinc-700">Content</label>
+              <PdfUploadButton
+                label="Import from PDF"
+                onExtracted={({ text }) =>
+                  onEditFormChange({ ...editForm, content: text })
+                }
+              />
+            </div>
             <textarea
               value={editForm.content}
               onChange={(e) => onEditFormChange({ ...editForm, content: e.target.value })}
