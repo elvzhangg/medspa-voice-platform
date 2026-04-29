@@ -38,6 +38,22 @@ interface Client {
   last_purchase_at?: string | null;
   active_memberships?: MembershipRow[] | null;
   package_balances?: MembershipRow[] | null;
+  // Phase 2: platform-side visit metrics (populated by the recent-client
+  // aggregator that reads calendar_events). The list view falls back to
+  // these when Vaux-internal counters are zero.
+  platform_visit_count?: number | null;
+  platform_last_visit_at?: string | null;
+  favorite_service?: string | null;
+  favorite_staff?: string | null;
+}
+
+// Pick whichever timestamp is more recent — gracefully handles either
+// being null. Used by the table's "Last Seen" column to merge Vaux call
+// recency with platform visit recency.
+function mostRecent(a: string | null | undefined, b: string | null | undefined): string | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 }
 
 function fmtUsd(cents: number | null | undefined) {
@@ -149,9 +165,9 @@ export default function ClientsPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Name</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Phone</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Calls</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Bookings</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Visits</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Service</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Call</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Seen</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tags</th>
               </tr>
             </thead>
@@ -165,9 +181,19 @@ export default function ClientsPage() {
                   <td className="px-5 py-3.5 font-medium text-zinc-900">{displayName(c)}</td>
                   <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.phone}</td>
                   <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_calls}</td>
-                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_bookings}</td>
-                  <td className="px-5 py-3.5 text-zinc-500">{c.last_service || "—"}</td>
-                  <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">{fmtDate(c.last_call_at)}</td>
+                  {/* Visits = bigger of (AI bookings, platform visit count).
+                      Platform side counts walk-ins + online + front-desk
+                      bookings; AI side captures only Vaux-driven ones.
+                      Bigger of the two is the most useful single signal. */}
+                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
+                    {Math.max(c.total_bookings ?? 0, c.platform_visit_count ?? 0)}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-500">
+                    {c.last_service || c.favorite_service || "—"}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">
+                    {fmtDate(mostRecent(c.last_call_at, c.platform_last_visit_at))}
+                  </td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-1 flex-wrap">
                       {(c.tags || []).slice(0, 3).map((t) => (
