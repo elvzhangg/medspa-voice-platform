@@ -114,12 +114,8 @@ export async function syncClientFromPlatform(
       sync_source: integration.adapter.platform,
       sync_error: null,
       provider_refs: providerRefs,
-      platform_visit_count: history.visits.length,
-      platform_last_visit_at: lastVisit?.date ?? null,
       lifetime_value_cents: history.lifetimeValueCents ?? null,
-      favorite_service: favoriteService ?? null,
-      favorite_staff: favoriteStaff ?? null,
-      // New: memberships + sales summary (Phase 2). Adapters that don't
+      // Memberships + sales summary (Phase 2). Adapters that don't
       // populate these leave the columns null. The AI reads
       // active_memberships at call start to mention member benefits, and
       // package_balances to remind callers of unused credits.
@@ -128,6 +124,18 @@ export async function syncClientFromPlatform(
       active_memberships: history.activeMemberships ?? null,
       package_balances: history.packageBalances ?? null,
     };
+
+    // Only write platform_visit_count + favorite_service/staff when the
+    // adapter actually returned visit data. Mindbody's getClientHistory
+    // intentionally returns visits=[] (the calendar-events aggregator
+    // owns visit metrics), so we'd otherwise clobber the aggregated
+    // values with 0/null on every lazy on-call sync.
+    if (history.visits.length > 0) {
+      update.platform_visit_count = history.visits.length;
+      update.platform_last_visit_at = lastVisit?.date ?? null;
+      update.favorite_service = favoriteService ?? null;
+      update.favorite_staff = favoriteStaff ?? null;
+    }
 
     // Only fill identity fields if we don't already have them — staff
     // edits made in our dashboard win over platform values.
@@ -258,14 +266,21 @@ export async function syncRecentClientsForTenant(
       Date.now() - SCAN_WINDOW_DAYS * 86_400_000
     ).toISOString();
 
+    // Excluding cancellations: a cancelled appointment isn't a "visit"
+    // and shouldn't inflate platform_visit_count or last_visit_at. We
+    // include both 'confirmed' (scheduled, including future) and
+    // 'completed' (already happened). Future appointments still count
+    // toward visit count as an engagement signal, but we derive
+    // last_visit_at separately below from past rows only.
     const { data: rows, error } = await supabaseAdmin
       .from("calendar_events")
       .select(
-        "customer_phone, customer_name, service_type, description, start_time, external_source"
+        "customer_phone, customer_name, service_type, description, start_time, external_source, status"
       )
       .eq("tenant_id", tenantId)
       .not("customer_phone", "is", null)
       .not("external_source", "is", null)
+      .neq("status", "cancelled")
       .gte("start_time", scanCutoff);
 
     if (error) {
@@ -306,12 +321,27 @@ export async function syncRecentClientsForTenant(
     const recentCutoffMs = Date.now() - RECENT_WINDOW_DAYS * 86_400_000;
     const now = new Date().toISOString();
 
+    const nowMs = Date.now();
+
     for (const entry of agg.values()) {
       const visitCount = entry.visits.length;
-      const lastVisit = entry.visits.reduce((latest, v) =>
+      // last_visit_at = most recent PAST appointment. A future booking
+      // isn't a visit yet — surfacing it as "last visit" misleads the
+      // dashboard and the AI (which says things like "you came in on…").
+      // null when the client only has upcoming bookings, no history.
+      let lastVisit: string | null = null;
+      for (const v of entry.visits) {
+        const t = new Date(v).getTime();
+        if (t <= nowMs && (lastVisit === null || t > new Date(lastVisit).getTime())) {
+          lastVisit = v;
+        }
+      }
+      // "Recent" still uses any visit (past or upcoming) — an upcoming
+      // booking is a strong recency signal worth keeping the profile warm.
+      const mostRecentAny = entry.visits.reduce((latest, v) =>
         new Date(v).getTime() > new Date(latest).getTime() ? v : latest
       );
-      const recent = new Date(lastVisit).getTime() >= recentCutoffMs;
+      const recent = new Date(mostRecentAny).getTime() >= recentCutoffMs;
       const vip = visitCount >= VIP_VISIT_THRESHOLD;
       if (!recent && !vip) continue;
 

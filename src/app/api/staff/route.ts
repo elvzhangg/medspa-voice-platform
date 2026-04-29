@@ -9,7 +9,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("staff")
     .select(
-      "id, name, title, services, specialties, ai_notes, working_hours, active, external_source, external_id, last_synced_at"
+      "id, name, title, bio, services, specialties, ai_notes, working_hours, active, external_source, external_id, last_synced_at"
     )
     .eq("tenant_id", (tenant as any).id)
     .order("active", { ascending: false })
