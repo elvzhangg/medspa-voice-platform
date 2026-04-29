@@ -1,7 +1,13 @@
 import { addMinutes } from "date-fns";
 import { supabaseAdmin } from "./supabase";
 import { loadTenantIntegration } from "./integrations";
-import { syncProvidersForTenant, type SyncResult as ProviderSyncResult } from "./provider-sync";
+// Provider sync from external platforms is currently DISABLED. Staff
+// are now managed manually via the Providers page (Add Provider button).
+// To re-enable: re-add `syncProvidersForTenant` to the import below
+// and replace the no-op stub in runFullTenantSync with a real call.
+// The daily cron is also unregistered in vercel.json — restore the
+// /api/cron/sync-providers entry there to bring scheduled sync back.
+import { type SyncResult as ProviderSyncResult } from "./provider-sync";
 // Client sync from external platforms is currently DISABLED. Vaux now
 // relies on its own native call-capture flow (ensureClientProfile +
 // update_client_profile tool) for client data. The helper functions
@@ -246,16 +252,18 @@ export interface FullSyncResult {
  *   4. Dashboard bootstrap (any tenant in connected-but-never-synced —
  *      catches SQL bootstraps, dev seeds, failed initial syncs).
  *
- * Phases run sequentially so a flaky platform doesn't double-load itself:
- *   1. providers     — pull staff roster from platform
- *   2. appointments  — backfill -90/+90d into calendar_events
+ * Currently active phases:
+ *   1. appointments — backfill -90/+90d into calendar_events
  *
- * Client-side phases (directory pull + recent-client aggregation) are
- * currently disabled — Vaux's pivot is to capture client info via the
- * call flow (ensureClientProfile, update_client_profile tool) rather
- * than mirroring the platform directory. The orchestrator returns
- * empty result objects for both phases so callers (sync POST endpoint,
- * dashboard) keep their current type contracts.
+ * Disabled phases (no-op stubs preserve the FullSyncResult shape so the
+ * sync POST endpoint and dashboard don't break):
+ *   - providers — staff are managed manually via the Providers page
+ *   - clientDirectory — Vaux's pivot is to capture clients via the
+ *     call flow (ensureClientProfile, update_client_profile tool) only
+ *   - clients — same pivot; aggregator is pointless without a directory
+ *
+ * Re-enable any phase by swapping its stub for the real call (see the
+ * import block at the top of the file for which symbols to restore).
  *
  * Always bumps tenant_integrations.last_synced_at — even on partial
  * failure — so the bootstrap path doesn't infinite-retry on every
@@ -270,13 +278,22 @@ export async function runFullTenantSync(tenantId: string): Promise<FullSyncResul
   const since = new Date(nowMs - 90 * 86_400_000).toISOString();
   const until = new Date(nowMs + 90 * 86_400_000).toISOString();
 
-  const providers = await syncProvidersForTenant(tenantId);
+  // Provider phase disabled — see file header. Stub keeps the type
+  // contract; staff are managed manually via the Providers page.
+  const providers: ProviderSyncResult = {
+    tenantId,
+    platform: "internal",
+    fetched: 0,
+    upserted: 0,
+    deactivated: 0,
+    errored: false,
+  };
+
   const appointments = await syncAppointmentsForTenant(tenantId, { since, until });
 
-  // Client phases disabled — see file header. No-op stubs preserve the
-  // FullSyncResult shape so the sync POST endpoint and dashboard JSON
-  // schema don't break. Re-enable by swapping these two lines for the
-  // real calls (syncClientDirectoryForTenant, syncRecentClientsForTenant).
+  // Client phases disabled — see file header. Vaux now captures client
+  // identity via the call flow only (ensureClientProfile +
+  // update_client_profile tool), not by mirroring the platform directory.
   const clientDirectory: ClientDirectorySyncResult = {
     tenantId,
     fetched: 0,
