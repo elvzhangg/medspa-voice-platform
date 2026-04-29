@@ -2,9 +2,14 @@ import { addMinutes } from "date-fns";
 import { supabaseAdmin } from "./supabase";
 import { loadTenantIntegration } from "./integrations";
 import { syncProvidersForTenant, type SyncResult as ProviderSyncResult } from "./provider-sync";
+// Client sync from external platforms is currently DISABLED. Vaux now
+// relies on its own native call-capture flow (ensureClientProfile +
+// update_client_profile tool) for client data. The helper functions
+// remain in client-sync.ts for easy re-enable. To turn back on:
+//   1. Re-add `syncRecentClientsForTenant, syncClientDirectoryForTenant`
+//      to the import below.
+//   2. In runFullTenantSync, replace the no-op stubs with real calls.
 import {
-  syncRecentClientsForTenant,
-  syncClientDirectoryForTenant,
   type RecentClientSyncResult,
   type ClientDirectorySyncResult,
 } from "./client-sync";
@@ -242,16 +247,15 @@ export interface FullSyncResult {
  *      catches SQL bootstraps, dev seeds, failed initial syncs).
  *
  * Phases run sequentially so a flaky platform doesn't double-load itself:
- *   1. providers        — pull staff roster from platform
- *   2. appointments     — backfill -90/+90d into calendar_events
- *   3. clientDirectory  — pull the platform's client directory so clients
- *                          who exist in the system but haven't booked
- *                          recently still get a profile row (covers the
- *                          "I added a client but it didn't show up" gap).
- *   4. clients          — aggregate calendar_events to layer visit
- *                          metrics (last visit, favorite service/staff,
- *                          platform_visit_count) on top of the profiles
- *                          created in phase 3. Pure DB work.
+ *   1. providers     — pull staff roster from platform
+ *   2. appointments  — backfill -90/+90d into calendar_events
+ *
+ * Client-side phases (directory pull + recent-client aggregation) are
+ * currently disabled — Vaux's pivot is to capture client info via the
+ * call flow (ensureClientProfile, update_client_profile tool) rather
+ * than mirroring the platform directory. The orchestrator returns
+ * empty result objects for both phases so callers (sync POST endpoint,
+ * dashboard) keep their current type contracts.
  *
  * Always bumps tenant_integrations.last_synced_at — even on partial
  * failure — so the bootstrap path doesn't infinite-retry on every
@@ -268,14 +272,24 @@ export async function runFullTenantSync(tenantId: string): Promise<FullSyncResul
 
   const providers = await syncProvidersForTenant(tenantId);
   const appointments = await syncAppointmentsForTenant(tenantId, { since, until });
-  // Directory pull first so phase 4 has rows to update with visit
-  // metrics; identity values (name/email) are seeded only when blank,
-  // so the order is forgiving but cleaner this way.
-  const clientDirectory = await syncClientDirectoryForTenant(tenantId);
-  // Aggregation reads from calendar_events that the appointment phase
-  // just populated. If appointments errored we still try this — there
-  // may be calendar data from prior syncs or webhooks worth aggregating.
-  const clients = await syncRecentClientsForTenant(tenantId);
+
+  // Client phases disabled — see file header. No-op stubs preserve the
+  // FullSyncResult shape so the sync POST endpoint and dashboard JSON
+  // schema don't break. Re-enable by swapping these two lines for the
+  // real calls (syncClientDirectoryForTenant, syncRecentClientsForTenant).
+  const clientDirectory: ClientDirectorySyncResult = {
+    tenantId,
+    fetched: 0,
+    upserted: 0,
+    skippedNoPhone: 0,
+    errored: false,
+  };
+  const clients: RecentClientSyncResult = {
+    tenantId,
+    scanned: 0,
+    upserted: 0,
+    errored: false,
+  };
 
   const syncedAt = new Date().toISOString();
   await supabaseAdmin
