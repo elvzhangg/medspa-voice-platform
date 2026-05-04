@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { exchangeCodeForTokens, verifyState } from "@/lib/google-oauth";
+import {
+  exchangeCodeForTokens,
+  verifyState,
+  type OAuthContext,
+} from "@/lib/google-oauth";
 
 /**
  * GET /api/admin/google/callback?code=<code>&state=<signedState>
@@ -26,9 +30,9 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   // User clicked "Cancel" or Google returned an error — bounce back without
-  // touching the DB so the admin sees the existing state intact.
+  // touching the DB. We don't yet know context, so default to admin URL.
   if (error) {
-    const back = adminBackUrl(req, null, `Google authorization cancelled: ${error}`);
+    const back = await backUrl(req, null, "admin", `Google authorization cancelled: ${error}`);
     return NextResponse.redirect(back);
   }
 
@@ -39,10 +43,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Verify state -> tenantId
+  // Verify state -> tenantId + context (which dashboard initiated this flow)
   let tenantId: string;
+  let context: OAuthContext;
   try {
-    ({ tenantId } = verifyState(state));
+    ({ tenantId, context } = verifyState(state));
   } catch (err) {
     console.error("GOOGLE_OAUTH_STATE_VERIFY_ERR:", err);
     return NextResponse.json(
@@ -57,9 +62,10 @@ export async function GET(req: NextRequest) {
     tokens = await exchangeCodeForTokens(code);
   } catch (err) {
     console.error("GOOGLE_OAUTH_EXCHANGE_ERR:", err);
-    const back = adminBackUrl(
+    const back = await backUrl(
       req,
       tenantId,
+      context,
       `Failed to exchange code for tokens: ${
         err instanceof Error ? err.message : String(err)
       }`
@@ -103,9 +109,10 @@ export async function GET(req: NextRequest) {
 
   if (upsertErr) {
     console.error("GOOGLE_OAUTH_UPSERT_ERR:", upsertErr);
-    const back = adminBackUrl(
+    const back = await backUrl(
       req,
       tenantId,
+      context,
       "Connected to Google, but failed to save tokens. Please try again."
     );
     return NextResponse.redirect(back);
@@ -127,36 +134,56 @@ export async function GET(req: NextRequest) {
     console.error("GOOGLE_OAUTH_TENANT_UPDATE_ERR:", tenantErr);
     // Tokens are saved; tenant row update failed. Not fatal — admin can
     // still proceed via the form. Surface a soft warning.
-    const back = adminBackUrl(
+    const back = await backUrl(
       req,
       tenantId,
+      context,
       "Tokens saved, but tenant record didn't update. Refresh the page."
     );
     return NextResponse.redirect(back);
   }
 
-  // Success — back to the integration page with a success flag the page
-  // can read on next render.
-  const back = adminBackUrl(req, tenantId, null);
+  // Success — back to the right dashboard page with a success flag.
+  const back = await backUrl(req, tenantId, context, null);
   back.searchParams.set("gcal_connected", "1");
   return NextResponse.redirect(back);
 }
 
 /**
- * Construct the admin integration page URL we redirect back to. If we have
- * a tenantId, go straight to that tenant's integration page; otherwise fall
- * back to the tenants list. Optional error message rides as ?gcal_error=.
+ * Construct the URL we redirect back to. Branches on context:
+ *   admin  -> /admin/tenants/{id}/integration
+ *   tenant -> /{slug}/dashboard/integrations  (slug looked up from tenants row)
+ *
+ * If tenantId is null (rare error path), fall back to /admin/tenants for admin
+ * and /auth/login for tenant.
+ *
+ * Optional error message rides as ?gcal_error=.
  */
-function adminBackUrl(
+async function backUrl(
   req: NextRequest,
   tenantId: string | null,
+  context: OAuthContext,
   errorMessage: string | null
-): URL {
+): Promise<URL> {
   const base = req.nextUrl.origin;
-  const url = new URL(
-    tenantId ? `/admin/tenants/${tenantId}/integration` : "/admin/tenants",
-    base
-  );
+
+  let path: string;
+  if (context === "tenant" && tenantId) {
+    // Need the slug for the tenant-side URL pattern /{slug}/dashboard/integrations
+    const { data } = await supabaseAdmin
+      .from("tenants")
+      .select("slug")
+      .eq("id", tenantId)
+      .maybeSingle();
+    const slug = data?.slug;
+    path = slug ? `/${slug}/dashboard/integrations` : "/auth/login";
+  } else if (tenantId) {
+    path = `/admin/tenants/${tenantId}/integration`;
+  } else {
+    path = context === "tenant" ? "/auth/login" : "/admin/tenants";
+  }
+
+  const url = new URL(path, base);
   if (errorMessage) url.searchParams.set("gcal_error", errorMessage);
   return url;
 }

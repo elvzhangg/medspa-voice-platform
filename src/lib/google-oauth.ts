@@ -57,12 +57,23 @@ function stateSecret(): string {
 }
 
 /**
- * Build the URL the admin should be redirected to in order to start OAuth.
- * The `state` param is a signed token carrying the tenantId so the callback
- * knows which tenant_integrations row to write to.
+ * Where the OAuth flow was initiated from. The callback uses this to decide
+ * where to redirect the user after success — back to the admin tenant page,
+ * or back to the tenant's own dashboard.
  */
-export function buildAuthUrl(tenantId: string): string {
-  const state = signState(tenantId);
+export type OAuthContext = "admin" | "tenant";
+
+/**
+ * Build the URL the user should be redirected to in order to start OAuth.
+ * The `state` param is a signed token carrying tenantId + context, so the
+ * callback knows which tenant_integrations row to write to AND which
+ * dashboard to bounce the user back to.
+ */
+export function buildAuthUrl(
+  tenantId: string,
+  context: OAuthContext = "admin"
+): string {
+  const state = signState(tenantId, context);
   const params = new URLSearchParams({
     client_id: envOrThrow("GOOGLE_CLIENT_ID"),
     redirect_uri: envOrThrow("GOOGLE_REDIRECT_URI"),
@@ -205,30 +216,61 @@ export async function ensureFreshAccessToken(tenantId: string): Promise<string> 
 }
 
 /**
- * Sign a state token carrying the tenantId. HMAC-SHA256 over `${tenantId}.${timestamp}`
- * with stateSecret(); the timestamp prevents indefinite replay (10 min window).
+ * Sign a state token carrying tenantId + context. HMAC-SHA256 over
+ * `${tenantId}.${context}.${timestamp}` with stateSecret(); the timestamp
+ * prevents indefinite replay (10 min window).
  *
- * Wire format: `${tenantId}.${timestamp}.${hexSignature}`
+ * Wire format: `${tenantId}.${context}.${timestamp}.${hexSignature}`
+ *
+ * Older tokens (without context) are accepted by verifyState for backward
+ * compatibility — they're treated as `context: "admin"`.
  */
-function signState(tenantId: string): string {
+function signState(tenantId: string, context: OAuthContext): string {
   const ts = Date.now().toString();
-  const payload = `${tenantId}.${ts}`;
+  const payload = `${tenantId}.${context}.${ts}`;
   const sig = createHmac("sha256", stateSecret()).update(payload).digest("hex");
   return `${payload}.${sig}`;
 }
 
 /**
- * Verify a state token from the OAuth callback. Returns the tenantId if valid,
- * throws otherwise. Rejects tokens older than 10 minutes (mid-flow user is
- * unlikely to take longer; replay attempts are rejected).
+ * Verify a state token from the OAuth callback. Returns tenantId + context
+ * if valid; throws otherwise. Rejects tokens older than 10 minutes.
+ *
+ * Accepts both 4-part (new: tenantId.context.ts.sig) and 3-part (old:
+ * tenantId.ts.sig) formats — the old format is treated as admin context.
  */
-export function verifyState(state: string): { tenantId: string } {
+export function verifyState(state: string): { tenantId: string; context: OAuthContext } {
   const parts = state.split(".");
-  if (parts.length !== 3) {
+
+  let tenantId: string;
+  let context: OAuthContext;
+  let ts: string;
+  let sig: string;
+  let payload: string;
+
+  if (parts.length === 4) {
+    // New format: tenantId.context.ts.sig
+    const [t, c, ts4, s] = parts;
+    if (c !== "admin" && c !== "tenant") {
+      throw new Error("Invalid state context");
+    }
+    tenantId = t;
+    context = c;
+    ts = ts4;
+    sig = s;
+    payload = `${tenantId}.${context}.${ts}`;
+  } else if (parts.length === 3) {
+    // Backward-compat: old admin-only format tenantId.ts.sig
+    const [t, ts3, s] = parts;
+    tenantId = t;
+    context = "admin";
+    ts = ts3;
+    sig = s;
+    payload = `${tenantId}.${ts}`;
+  } else {
     throw new Error("Invalid state token format");
   }
-  const [tenantId, ts, sig] = parts;
-  const payload = `${tenantId}.${ts}`;
+
   const expectedSig = createHmac("sha256", stateSecret()).update(payload).digest("hex");
 
   // Constant-time compare
@@ -246,5 +288,5 @@ export function verifyState(state: string): { tenantId: string } {
     throw new Error("State token tenantId malformed");
   }
 
-  return { tenantId };
+  return { tenantId, context };
 }
