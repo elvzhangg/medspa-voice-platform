@@ -99,10 +99,14 @@ const FIELD_SPEC: Record<
     // Credentials are issued via OAuth — there's no field to paste. The
     // 'Connect with Google' button below replaces the credential form.
     credentials: [],
-    // Config the admin fills in AFTER OAuth: which calendars map to which
-    // providers, business hours, default service duration, timezone.
-    config: ["timezone", "default_calendar_id", "service_duration_min", "working_hours_start", "working_hours_end", "provider_calendars"],
-    help: "Connect a Google account to read availability and create real bookings. Free, self-serve, no API approval. Best fit for solo med spas using Google Calendar as their primary booking system.",
+    // Admin-only integration plumbing. Tenant-editable scheduling settings
+    // (working hours, service durations, buffer time) live in tenant tables
+    // (staff.working_hours + tenants.booking_settings) and are managed via
+    // /dashboard/staff and /dashboard/scheduling — NOT here. Keeps the
+    // separation of "integration plumbing" (admin) vs "business operations"
+    // (tenant) clean.
+    config: ["timezone", "default_calendar_id", "provider_calendars"],
+    help: "Connect a Google account to read availability and create real bookings. Free, self-serve, no API approval. Working hours are read from each staff member's settings (/dashboard/staff). Service durations and buffer time live on /dashboard/scheduling.",
   },
   glossgenius: {
     credentials: [],

@@ -13,9 +13,41 @@ export interface AdapterConfig {
   [key: string]: string | undefined;
 }
 
+/**
+ * Tenant-level scheduling data sourced from tenant-editable tables (NOT from
+ * tenant_integrations.config). The loader fetches these and injects them so
+ * adapters that care about scheduling constraints (currently Google Calendar)
+ * can read provider working hours, service durations, and buffer time without
+ * reaching into the DB themselves.
+ *
+ * Adapters that don't care (Boulevard, Acuity, Mindbody, Square, Vagaro,
+ * etc. — they query the platform's own scheduler) ignore this field.
+ *
+ * Source of truth:
+ *   workingHoursByProvider  staff.working_hours per active staff row.
+ *                           Provider names are normalized lowercase.
+ *                           Day keys are full lowercase day names ("monday",
+ *                           "tuesday", etc.) to match the staff schema.
+ *   serviceDurations        tenants.booking_settings.service_durations.
+ *                           Keys lowercased; "default" is the catch-all.
+ *   bufferMin               tenants.booking_settings.buffer_min.
+ */
+export interface TenantSchedulingData {
+  workingHoursByProvider: Record<
+    string,
+    Record<string, { open: string; close: string }>
+  >;
+  serviceDurations: Record<string, number>;
+  bufferMin: number;
+}
+
 export interface AdapterContext {
   credentials: AdapterCredentials;
   config: AdapterConfig;
+  // Optional — populated by loadTenantIntegration when available. Adapters
+  // that want fine-grained per-provider hours or per-service durations read
+  // from here; adapters that don't can ignore.
+  tenantData?: TenantSchedulingData;
 }
 
 export interface AdapterSlot {

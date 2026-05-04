@@ -24,15 +24,26 @@ import type {
  * Required ctx:
  *   credentials.access_token         Bearer token (refreshed by loader)
  *
- * Optional config:
+ * Required ctx.config (integration plumbing — admin-only via /admin):
  *   timezone                         IANA tz; default "America/Los_Angeles"
  *   default_calendar_id              Calendar to use when no provider given;
  *                                    default "primary"
- *   service_duration_min             Default slot length in minutes; default 60
- *   working_hours_start              "HH:MM" 24h; default "09:00"
- *   working_hours_end                "HH:MM" 24h; default "17:00"
- *   provider_calendars               JSON-stringified map; provider name -> calendar id
+ *   provider_calendars               Optional JSON map; provider name -> calendar id
  *                                    e.g. {"Dr. Chen": "abc@group.calendar.google.com"}
+ *
+ * Required ctx.tenantData (tenant-editable scheduling, populated by the loader
+ * from staff.working_hours + tenants.booking_settings):
+ *   workingHoursByProvider           Per-provider per-day hours sourced from
+ *                                    staff.working_hours. Day keys are full
+ *                                    lowercase names ("monday", ...).
+ *   serviceDurations                 service name -> minutes; "default" key is
+ *                                    the catch-all when no service matches.
+ *   bufferMin                        Cleanup minutes between appointments.
+ *
+ * If ctx.tenantData is missing (older loaders), we fall back to safe defaults:
+ *   - working hours: 09:00-17:00 every day
+ *   - service duration: 60 min
+ *   - buffer: 0 min
  */
 
 const BASE_URL = "https://www.googleapis.com/calendar/v3";
@@ -232,6 +243,123 @@ function timeStringToMinutes(t: string): number {
   return h * 60 + m;
 }
 
+// ---------------------------------------------------------------------------
+// Tenant-data helpers: read scheduling constraints from ctx.tenantData
+// (which the loader populates from staff.working_hours +
+// tenants.booking_settings). Falls back to safe defaults when tenantData
+// is absent or incomplete so a missing record never crashes the call.
+// ---------------------------------------------------------------------------
+
+/**
+ * Full lowercase day name ("monday", "tuesday", ...) for an ISO date string,
+ * computed in the tenant's timezone. Matches staff.working_hours key shape.
+ */
+function dayOfWeekKey(date: string, timeZone: string): string {
+  // Pin to noon UTC to dodge DST edge cases — we only need the day component.
+  const noonUtc = new Date(`${date}T12:00:00Z`);
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+  }).format(noonUtc);
+  return wd.toLowerCase(); // "Monday" -> "monday"
+}
+
+/**
+ * Look up working hours for a specific date. Returns null if the resolved
+ * provider doesn't work that day (i.e., business closed for them).
+ *
+ * Resolution:
+ *   1. If providerName is given and matches a staff name (case-insensitive
+ *      partial), use that staff's working_hours[dayKey].
+ *   2. Otherwise, take the union of all providers' hours for that day —
+ *      earliest open and latest close across active staff. Models "any
+ *      provider available" for one-calendar-per-business mode.
+ *   3. If no staff has hours for that day, treat as closed (returns null).
+ *   4. If tenantData is missing entirely, fall back to 09:00-17:00.
+ */
+function workingHoursForDay(
+  ctx: AdapterContext,
+  date: string,
+  providerName?: string
+): { start: string; end: string } | null {
+  const tz = ctx.config.timezone || DEFAULT_TZ;
+  const dayKey = dayOfWeekKey(date, tz);
+
+  const byProvider = ctx.tenantData?.workingHoursByProvider;
+  if (!byProvider || Object.keys(byProvider).length === 0) {
+    // No staff data — return safe default. Caller's tenant won't have realistic
+    // closed days but the integration won't crash.
+    return { start: DEFAULT_WORK_START, end: DEFAULT_WORK_END };
+  }
+
+  // Provider-specific lookup
+  if (providerName && !/no preference|any|anyone/i.test(providerName)) {
+    const needle = providerName.toLowerCase().replace(/dr\.?\s*/g, "").trim();
+    for (const [name, hours] of Object.entries(byProvider)) {
+      const n = name.toLowerCase().replace(/dr\.?\s*/g, "").trim();
+      if (n.includes(needle) || needle.split(/\s+/).some((p) => p.length > 2 && n.includes(p))) {
+        const block = hours[dayKey];
+        return block?.open && block?.close
+          ? { start: block.open, end: block.close }
+          : null;
+      }
+    }
+    // Asked-for provider not found — fall through to union below rather than
+    // crash; the slot computation will then return [] if no real provider is
+    // open, which is the same UX as "we don't have that provider on Thursday".
+  }
+
+  // Union across providers: earliest open, latest close among those who work
+  // that day. This models "the business is open whenever any provider is in."
+  let earliestOpen: string | null = null;
+  let latestClose: string | null = null;
+  for (const hours of Object.values(byProvider)) {
+    const block = hours[dayKey];
+    if (!block?.open || !block?.close) continue;
+    if (!earliestOpen || block.open < earliestOpen) earliestOpen = block.open;
+    if (!latestClose || block.close > latestClose) latestClose = block.close;
+  }
+  if (!earliestOpen || !latestClose) return null; // closed across the board
+  return { start: earliestOpen, end: latestClose };
+}
+
+/**
+ * Look up the appointment duration for a service. Reads from
+ * tenantData.serviceDurations; falls back to a "default" key, then
+ * to DEFAULT_DURATION_MIN.
+ *
+ * Matching: case-insensitive exact key, then substring (so "Botox" config
+ * matches a caller asking for "botox forehead").
+ */
+function durationForService(ctx: AdapterContext, serviceName?: string): number {
+  const map = ctx.tenantData?.serviceDurations ?? {};
+
+  if (serviceName) {
+    const needle = serviceName.toLowerCase().trim();
+    // Exact (case-insensitive) match first
+    if (map[needle] !== undefined) return map[needle];
+    // Substring match
+    for (const [key, mins] of Object.entries(map)) {
+      if (key === "default") continue;
+      if (needle.includes(key) || key.includes(needle)) return mins;
+    }
+  }
+
+  // Explicit "default" key wins over hardcoded fallback
+  if (map["default"] !== undefined) return map["default"];
+
+  return DEFAULT_DURATION_MIN;
+}
+
+/**
+ * Buffer minutes between appointments (cleanup/turnover time).
+ */
+function bufferMinutes(ctx: AdapterContext): number {
+  const n = ctx.tenantData?.bufferMin;
+  if (typeof n !== "number" || isNaN(n) || n < 0) return 0;
+  return n;
+}
+
 /**
  * Walk working hours in `stepMin` increments and return slots that don't
  * overlap with any busy period. busyPeriods is in UTC (from Google); we
@@ -243,16 +371,29 @@ function computeSlots(args: {
   workEnd: string;
   durationMin: number;
   stepMin: number; // how often to anchor candidate slots; 30 is reasonable
+  bufferMin: number; // minutes to extend each busy period (cleanup/turnover)
   timeZone: string;
   busyPeriods: FreeBusyBusyPeriod[];
 }): AdapterSlot[] {
-  const { date, workStart, workEnd, durationMin, stepMin, timeZone, busyPeriods } = args;
+  const { date, workStart, workEnd, durationMin, stepMin, bufferMin, timeZone, busyPeriods } = args;
   const slots: AdapterSlot[] = [];
 
   const startMin = timeStringToMinutes(workStart);
   const endMin = timeStringToMinutes(workEnd);
   // Last possible slot must end by workEnd.
   const lastStartMin = endMin - durationMin;
+
+  // Pre-extend busy periods by buffer on BOTH sides so a candidate slot doesn't
+  // bump into the adjacent appointment. We extend the END by bufferMin so a new
+  // appointment can't start until cleanup is done; we extend the START by
+  // bufferMin so a new appointment doesn't end immediately before someone
+  // else's starts (also needs cleanup before they arrive). Symmetric is
+  // simplest; if a customer ever cares about asymmetry we'll split the param.
+  const bufferMs = bufferMin * 60 * 1000;
+  const paddedBusy = busyPeriods.map((b) => ({
+    start: new Date(new Date(b.start).getTime() - bufferMs).toISOString(),
+    end: new Date(new Date(b.end).getTime() + bufferMs).toISOString(),
+  }));
 
   for (let t = startMin; t <= lastStartMin; t += stepMin) {
     const h = Math.floor(t / 60);
@@ -266,8 +407,8 @@ function computeSlots(args: {
     const startMs = new Date(slotStartUtc).getTime();
     const endMs = new Date(slotEndUtc).getTime();
 
-    // Conflict if any busy period overlaps [startMs, endMs)
-    const conflict = busyPeriods.some((b) => {
+    // Conflict if any (buffer-padded) busy period overlaps [startMs, endMs)
+    const conflict = paddedBusy.some((b) => {
       const bs = new Date(b.start).getTime();
       const be = new Date(b.end).getTime();
       return bs < endMs && be > startMs;
@@ -369,27 +510,38 @@ const adapter: BookingAdapter = {
     }));
   },
 
-  async getAvailableSlots(ctx, { date, provider }): Promise<AdapterSlot[]> {
+  async getAvailableSlots(ctx, { date, service, provider }): Promise<AdapterSlot[]> {
     const timeZone = ctx.config.timezone || DEFAULT_TZ;
     const calendarId = resolveCalendarId(ctx, provider);
-    const workStart = ctx.config.working_hours_start || DEFAULT_WORK_START;
-    const workEnd = ctx.config.working_hours_end || DEFAULT_WORK_END;
-    const durationMin = ctx.config.service_duration_min
-      ? parseInt(ctx.config.service_duration_min, 10)
-      : DEFAULT_DURATION_MIN;
+
+    // Per-provider per-day hours, sourced from staff.working_hours via the loader.
+    // Falls back to 09-17 default if tenantData is missing entirely.
+    const hours = workingHoursForDay(ctx, date, provider);
+    if (!hours) {
+      // Closed that day — surface no slots. The AI will tell the caller
+      // "we're closed Sundays, want me to try Monday?"
+      return [];
+    }
+
+    // Per-service duration sourced from tenants.booking_settings.service_durations.
+    const durationMin = durationForService(ctx, service);
+    const bufferMin = bufferMinutes(ctx);
 
     // Bounds for freeBusy: full working day in tenant's tz, expressed as UTC.
-    const timeMin = localToUtcIso(date, workStart, timeZone);
-    const timeMax = localToUtcIso(date, workEnd, timeZone);
+    // Pad by buffer so a busy event ending right at workEnd still pushes the
+    // last possible slot earlier.
+    const timeMin = localToUtcIso(date, hours.start, timeZone);
+    const timeMax = localToUtcIso(date, hours.end, timeZone);
 
     const busy = await fetchBusyPeriods(ctx, calendarId, timeMin, timeMax, timeZone);
 
     const slots = computeSlots({
       date,
-      workStart,
-      workEnd,
+      workStart: hours.start,
+      workEnd: hours.end,
       durationMin,
       stepMin: 30, // anchor candidates every 30 min
+      bufferMin,
       timeZone,
       busyPeriods: busy,
     });
@@ -402,9 +554,9 @@ const adapter: BookingAdapter = {
   async bookAppointment(ctx, input: AdapterBookingInput): Promise<AdapterBookingResult> {
     const timeZone = ctx.config.timezone || DEFAULT_TZ;
     const calendarId = input.staffId || resolveCalendarId(ctx, undefined);
-    const durationMin = ctx.config.service_duration_min
-      ? parseInt(ctx.config.service_duration_min, 10)
-      : DEFAULT_DURATION_MIN;
+    // Phase 2: per-service duration, matching what getAvailableSlots used so
+    // the booking carves out the same length the caller agreed to.
+    const durationMin = durationForService(ctx, input.service);
 
     // input.startTime arrives as either a local-naive ISO ("2025-12-15T14:00:00")
     // from getAvailableSlots above, OR a full ISO with offset from a different
