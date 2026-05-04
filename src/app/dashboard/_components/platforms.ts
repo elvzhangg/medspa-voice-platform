@@ -21,4 +21,5 @@ export const PLATFORM_COLORS: Record<
   vagaro: { bg: "bg-orange-100", text: "text-orange-800", label: "Vagaro" },
   jane: { bg: "bg-teal-100", text: "text-teal-800", label: "Jane" },
   wellnessliving: { bg: "bg-lime-100", text: "text-lime-800", label: "WellnessLiving" },
+  google_calendar: { bg: "bg-blue-100", text: "text-blue-800", label: "Google Calendar" },
 };

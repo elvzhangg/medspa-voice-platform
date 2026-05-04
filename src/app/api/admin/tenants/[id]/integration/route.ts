@@ -13,6 +13,8 @@ const PLATFORMS = [
   "zenoti",
   "vagaro",
   "jane",
+  "wellnessliving",
+  "google_calendar",
   "glossgenius",
   "fresha",
   "self_managed",

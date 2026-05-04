@@ -7,7 +7,9 @@ import zenoti from "./zenoti";
 import vagaro from "./vagaro";
 import jane from "./jane";
 import wellnessliving from "./wellnessliving";
+import googleCalendar from "./google-calendar";
 import { supabaseAdmin } from "../supabase";
+import { ensureFreshAccessToken } from "../google-oauth";
 
 /**
  * Platform → adapter map. Only direct-book platforms appear here.
@@ -28,6 +30,7 @@ const REGISTRY: Record<string, BookingAdapter | undefined> = {
   vagaro,        // hybrid: availability only
   jane,          // hybrid: availability only
   wellnessliving,
+  google_calendar: googleCalendar, // direct-book via Google Calendar API
 };
 
 export function getAdapter(platform: string | null | undefined): BookingAdapter | null {
@@ -71,10 +74,26 @@ export async function loadTenantIntegration(
 
   if (!row) return null;
 
+  const credentials = (row.credentials ?? {}) as Record<string, string | undefined>;
+
+  // Google Calendar uses OAuth tokens (stored in oauth_* columns, not in
+  // credentials) — refresh if needed and inject into ctx.credentials.access_token
+  // so the adapter can read it like any other API key. Other adapters are
+  // unaffected.
+  if (tenant.integration_platform === "google_calendar") {
+    try {
+      const accessToken = await ensureFreshAccessToken(tenantId);
+      credentials.access_token = accessToken;
+    } catch (err) {
+      console.error("GOOGLE_OAUTH_REFRESH_FAILED:", err);
+      return null;
+    }
+  }
+
   return {
     adapter,
     ctx: {
-      credentials: (row.credentials ?? {}) as Record<string, string | undefined>,
+      credentials,
       config: (row.config ?? {}) as Record<string, string | undefined>,
     },
   };

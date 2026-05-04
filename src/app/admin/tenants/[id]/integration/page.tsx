@@ -13,6 +13,7 @@ type Platform =
   | "wellnessliving"
   | "vagaro"
   | "jane"
+  | "google_calendar"
   | "glossgenius"
   | "fresha"
   | "self_managed";
@@ -28,6 +29,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   wellnessliving: "WellnessLiving",
   vagaro: "Vagaro",
   jane: "Jane",
+  google_calendar: "Google Calendar",
   glossgenius: "GlossGenius",
   fresha: "Fresha",
   self_managed: "Self-managed (no platform)",
@@ -42,6 +44,7 @@ const DEFAULT_MODE: Record<Platform, Mode> = {
   wellnessliving: "direct_book",
   vagaro: "hybrid",
   jane: "hybrid",
+  google_calendar: "direct_book",
   glossgenius: "sms_fallback",
   fresha: "sms_fallback",
   self_managed: "sms_fallback",
@@ -91,6 +94,15 @@ const FIELD_SPEC: Record<
     credentials: ["api_key"],
     config: ["clinic_id"],
     help: "Jane Partner API — write scopes are gated, so we run hybrid: AI verifies availability, staff confirms via SMS.",
+  },
+  google_calendar: {
+    // Credentials are issued via OAuth — there's no field to paste. The
+    // 'Connect with Google' button below replaces the credential form.
+    credentials: [],
+    // Config the admin fills in AFTER OAuth: which calendars map to which
+    // providers, business hours, default service duration, timezone.
+    config: ["timezone", "default_calendar_id", "service_duration_min", "working_hours_start", "working_hours_end", "provider_calendars"],
+    help: "Connect a Google account to read availability and create real bookings. Free, self-serve, no API approval. Best fit for solo med spas using Google Calendar as their primary booking system.",
   },
   glossgenius: {
     credentials: [],
@@ -146,7 +158,24 @@ export default function AdminIntegrationPage() {
 
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  // Lazy initializer: read OAuth callback query params on first mount so we can
+  // surface "connected" / "error" toasts coming back from /api/admin/google/callback.
+  // Doing this in a useState initializer (instead of an effect) avoids the
+  // react-hooks/set-state-in-effect lint warning since we set the initial value
+  // synchronously rather than re-rendering.
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gcal_connected")) {
+      return {
+        kind: "ok",
+        text: "Google Calendar connected. Now pick which calendars map to providers, then Test connection.",
+      };
+    }
+    const err = params.get("gcal_error");
+    if (err) return { kind: "error", text: err };
+    return null;
+  });
 
   async function load() {
     const res = await fetch(`/api/admin/tenants/${id}/integration`);
@@ -170,6 +199,18 @@ export default function AdminIntegrationPage() {
   useEffect(() => {
     load();
   }, [id]);
+
+  // After the lazy initializer above reads the OAuth callback query params,
+  // strip them from the URL so a refresh doesn't re-trigger the toast. This
+  // effect only mutates browser history (no React state), so it's safe under
+  // the react-hooks/set-state-in-effect rule.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gcal_connected") || params.get("gcal_error")) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   function handlePlatformChange(p: Platform) {
     setPlatform(p);
@@ -229,7 +270,12 @@ export default function AdminIntegrationPage() {
   if (!tenant) return <div className="text-red-500 text-sm">Tenant not found.</div>;
 
   const spec = FIELD_SPEC[platform];
-  const noApi = spec.credentials.length === 0 && spec.config.length === 0;
+  const isGoogle = platform === "google_calendar";
+  const noApi = !isGoogle && spec.credentials.length === 0 && spec.config.length === 0;
+  // For OAuth platforms (Google Calendar), the row exists once the user
+  // completes the OAuth flow — even if they haven't filled in config yet.
+  const oauthConnected =
+    isGoogle && integration?.platform === "google_calendar";
 
   return (
     <div className="max-w-3xl">
@@ -318,7 +364,77 @@ export default function AdminIntegrationPage() {
           </div>
         </div>
 
-        {!noApi && (
+        {/* Google Calendar: OAuth flow replaces credential paste. */}
+        {isGoogle && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-900">
+              <p className="font-semibold mb-1">OAuth-based connection</p>
+              <p className="text-xs leading-relaxed">
+                Click below to connect a Google account. You&apos;ll be redirected to Google to grant
+                Calendar access. After authorizing, you&apos;ll come back here to map calendars to
+                providers and run a connection test. No credentials get pasted or stored in this
+                form.
+              </p>
+            </div>
+
+            <a
+              href={`/api/admin/google/start?tenant=${id}`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-sm font-semibold rounded-lg text-gray-700 shadow-sm"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                />
+              </svg>
+              {oauthConnected ? "Re-connect Google Calendar" : "Connect with Google"}
+            </a>
+
+            {oauthConnected && (
+              <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-xs text-green-800">
+                Google account connected. Run <b>Test connection</b> below to fetch your calendars,
+                then fill in the configuration fields:
+                <ul className="list-disc ml-5 mt-2 space-y-0.5">
+                  <li><span className="font-mono">timezone</span>: e.g., <span className="font-mono">America/Los_Angeles</span></li>
+                  <li><span className="font-mono">default_calendar_id</span>: leave as <span className="font-mono">primary</span> or paste a specific calendar ID</li>
+                  <li><span className="font-mono">service_duration_min</span>: default appointment length, e.g., <span className="font-mono">60</span></li>
+                  <li><span className="font-mono">working_hours_start</span> / <span className="font-mono">working_hours_end</span>: e.g., <span className="font-mono">09:00</span> / <span className="font-mono">17:00</span></li>
+                  <li><span className="font-mono">provider_calendars</span>: optional JSON map, e.g. <span className="font-mono">{`{"Dr. Chen":"abc@group.calendar.google.com"}`}</span></li>
+                </ul>
+              </div>
+            )}
+
+            {spec.config.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-600 mb-2">Configuration</h3>
+                <div className="space-y-2">
+                  {spec.config.map((k) => (
+                    <KVField
+                      key={k}
+                      label={k}
+                      value={config[k] || ""}
+                      onChange={(v) => setConfig({ ...config, [k]: v })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!noApi && !isGoogle && (
           <>
             {spec.credentials.length > 0 && (
               <div>
@@ -357,7 +473,7 @@ export default function AdminIntegrationPage() {
         {noApi && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
             This platform has no public API — the tenant will run in <b>SMS fallback</b> mode. No
-            credentials needed here; the SMS forward numbers live on the tenant's scheduling page.
+            credentials needed here; the SMS forward numbers live on the tenant&apos;s scheduling page.
           </div>
         )}
 
