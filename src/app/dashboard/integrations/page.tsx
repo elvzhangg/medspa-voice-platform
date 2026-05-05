@@ -58,6 +58,35 @@ export default function IntegrationsPage() {
         const data = await res.json();
         if (cancelled) return;
         setStatus(data);
+
+        // Self-heal: if Google is configured but stuck at 'pending' (e.g., the
+        // OAuth callback predates the auto-test fix, or the test endpoint was
+        // unreachable when OAuth completed), silently call /api/integrations/verify
+        // to retry the connection test and flip the status. No tenant action
+        // required.
+        if (
+          data?.platform === "google_calendar" &&
+          data?.status === "pending"
+        ) {
+          try {
+            const verifyRes = await fetch("/api/integrations/verify", {
+              method: "POST",
+            });
+            if (cancelled) return;
+            if (verifyRes.ok) {
+              // Re-fetch status so the UI reflects the new state.
+              const refreshed = await fetch("/api/integrations/status");
+              if (cancelled) return;
+              if (refreshed.ok) {
+                setStatus(await refreshed.json());
+              }
+            }
+          } catch (verifyErr) {
+            // Silent — the dashboard will keep showing "pending" with the
+            // existing copy and the user can re-click Connect if needed.
+            console.warn("integrations auto-verify err:", verifyErr);
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         console.error("integrations status err:", err);

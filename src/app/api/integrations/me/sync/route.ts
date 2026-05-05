@@ -29,7 +29,11 @@ export const maxDuration = 300;
 
 export async function POST() {
   const tenant = (await getCurrentTenant()) as
-    | { id: string; integration_status?: string | null }
+    | {
+        id: string;
+        integration_status?: string | null;
+        integration_platform?: string | null;
+      }
     | null;
   if (!tenant) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,19 +46,35 @@ export async function POST() {
     );
   }
 
+  if (!tenant.integration_platform) {
+    return NextResponse.json(
+      { error: "No platform configured for this tenant" },
+      { status: 400 }
+    );
+  }
+
   // Cooldown check — read the existing last_synced_at and bail if it's
   // within COOLDOWN_MS of now. The check + the eventual write are not
   // transactional, but two near-simultaneous clicks would still cost at
   // most one extra round-trip; not worth a row lock here.
+  //
+  // Filter by (tenant_id, platform) — a tenant can have multiple rows in
+  // tenant_integrations (e.g., a stale row from a previous platform that
+  // wasn't explicitly disconnected before switching). Without the platform
+  // filter, .maybeSingle() throws on multi-row matches and surfaces as
+  // "No integration row" even though the active integration exists.
   const { data: integration } = await supabaseAdmin
     .from("tenant_integrations")
     .select("platform, last_synced_at")
     .eq("tenant_id", tenant.id)
+    .eq("platform", tenant.integration_platform)
     .maybeSingle();
 
   if (!integration) {
     return NextResponse.json(
-      { error: "No integration row" },
+      {
+        error: `No integration row for platform=${tenant.integration_platform}. Reconnect via /dashboard/integrations.`,
+      },
       { status: 400 }
     );
   }
