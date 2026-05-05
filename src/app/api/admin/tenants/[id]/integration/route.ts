@@ -77,6 +77,21 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
+  // Fetch the current platform so we can detect changes — switching
+  // platforms requires resetting integration_status because the new
+  // platform isn't actually connected yet (different OAuth tokens / API
+  // keys). Without this, status='connected' from a previous platform
+  // would leak through and the dashboard would show the new platform as
+  // already connected when it's not.
+  const { data: currentTenant } = await supabaseAdmin
+    .from("tenants")
+    .select("integration_platform")
+    .eq("id", id)
+    .maybeSingle();
+
+  const platformChanged =
+    platform !== undefined && platform !== currentTenant?.integration_platform;
+
   // Mirror the admin-visible summary onto the tenants row
   const tenantUpdate: Record<string, unknown> = {};
   if (platform !== undefined) tenantUpdate.integration_platform = platform;
@@ -84,6 +99,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (status !== undefined) {
     tenantUpdate.integration_status = status;
     if (status === "connected") tenantUpdate.integration_connected_at = new Date().toISOString();
+  } else if (platformChanged) {
+    // Platform changed but caller didn't explicitly pass a status — reset
+    // to 'pending' so the dashboard correctly reflects "configured but not
+    // connected." The connect flow (OAuth callback or test-connection) will
+    // flip it to 'connected' once the new platform is actually working.
+    tenantUpdate.integration_status = "pending";
+    tenantUpdate.integration_connected_at = null;
+    tenantUpdate.integration_last_error = null;
   }
   if (last_error !== undefined) tenantUpdate.integration_last_error = last_error;
 
