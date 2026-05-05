@@ -166,7 +166,15 @@ export async function upsertPlatformAppointment(
     },
     { onConflict: "tenant_id,external_source,external_id" }
   );
-  if (error) console.error("APPT_SYNC_UPSERT_ERR:", error.message);
+  if (error) {
+    // Surface the failure instead of swallowing it. Without this, a sync
+    // that fails to upsert (e.g. due to a missing unique constraint) would
+    // report `upserted: N` and `errored: false` while writing zero rows —
+    // exactly the silent-failure mode that hid the partial-unique-index bug
+    // for so long.
+    console.error("APPT_SYNC_UPSERT_ERR:", error.message);
+    throw new Error(`Upsert failed: ${error.message}`);
+  }
   return true;
 }
 
