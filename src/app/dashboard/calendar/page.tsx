@@ -23,10 +23,46 @@ interface CalEvent {
 
 const AI_COLOR = { bg: "bg-amber-100", text: "text-amber-900", label: "AI booked" };
 
+type ViewMode = "month" | "week" | "day";
+
+// Time-grid bounds used by week + day views. Wider than typical med spa
+// hours (most run 9-7) so 7am setup blocks and 9pm late evening events
+// still render at top/bottom of the grid rather than getting clipped.
+const HOUR_GRID_START = 7;
+const HOUR_GRID_END = 21; // exclusive
+const HOUR_ROW_PX = 56;
+
 interface IntegrationStatus {
   platform: string | null;
   status: "pending" | "connected" | "error" | "disabled";
   last_synced_at: string | null;
+}
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: "amber" | "zinc" | "rose";
+}) {
+  // Accent classes are split out as a small map rather than interpolated
+  // into the className string — Tailwind's JIT only includes classes it
+  // sees as literal substrings, so dynamic concatenation gets purged.
+  const accentClasses: Record<typeof accent, string> = {
+    amber: "text-amber-700 bg-amber-50 border-amber-200",
+    zinc: "text-zinc-700 bg-white border-zinc-200",
+    rose: "text-rose-700 bg-rose-50 border-rose-200",
+  };
+  return (
+    <div className={`px-4 py-3 rounded-2xl border ${accentClasses[accent]}`}>
+      <div className="text-[10px] font-black uppercase tracking-widest opacity-70">
+        {label}
+      </div>
+      <div className="text-2xl font-black tracking-tight mt-0.5">{value}</div>
+    </div>
+  );
 }
 
 function eventColor(ev: CalEvent) {
@@ -52,11 +88,80 @@ function monthLabel(d: Date) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
+// "May 3 – 9, 2026" for the displayed week. Always starts on Sunday to
+// match the existing month grid's day-of-week header order.
+function weekLabel(anchor: Date) {
+  const start = startOfWeek(anchor);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if (sameMonth) {
+    return `${start.toLocaleDateString("en-US", { month: "long" })} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`;
+  }
+  if (sameYear) {
+    return `${start.toLocaleDateString("en-US", { month: "short" })} ${start.getDate()} – ${end.toLocaleDateString("en-US", { month: "short" })} ${end.getDate()}, ${end.getFullYear()}`;
+  }
+  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+}
+
+function dayLabel(d: Date) {
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function startOfWeek(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  out.setDate(out.getDate() - out.getDay());
+  return out;
+}
+
+function startOfDay(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Map an event's start time to a fractional hour offset within the
+// HOUR_GRID_START–HOUR_GRID_END window. Used to position events
+// vertically in the time grid. Clamps so events at 6am don't render
+// at -1, and 11pm events don't overflow below.
+function hourFraction(iso: string): number {
+  const d = new Date(iso);
+  return d.getHours() + d.getMinutes() / 60;
+}
+
+// Pixel offset from the top of the time grid for an event start time.
+function topPxForTime(iso: string): number {
+  const h = hourFraction(iso);
+  const clamped = Math.max(HOUR_GRID_START, Math.min(HOUR_GRID_END, h));
+  return (clamped - HOUR_GRID_START) * HOUR_ROW_PX;
+}
+
+// Height in px for an event spanning start → end. Falls back to a 60-min
+// default block if endTime is missing or non-positive (defensive).
+function heightPxForRange(startIso: string, endIso: string | null | undefined): number {
+  const start = new Date(startIso).getTime();
+  const end = endIso ? new Date(endIso).getTime() : start + 60 * 60 * 1000;
+  const minutes = Math.max(15, (end - start) / 60_000);
+  return (minutes / 60) * HOUR_ROW_PX;
+}
+
 export default function CalendarPage() {
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CalEvent | null>(null);
@@ -113,13 +218,38 @@ export default function CalendarPage() {
     [applyCompletionToState]
   );
 
-  const loadMonth = useCallback(async (anchor: Date) => {
+  // Compute the date range for fetching events based on the current view.
+  // Month view always grabs the full 6-week grid (so days from prev/next
+  // month also render); week and day views grab tight windows.
+  const dateRange = useMemo(() => {
+    if (viewMode === "month") {
+      // Cover the full visible 6-week grid, not just the calendar month —
+      // events from prev/next month days that appear in the grid would
+      // otherwise be missing.
+      const firstOfMonth = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const gridStart = startOfWeek(firstOfMonth);
+      const gridEnd = new Date(gridStart);
+      gridEnd.setDate(gridStart.getDate() + 42);
+      return { start: gridStart, end: gridEnd };
+    }
+    if (viewMode === "week") {
+      const start = startOfWeek(cursor);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      return { start, end };
+    }
+    // day
+    const start = startOfDay(cursor);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    return { start, end };
+  }, [cursor, viewMode]);
+
+  const loadEvents = useCallback(async () => {
     setLoading(true);
-    const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
     const qs = new URLSearchParams({
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: dateRange.start.toISOString(),
+      end: dateRange.end.toISOString(),
     });
     const res = await fetch(`/api/calendar/events?${qs}`);
     if (res.ok) {
@@ -127,11 +257,11 @@ export default function CalendarPage() {
       setEvents(data.events ?? []);
     }
     setLoading(false);
-  }, []);
+  }, [dateRange.start, dateRange.end]);
 
   useEffect(() => {
-    loadMonth(cursor);
-  }, [cursor, loadMonth]);
+    loadEvents();
+  }, [loadEvents]);
 
   // After the initial load, give the background sync triggered by
   // /api/integrations/me a few seconds to run, then refetch. Without this,
@@ -141,12 +271,10 @@ export default function CalendarPage() {
   // requiring a manual refresh.
   useEffect(() => {
     const t = setTimeout(() => {
-      loadMonth(cursor);
+      loadEvents();
     }, 6000);
     return () => clearTimeout(t);
-    // Only run on mount (or month change) — covers the common case where
-    // a freshly-arrived sync's results haven't been fetched yet.
-  }, [cursor, loadMonth]);
+  }, [loadEvents]);
 
   // Group events by YYYY-MM-DD for fast cell lookup
   const eventsByDay = useMemo(() => {
@@ -179,15 +307,59 @@ export default function CalendarPage() {
   const currentMonth = cursor.getMonth();
 
   function prev() {
-    setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+    if (viewMode === "month") {
+      setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+    } else if (viewMode === "week") {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() - 7);
+      setCursor(d);
+    } else {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() - 1);
+      setCursor(d);
+    }
   }
   function next() {
-    setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+    if (viewMode === "month") {
+      setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+    } else if (viewMode === "week") {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() + 7);
+      setCursor(d);
+    } else {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() + 1);
+      setCursor(d);
+    }
   }
   function goToday() {
     const now = new Date();
-    setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+    setCursor(now);
   }
+
+  // Stats bar — counts shown above the grid regardless of view mode.
+  // Computed from the events array (which already covers the active
+  // window, with month view loading 6 weeks for context).
+  const stats = useMemo(() => {
+    const now = new Date();
+    const todayK = dayKey(now);
+    const weekStart = startOfWeek(now).getTime();
+    const weekEnd = weekStart + 7 * 86_400_000;
+
+    let todayCount = 0;
+    let thisWeekCount = 0;
+    let aiBookedCount = 0;
+    let cancelledCount = 0;
+    for (const ev of events) {
+      const t = new Date(ev.start_time).getTime();
+      const k = dayKey(new Date(ev.start_time));
+      if (k === todayK && ev.status !== "cancelled") todayCount++;
+      if (t >= weekStart && t < weekEnd && ev.status !== "cancelled") thisWeekCount++;
+      if (!ev.external_source && ev.status !== "cancelled") aiBookedCount++;
+      if (ev.status === "cancelled") cancelledCount++;
+    }
+    return { todayCount, thisWeekCount, aiBookedCount, cancelledCount };
+  }, [events]);
 
   // Derived legend — only show sources actually present this month
   const sourcesThisMonth = useMemo(() => {
@@ -212,11 +384,27 @@ export default function CalendarPage() {
         <div>
           <h1 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter">Calendar</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* View-mode segmented control: Month / Week / Day */}
+          <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-0.5">
+            {(["month", "week", "day"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                className={`px-3 h-8 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  viewMode === m
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-500 hover:text-zinc-800"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
           <button
             onClick={prev}
             className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center"
-            aria-label="Previous month"
+            aria-label={`Previous ${viewMode}`}
           >
             ‹
           </button>
@@ -229,11 +417,23 @@ export default function CalendarPage() {
           <button
             onClick={next}
             className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center"
-            aria-label="Next month"
+            aria-label={`Next ${viewMode}`}
           >
             ›
           </button>
         </div>
+      </div>
+
+      {/* Stats bar — same data across all view modes; pulled from the
+          currently-loaded events window. todayCount/thisWeekCount are
+          based on actual today, not the cursor, so they're a stable "what's
+          on the schedule" snapshot regardless of which month/week the user
+          is browsing. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <StatCard label="Today" value={stats.todayCount} accent="amber" />
+        <StatCard label="This week" value={stats.thisWeekCount} accent="zinc" />
+        <StatCard label="AI booked" value={stats.aiBookedCount} accent="zinc" />
+        <StatCard label="Cancelled" value={stats.cancelledCount} accent="rose" />
       </div>
 
       {/* Connect-your-Google-Calendar banner — the one "night" moment on the
@@ -293,11 +493,17 @@ export default function CalendarPage() {
       )}
 
       {/* Sync status pill + Sync now button — shared across calendar, providers, clients */}
-      <SyncStatusBar onSyncComplete={() => loadMonth(cursor)} />
+      <SyncStatusBar onSyncComplete={loadEvents} />
 
-      {/* Month header + legend */}
+      {/* Title + legend — title text adapts per view mode */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-black text-zinc-900 tracking-tight">{monthLabel(cursor)}</h2>
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">
+          {viewMode === "month"
+            ? monthLabel(cursor)
+            : viewMode === "week"
+            ? weekLabel(cursor)
+            : dayLabel(cursor)}
+        </h2>
         {sourcesThisMonth.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             {sourcesThisMonth.map((s) => (
@@ -312,7 +518,8 @@ export default function CalendarPage() {
         )}
       </div>
 
-      {/* Grid */}
+      {/* Grid — month / week / day each render their own layout. */}
+      {viewMode === "month" && (
       <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
         {/* Day-of-week header */}
         <div className="grid grid-cols-7 border-b border-zinc-100 bg-zinc-50">
@@ -385,13 +592,205 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      )}
+
+      {/* WEEK VIEW — 7 day columns × hourly rows */}
+      {viewMode === "week" && (
+        <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+          {/* Day-of-week header with date numbers */}
+          <div
+            className="grid border-b border-zinc-100 bg-zinc-50"
+            style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
+          >
+            <div /> {/* corner spacer above hour labels */}
+            {Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(startOfWeek(cursor));
+              d.setDate(d.getDate() + i);
+              const isToday = dayKey(d) === todayKey;
+              return (
+                <div
+                  key={i}
+                  className={`px-3 py-2 text-center border-l border-zinc-100 ${
+                    isToday ? "bg-amber-50" : ""
+                  }`}
+                >
+                  <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                    {d.toLocaleDateString("en-US", { weekday: "short" })}
+                  </div>
+                  <div
+                    className={`mt-0.5 text-sm font-bold ${
+                      isToday ? "text-amber-900" : "text-zinc-700"
+                    }`}
+                  >
+                    {d.getDate()}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Time grid */}
+          <div
+            className="grid relative"
+            style={{
+              gridTemplateColumns: "60px repeat(7, 1fr)",
+              height: `${(HOUR_GRID_END - HOUR_GRID_START) * HOUR_ROW_PX}px`,
+            }}
+          >
+            {/* Hour labels column */}
+            <div className="border-r border-zinc-100">
+              {Array.from(
+                { length: HOUR_GRID_END - HOUR_GRID_START },
+                (_, i) => HOUR_GRID_START + i
+              ).map((h) => (
+                <div
+                  key={h}
+                  className="text-right pr-2 text-[10px] text-zinc-400 font-mono border-b border-zinc-50"
+                  style={{ height: HOUR_ROW_PX }}
+                >
+                  {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
+                </div>
+              ))}
+            </div>
+            {/* Day columns with absolute-positioned events */}
+            {Array.from({ length: 7 }, (_, i) => {
+              const d = new Date(startOfWeek(cursor));
+              d.setDate(d.getDate() + i);
+              const k = dayKey(d);
+              const dayEvents = eventsByDay[k] ?? [];
+              const isToday = k === todayKey;
+              return (
+                <div
+                  key={i}
+                  className={`relative border-l border-zinc-100 ${
+                    isToday ? "bg-amber-50/30" : ""
+                  }`}
+                >
+                  {/* Hour grid lines */}
+                  {Array.from(
+                    { length: HOUR_GRID_END - HOUR_GRID_START },
+                    (_, h) => h
+                  ).map((h) => (
+                    <div
+                      key={h}
+                      className="border-b border-zinc-50"
+                      style={{ height: HOUR_ROW_PX }}
+                    />
+                  ))}
+                  {/* Events */}
+                  {dayEvents.map((ev) => {
+                    const c = eventColor(ev);
+                    const cancelled = ev.status === "cancelled";
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => setSelected(ev)}
+                        className={`absolute left-1 right-1 px-2 py-1 rounded-lg ${c.bg} ${c.text} text-[11px] font-semibold text-left overflow-hidden hover:ring-2 hover:ring-offset-1 hover:ring-amber-300 transition ${
+                          cancelled ? "line-through opacity-60" : ""
+                        }`}
+                        style={{
+                          top: topPxForTime(ev.start_time),
+                          height: heightPxForRange(ev.start_time, ev.end_time),
+                        }}
+                        title={`${formatTime(ev.start_time)} · ${ev.title}`}
+                      >
+                        <div className="font-mono text-[10px] opacity-70">
+                          {formatTime(ev.start_time)}
+                        </div>
+                        <div className="truncate">{ev.title}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* DAY VIEW — single-day timeline, more vertical room per event */}
+      {viewMode === "day" && (
+        <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+          <div
+            className="grid relative"
+            style={{
+              gridTemplateColumns: "70px 1fr",
+              height: `${(HOUR_GRID_END - HOUR_GRID_START) * HOUR_ROW_PX}px`,
+            }}
+          >
+            {/* Hour labels */}
+            <div className="border-r border-zinc-100">
+              {Array.from(
+                { length: HOUR_GRID_END - HOUR_GRID_START },
+                (_, i) => HOUR_GRID_START + i
+              ).map((h) => (
+                <div
+                  key={h}
+                  className="text-right pr-2 text-[11px] text-zinc-400 font-mono border-b border-zinc-50 pt-1"
+                  style={{ height: HOUR_ROW_PX }}
+                >
+                  {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
+                </div>
+              ))}
+            </div>
+            {/* Events column */}
+            <div className="relative">
+              {Array.from(
+                { length: HOUR_GRID_END - HOUR_GRID_START },
+                (_, h) => h
+              ).map((h) => (
+                <div
+                  key={h}
+                  className="border-b border-zinc-50"
+                  style={{ height: HOUR_ROW_PX }}
+                />
+              ))}
+              {(eventsByDay[dayKey(cursor)] ?? []).map((ev) => {
+                const c = eventColor(ev);
+                const cancelled = ev.status === "cancelled";
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => setSelected(ev)}
+                    className={`absolute left-2 right-2 px-3 py-2 rounded-lg ${c.bg} ${c.text} text-sm font-semibold text-left overflow-hidden hover:ring-2 hover:ring-offset-1 hover:ring-amber-300 transition ${
+                      cancelled ? "line-through opacity-60" : ""
+                    }`}
+                    style={{
+                      top: topPxForTime(ev.start_time),
+                      height: heightPxForRange(ev.start_time, ev.end_time),
+                    }}
+                  >
+                    <div className="font-mono text-xs opacity-70">
+                      {formatTime(ev.start_time)}
+                      {ev.end_time ? ` – ${formatTime(ev.end_time)}` : ""}
+                    </div>
+                    <div className="truncate">{ev.title}</div>
+                    {ev.customer_name && (
+                      <div className="text-xs opacity-80 truncate">
+                        {ev.customer_name}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <p className="text-xs text-zinc-400 italic text-center">Loading events…</p>
       )}
 
       {events.length === 0 && !loading && (
         <div className="bg-white rounded-3xl border border-dashed border-zinc-200 p-10 text-center">
-          <p className="text-sm font-bold text-zinc-700">No appointments for {monthLabel(cursor)}</p>
+          <p className="text-sm font-bold text-zinc-700">
+            No appointments for{" "}
+            {viewMode === "month"
+              ? monthLabel(cursor)
+              : viewMode === "week"
+              ? weekLabel(cursor)
+              : dayLabel(cursor)}
+          </p>
           <p className="text-xs text-zinc-500 mt-1">
             Events booked by your AI Clientele Specialist — and those synced from your connected booking platform — will appear here.
           </p>
