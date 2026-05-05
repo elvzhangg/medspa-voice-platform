@@ -5,6 +5,7 @@ import {
   verifyState,
   type OAuthContext,
 } from "@/lib/google-oauth";
+import googleCalendarAdapter from "@/lib/integrations/google-calendar";
 
 /**
  * GET /api/admin/google/callback?code=<code>&state=<signedState>
@@ -118,22 +119,63 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(back);
   }
 
-  // Mirror onto tenants row so the admin status pill flips immediately.
-  // Status stays "pending" until the admin picks calendars and runs Test.
+  // Auto-test the connection: call the GCal adapter's testConnection with the
+  // freshly-exchanged access_token. If it succeeds, mark the tenant 'connected'
+  // immediately so the dashboard reflects working state. If it fails, mark
+  // 'error' with the failure reason — better UX than the previous "pending"
+  // limbo where the tenant had no clear next step.
+  let nextStatus: "connected" | "error" = "connected";
+  let lastError: string | null = null;
+  let connectedAt: string | null = new Date().toISOString();
+
+  try {
+    const testResult = await googleCalendarAdapter.testConnection({
+      credentials: { access_token: tokens.access_token },
+      config: {},
+    });
+    if (!testResult.ok) {
+      nextStatus = "error";
+      lastError = testResult.detail || "Connection test failed";
+      connectedAt = null;
+      console.warn(
+        "GOOGLE_OAUTH_TEST_FAILED tenant=" + tenantId + ":",
+        testResult.detail
+      );
+    }
+  } catch (err) {
+    nextStatus = "error";
+    lastError = err instanceof Error ? err.message : String(err);
+    connectedAt = null;
+    console.error("GOOGLE_OAUTH_TEST_EXCEPTION:", err);
+  }
+
+  // Persist the test result on the tenant_integrations row too — useful for
+  // diagnostics later if the admin wants to see "last test passed/failed."
+  await supabaseAdmin
+    .from("tenant_integrations")
+    .update({
+      last_test_at: new Date().toISOString(),
+      last_test_status: nextStatus === "connected" ? "ok" : "error",
+      last_error: lastError,
+    })
+    .eq("tenant_id", tenantId)
+    .eq("platform", "google_calendar");
+
+  // Mirror final state onto the tenants row.
   const { error: tenantErr } = await supabaseAdmin
     .from("tenants")
     .update({
       integration_platform: "google_calendar",
       integration_mode: "direct_book",
-      integration_status: "pending",
-      integration_last_error: null,
+      integration_status: nextStatus,
+      integration_connected_at: connectedAt,
+      integration_last_error: lastError,
     })
     .eq("id", tenantId);
 
   if (tenantErr) {
     console.error("GOOGLE_OAUTH_TENANT_UPDATE_ERR:", tenantErr);
-    // Tokens are saved; tenant row update failed. Not fatal — admin can
-    // still proceed via the form. Surface a soft warning.
+    // Tokens are saved; tenant row update failed. Soft warning, don't crash.
     const back = await backUrl(
       req,
       tenantId,
@@ -143,9 +185,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(back);
   }
 
-  // Success — back to the right dashboard page with a success flag.
-  const back = await backUrl(req, tenantId, context, null);
-  back.searchParams.set("gcal_connected", "1");
+  // Success — back to the right dashboard page. If the connection test failed,
+  // surface the reason; otherwise show the green success flag.
+  const back = await backUrl(
+    req,
+    tenantId,
+    context,
+    nextStatus === "error"
+      ? `Authorization succeeded but the connection test failed: ${lastError}`
+      : null
+  );
+  if (nextStatus === "connected") back.searchParams.set("gcal_connected", "1");
   return NextResponse.redirect(back);
 }
 
