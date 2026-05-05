@@ -5,6 +5,7 @@ import type {
   AdapterBookingResult,
   AdapterTestResult,
   AdapterProvider,
+  AdapterAppointment,
   BookingAdapter,
 } from "./types";
 
@@ -508,6 +509,141 @@ const adapter: BookingAdapter = {
       name: c.summary,
       active: true,
     }));
+  },
+
+  async listAppointments(ctx, { since, until }): Promise<AdapterAppointment[]> {
+    // Determine which calendars to pull events from. If the tenant has
+    // configured per-provider calendars, query each one; otherwise just the
+    // default calendar (typically 'primary'). This mirrors the same calendar
+    // resolution as availability lookup so what the AI quotes and what the
+    // dashboard displays are consistent.
+    const providerCalMap = parseProviderCalendars(ctx.config.provider_calendars);
+    const providerCalIds = Object.values(providerCalMap).filter(Boolean);
+    const calendarIds =
+      providerCalIds.length > 0
+        ? Array.from(new Set(providerCalIds))
+        : [ctx.config.default_calendar_id || DEFAULT_CAL];
+
+    // Build a reverse map calendarId -> providerName so each event can be
+    // tagged with the right staff name without an extra lookup.
+    const calIdToProvider: Record<string, string> = {};
+    for (const [name, id] of Object.entries(providerCalMap)) {
+      if (id) calIdToProvider[id] = name;
+    }
+
+    interface GCalEvent {
+      id: string;
+      status?: "confirmed" | "tentative" | "cancelled";
+      summary?: string;
+      description?: string;
+      start?: { dateTime?: string; date?: string };
+      end?: { dateTime?: string; date?: string };
+      attendees?: Array<{ email?: string; displayName?: string; responseStatus?: string }>;
+      // Recurring instances inherit from a parent — we ask the API to expand
+      // these with singleEvents=true so each recurrence shows up as its own row.
+    }
+    interface GCalEventsResponse {
+      items?: GCalEvent[];
+      nextPageToken?: string;
+    }
+
+    const all: AdapterAppointment[] = [];
+
+    for (const calendarId of calendarIds) {
+      let pageToken: string | undefined = undefined;
+      // Cap pagination at 5 pages (1250 events) to bound runtime — the
+      // backfill window is ~120 days; a med spa booking 10/day fills ~1200
+      // events and would already be edge-case. Tenants with more should
+      // shrink the backfill window or split by calendar.
+      for (let page = 0; page < 5; page++) {
+        const params = new URLSearchParams({
+          timeMin: since,
+          timeMax: until,
+          singleEvents: "true",
+          orderBy: "startTime",
+          maxResults: "250",
+          // Returns cancellations too — important for the upsert path which
+          // marks calendar_events rows cancelled rather than deleting them.
+          showDeleted: "true",
+        });
+        if (pageToken) params.set("pageToken", pageToken);
+
+        let res: GCalEventsResponse;
+        try {
+          res = await gcalFetch<GCalEventsResponse>(
+            ctx,
+            `/calendars/${encodeURIComponent(calendarId)}/events?${params}`
+          );
+        } catch (err) {
+          // One calendar's failure shouldn't kill the whole sync — log and
+          // move on. The error gets attached to the integration record by
+          // the sync orchestrator's outer error handling.
+          console.error(`GCAL_LIST_APPTS_ERR cal=${calendarId}:`, err);
+          break;
+        }
+
+        const items = res.items ?? [];
+        for (const ev of items) {
+          // Skip all-day events — they're typically blackout days, not
+          // bookable appointments. The dashboard calendar would render
+          // these confusingly anyway.
+          const startIso = ev.start?.dateTime;
+          if (!startIso) continue;
+
+          // Map Google's status to our normalized rollup
+          let status: "confirmed" | "cancelled" | "completed" = "confirmed";
+          if (ev.status === "cancelled") status = "cancelled";
+          // Google doesn't have a "completed" concept on calendars themselves;
+          // post-procedure tracking happens via /api/calendar/events completion
+          // endpoints. We default to "confirmed" until that other path marks
+          // the appointment completed.
+
+          // Best-effort customer name extraction. Convention used by
+          // bookAppointment is "{customerName} — {service}" so we try to
+          // split the summary on the em-dash; falls back to attendees or
+          // the raw summary.
+          const summary = ev.summary || "";
+          let customerName: string | undefined;
+          let serviceName: string | undefined;
+          const emDashIdx = summary.indexOf("—");
+          const hyphenIdx = emDashIdx === -1 ? summary.indexOf(" - ") : -1;
+          if (emDashIdx > -1) {
+            customerName = summary.slice(0, emDashIdx).trim();
+            serviceName = summary.slice(emDashIdx + 1).trim();
+          } else if (hyphenIdx > -1) {
+            customerName = summary.slice(0, hyphenIdx).trim();
+            serviceName = summary.slice(hyphenIdx + 3).trim();
+          } else {
+            // No delimiter — treat the whole summary as the service name and
+            // leave customerName blank. Tenant-created events often look like
+            // "Lunch break" or "HydraFacial - Sarah" without our pattern.
+            serviceName = summary || undefined;
+          }
+          // Fall back to attendee displayName for customer if our parse
+          // didn't yield one (e.g. event was created via Google's UI directly)
+          if (!customerName && ev.attendees?.length) {
+            const human = ev.attendees.find((a) => a.email && !a.email.endsWith(".calendar.google.com"));
+            customerName = human?.displayName ?? human?.email;
+          }
+
+          all.push({
+            externalId: ev.id,
+            startTime: startIso,
+            endTime: ev.end?.dateTime,
+            serviceName,
+            staffName: calIdToProvider[calendarId],
+            customerName,
+            status,
+            platformStatus: ev.status,
+          });
+        }
+
+        pageToken = res.nextPageToken;
+        if (!pageToken) break;
+      }
+    }
+
+    return all;
   },
 
   async getAvailableSlots(ctx, { date, service, provider }): Promise<AdapterSlot[]> {
