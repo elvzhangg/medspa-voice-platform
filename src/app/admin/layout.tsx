@@ -66,6 +66,16 @@ function IconMegaphone() {
   );
 }
 
+function IconUsers() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+        d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6 5.87a4 4 0 00-6 0m6 0v-2a4 4 0 00-6 0v2m9-9a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"
+      />
+    </svg>
+  );
+}
+
 function IconLogout() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,6 +91,7 @@ const NAV_ITEMS = [
   { label: "Tenants", href: "/admin/tenants", icon: <IconBuilding />, exact: false },
   { label: "Demo Requests", href: "/admin/demo-requests", icon: <IconInbox />, exact: false },
   { label: "Outreach", href: "/admin/outreach", icon: <IconMegaphone />, exact: false },
+  { label: "CRM", href: "/admin/crm", icon: <IconUsers />, exact: false },
   { label: "Onboard", href: "/admin/onboard", icon: <IconPlusCircle />, exact: false },
   { label: "Invite Links", href: "/admin/invites", icon: <IconLink />, exact: false },
 ];
