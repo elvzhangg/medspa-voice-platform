@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAdapter } from "@/lib/integrations";
-import type { AdapterContext, AdapterWebhookEvent } from "@/lib/integrations/types";
-import { addMinutes } from "date-fns";
+import type {
+  AdapterAppointment,
+  AdapterContext,
+  AdapterWebhookEvent,
+} from "@/lib/integrations/types";
+import { upsertPlatformAppointment } from "@/lib/appointment-sync";
 
 /**
  * Inbound webhook listener — the OTHER half of the integration.
@@ -111,95 +115,16 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   }
 
   try {
-    if (event.eventType === "appointment.completed") {
-      // Two writes on completion:
-      //   1) Flip the calendar_events row so the aftercare cron picks it
-      //      up (same effect as a manual "Mark completed").
-      //   2) Upsert a client_visits row so weekly revenue rollups have
-      //      an authoritative record — the price is only present on
-      //      completion, not on the earlier create/update events.
-      const completedAt = new Date().toISOString();
-
-      await supabaseAdmin
-        .from("calendar_events")
-        .update({
-          status: "completed",
-          completed_at: completedAt,
-          completion_source: `webhook_${platform}`,
-          last_synced_at: completedAt,
-        })
-        .eq("tenant_id", tenantId)
-        .eq("external_source", platform)
-        .eq("external_id", event.externalId);
-
-      // Look up the client_profile_id by phone (if we have one) so the
-      // client_visits row is joinable back to our intelligence layer.
-      let clientProfileId: string | null = null;
-      if (event.customerPhone) {
-        const { data: profile } = await supabaseAdmin
-          .from("client_profiles")
-          .select("id")
-          .eq("tenant_id", tenantId)
-          .eq("phone", event.customerPhone)
-          .maybeSingle();
-        clientProfileId = (profile as { id: string } | null)?.id ?? null;
-      }
-
-      if (event.startTime) {
-        await supabaseAdmin.from("client_visits").upsert(
-          {
-            tenant_id: tenantId,
-            client_profile_id: clientProfileId,
-            platform,
-            external_id: event.externalId,
-            service: event.serviceName ?? null,
-            provider: event.staffName ?? null,
-            price_cents: typeof event.priceCents === "number" ? event.priceCents : null,
-            visit_at: event.startTime,
-            status: event.platformStatus ?? "completed",
-            raw: parsedBody as object | null,
-            synced_at: completedAt,
-          },
-          { onConflict: "tenant_id,platform,external_id" }
-        );
-      }
-    } else if (event.cancelled) {
-      await supabaseAdmin
-        .from("calendar_events")
-        .update({ status: "cancelled", last_synced_at: new Date().toISOString() })
-        .eq("tenant_id", tenantId)
-        .eq("external_source", platform)
-        .eq("external_id", event.externalId);
-    } else if (event.startTime) {
-      // Upsert by (tenant, source, external_id). Partial-index on those
-      // columns means an existing row is updated in place; a brand-new
-      // appointment from the platform UI creates a fresh row.
-      //
-      // IMPORTANT: do NOT include booked_via_ai in this payload. PostgREST's
-      // ON CONFLICT DO UPDATE only touches columns present in the insert,
-      // so omitting it here preserves the AI-attribution flag set by
-      // bookViaAdapter. Adding it back — even as `false` — would wipe the
-      // attribution the instant Boulevard fires its follow-up webhook.
-      const start = new Date(event.startTime);
-      const end = event.endTime ? new Date(event.endTime) : addMinutes(start, 60);
-
-      await supabaseAdmin.from("calendar_events").upsert(
-        {
-          tenant_id: tenantId,
-          external_source: platform,
-          external_id: event.externalId,
-          title: event.serviceName || "Appointment",
-          description: event.staffName ? `With ${event.staffName}` : null,
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          customer_name: event.customerName ?? null,
-          customer_phone: event.customerPhone ?? null,
-          service_type: event.serviceName ?? null,
-          status: "confirmed",
-          last_synced_at: new Date().toISOString(),
-        },
-        { onConflict: "tenant_id,external_source,external_id" }
-      );
+    // Normalize the webhook event onto our unified appointment shape and
+    // hand off to the shared writer (used by both the webhook path and
+    // the manual-backfill "Sync now" path). Drop events that don't
+    // resolve to a write target.
+    const appt = normalizeWebhookEvent(event);
+    if (appt) {
+      await upsertPlatformAppointment(tenantId, platform, appt, {
+        rawPayload: parsedBody,
+        completionSource: `webhook_${platform}`,
+      });
     }
 
     if (auditId) {
@@ -222,4 +147,39 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     // Return 200 anyway — the event is logged; retrying won't help.
     return NextResponse.json({ ok: false, error: "processing failed" });
   }
+}
+
+/**
+ * Map an inbound webhook event onto our unified appointment shape. The
+ * three event flavors collapse to three statuses:
+ *   appointment.completed → status="completed"
+ *   anything with `cancelled=true` → status="cancelled"
+ *   create / update / reschedule with a startTime → status="confirmed"
+ * Returns null when there's nothing actionable (e.g. a confirmed event
+ * that arrived without a startTime — we have nothing to put on the
+ * calendar).
+ */
+function normalizeWebhookEvent(event: AdapterWebhookEvent): AdapterAppointment | null {
+  let status: AdapterAppointment["status"];
+  if (event.eventType === "appointment.completed") {
+    status = "completed";
+  } else if (event.cancelled) {
+    status = "cancelled";
+  } else if (event.startTime) {
+    status = "confirmed";
+  } else {
+    return null;
+  }
+  return {
+    externalId: event.externalId,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    serviceName: event.serviceName,
+    staffName: event.staffName,
+    customerName: event.customerName,
+    customerPhone: event.customerPhone,
+    status,
+    priceCents: event.priceCents,
+    platformStatus: event.platformStatus,
+  };
 }

@@ -13,9 +13,41 @@ export interface AdapterConfig {
   [key: string]: string | undefined;
 }
 
+/**
+ * Tenant-level scheduling data sourced from tenant-editable tables (NOT from
+ * tenant_integrations.config). The loader fetches these and injects them so
+ * adapters that care about scheduling constraints (currently Google Calendar)
+ * can read provider working hours, service durations, and buffer time without
+ * reaching into the DB themselves.
+ *
+ * Adapters that don't care (Boulevard, Acuity, Mindbody, Square, Vagaro,
+ * etc. — they query the platform's own scheduler) ignore this field.
+ *
+ * Source of truth:
+ *   workingHoursByProvider  staff.working_hours per active staff row.
+ *                           Provider names are normalized lowercase.
+ *                           Day keys are full lowercase day names ("monday",
+ *                           "tuesday", etc.) to match the staff schema.
+ *   serviceDurations        tenants.booking_settings.service_durations.
+ *                           Keys lowercased; "default" is the catch-all.
+ *   bufferMin               tenants.booking_settings.buffer_min.
+ */
+export interface TenantSchedulingData {
+  workingHoursByProvider: Record<
+    string,
+    Record<string, { open: string; close: string }>
+  >;
+  serviceDurations: Record<string, number>;
+  bufferMin: number;
+}
+
 export interface AdapterContext {
   credentials: AdapterCredentials;
   config: AdapterConfig;
+  // Optional — populated by loadTenantIntegration when available. Adapters
+  // that want fine-grained per-provider hours or per-service durations read
+  // from here; adapters that don't can ignore.
+  tenantData?: TenantSchedulingData;
 }
 
 export interface AdapterSlot {
@@ -93,6 +125,32 @@ export interface AdapterClientVisit {
   raw?: unknown;
 }
 
+/**
+ * One active membership or remaining-balance package on a client. Both
+ * shapes look the same in our schema — distinguished by `kind`. Med
+ * spas often run both ("Glow Gold" recurring membership + a
+ * 6-pack of laser sessions, sold separately) so we surface them as
+ * separate jsonb arrays on client_profiles.
+ */
+export interface AdapterMembership {
+  /** Platform-side membership/package id */
+  externalId: string;
+  /** Human-readable name ("Glow Gold", "6-pack Laser Hair Removal") */
+  name: string;
+  /** "membership" = recurring; "package" = one-time bundle of sessions */
+  kind: "membership" | "package";
+  /** Sessions remaining if it's session-based; null for unlimited memberships */
+  remaining?: number;
+  /** Sessions originally purchased (denominator for "3 of 6 left") */
+  total?: number;
+  /** Platform-side category — "Classes", "Injectables", etc. */
+  program?: string;
+  /** Expiration date (ISO) — when the package/membership term ends */
+  expiresAt?: string;
+  /** Monthly cost in cents (only meaningful for recurring memberships) */
+  monthlyCostCents?: number;
+}
+
 export interface AdapterClientHistory {
   /** Platform-side client id — stashed in client_profiles.provider_refs */
   clientId: string;
@@ -100,8 +158,70 @@ export interface AdapterClientHistory {
   lastName?: string;
   email?: string;
   visits: AdapterClientVisit[];
-  /** Lifetime spend in cents, if computable */
+  /** Lifetime spend in cents, if computable from the platform's sales records */
   lifetimeValueCents?: number;
+  /** Most recent purchase timestamp (any sale type) */
+  lastPurchaseAt?: string;
+  /** Active recurring memberships ("Glow Gold," "Wellness Plus") */
+  activeMemberships?: AdapterMembership[];
+  /** One-time packages with sessions remaining ("6-pack laser") */
+  packageBalances?: AdapterMembership[];
+}
+
+/**
+ * One row from a platform's client directory. Returned by listClients;
+ * we use these to pre-create client_profiles for clients who exist in
+ * the platform but haven't booked recently — so the AI greets them by
+ * name on a cold call instead of treating them as strangers.
+ *
+ * Visit metrics are deliberately omitted here (most platforms don't
+ * surface lifetime value on the client list endpoint without an extra
+ * per-client call). The recent-client aggregator fills those in from
+ * calendar_events later.
+ */
+export interface AdapterClientRecord {
+  /** Platform-side client id — stashed in client_profiles.provider_refs */
+  externalId: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  /** Raw platform phone — caller normalizes via normalizePhone() on insert. */
+  phone?: string;
+  /** ISO timestamp; lets the caller optionally filter to recently-active records. */
+  lastModified?: string;
+}
+
+/**
+ * One appointment as returned by a backfill / pull-style listAppointments
+ * call. Same shape we eventually upsert to calendar_events. The webhook
+ * path normalizes its own payload to this shape too, so both ingestion
+ * routes funnel through one writer.
+ *
+ * `status` is the adapter's normalized rollup — "confirmed" covers
+ * booked/scheduled/checked-in, "cancelled" covers cancel + no-show + late
+ * cancel, "completed" is paid/closed. `platformStatus` keeps the raw
+ * string for audit.
+ */
+export interface AdapterAppointment {
+  /** Platform-side appointment id — upsert key */
+  externalId: string;
+  /**
+   * ISO 8601 start. Always set on listAppointments rows; may be absent on
+   * webhook-derived cancellations where the platform omits the timestamp.
+   * The writer drops "confirmed" appointments without a start; "cancelled"
+   * and "completed" tolerate it (they only update existing rows).
+   */
+  startTime?: string;
+  endTime?: string;
+  serviceName?: string;
+  staffName?: string;
+  customerName?: string;
+  customerPhone?: string;
+  status: "confirmed" | "cancelled" | "completed";
+  /** Price in cents — present on completed appointments that carry payment info */
+  priceCents?: number;
+  /** Raw platform status string (e.g. "Booked", "Late Cancel") for audit */
+  platformStatus?: string;
 }
 
 /**
@@ -126,6 +246,12 @@ export interface AdapterProvider {
   workingHours?: Record<string, { open: string; close: string }>;
   /** False when the platform reports the staff as disabled/terminated. */
   active?: boolean;
+  /**
+   * About-me / bio prose pulled from the platform's staff record.
+   * Platform-sourced — overwritten on each sync. Adapters omit this if
+   * the platform doesn't surface a bio.
+   */
+  bio?: string;
 }
 
 export interface BookingAdapter {
@@ -168,6 +294,38 @@ export interface BookingAdapter {
    * failed rather than silently wiping the roster.
    */
   listProviders?(ctx: AdapterContext): Promise<AdapterProvider[]>;
+
+  /**
+   * Optional — pull the platform's client directory. Used by the manual
+   * "Sync now" full-sync to pre-populate client_profiles for callers who
+   * exist in the platform but haven't booked through us yet. Adapters
+   * paginate internally and return the flat list. Throw on auth/network
+   * failure. Adapters whose platforms don't expose a client list endpoint
+   * may omit this.
+   *
+   * `modifiedSince` lets callers narrow the pull to recently-active
+   * records to keep first-sync time bounded; ignored if the platform
+   * doesn't support that filter.
+   */
+  listClients?(
+    ctx: AdapterContext,
+    args: { modifiedSince?: string; limit?: number }
+  ): Promise<AdapterClientRecord[]>;
+
+  /**
+   * Optional — pull every appointment in [since, until] from the platform.
+   * Used by the manual "Sync now" button as a webhook safety net so dropped
+   * or unsigned events still reconcile into calendar_events. Adapters
+   * should chunk by whatever window the platform allows and paginate
+   * internally — return the flat list. Throw on auth/network failure.
+   *
+   * Adapters that don't expose a list endpoint may omit this; the sync
+   * orchestrator skips them silently.
+   */
+  listAppointments?(
+    ctx: AdapterContext,
+    args: { since: string; until: string }
+  ): Promise<AdapterAppointment[]>;
 
   /**
    * Query the platform for bookable slots on a given date.

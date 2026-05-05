@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDismiss } from "../_components/useDismiss";
+import SyncStatusBar from "../_components/SyncStatusBar";
+import { PLATFORM_COLORS } from "../_components/platforms";
 
 interface CalEvent {
   id: string;
@@ -19,34 +21,12 @@ interface CalEvent {
   completed_at?: string | null;
 }
 
-const PLATFORM_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  boulevard: { bg: "bg-rose-100", text: "text-rose-800", label: "Boulevard" },
-  acuity: { bg: "bg-gray-900", text: "text-white", label: "Acuity" },
-  mindbody: { bg: "bg-sky-100", text: "text-sky-800", label: "Mindbody" },
-  square: { bg: "bg-emerald-100", text: "text-emerald-800", label: "Square" },
-  zenoti: { bg: "bg-amber-100", text: "text-amber-800", label: "Zenoti" },
-  vagaro: { bg: "bg-orange-100", text: "text-orange-800", label: "Vagaro" },
-  jane: { bg: "bg-teal-100", text: "text-teal-800", label: "Jane" },
-  wellnessliving: { bg: "bg-lime-100", text: "text-lime-800", label: "WellnessLiving" },
-};
 const AI_COLOR = { bg: "bg-amber-100", text: "text-amber-900", label: "AI booked" };
 
 interface IntegrationStatus {
   platform: string | null;
   status: "pending" | "connected" | "error" | "disabled";
   last_synced_at: string | null;
-}
-
-function formatSyncAgo(iso: string | null): string {
-  if (!iso) return "awaiting first sync";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "synced just now";
-  if (mins < 60) return `synced ${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `synced ${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `synced ${days}d ago`;
 }
 
 function eventColor(ev: CalEvent) {
@@ -241,9 +221,10 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Connect-your-platform banner — the one "night" moment on the page,
-          styled after the landing's Champagne Noir hero: near-black canvas,
-          warm amber glow, gold divider stroke. */}
+      {/* Connect-your-Google-Calendar banner — the one "night" moment on the
+          page, styled after the landing's Champagne Noir hero: near-black
+          canvas, warm amber glow, gold divider stroke. Pitches the GCal
+          three-way sync as the universal connector. */}
       {integration && integration.status !== "connected" && (
         <div className="relative overflow-hidden rounded-2xl bg-zinc-950 p-8 shadow-xl">
           {/* Warm amber glows — mirrors the landing's hero ambient */}
@@ -259,40 +240,45 @@ export default function CalendarPage() {
                 </span>
               </div>
               <h2 className="font-serif text-3xl text-white leading-tight tracking-tight">
-                Connect your booking platform
+                Connect your Google Calendar
               </h2>
               <div className="h-px w-16 bg-gradient-to-r from-amber-400 to-transparent my-4" />
               <p className="text-sm text-zinc-300 max-w-xl leading-relaxed">
-                Now supporting Boulevard, Acuity, Mindbody, Square, Zenoti, Vagaro, Jane, and WellnessLiving. Contact us to integrate yours.
+                Real-time three-way sync between your AI receptionist, your Google
+                Calendar, and your booking platform &mdash; Boulevard, Acuity,
+                Mindbody, Square, Zenoti, Vagaro, Jane, WellnessLiving, and more.
               </p>
             </div>
             <a
-              href="mailto:founder@vauxvoice.com"
+              href="/api/google/start"
               className="inline-flex items-center gap-2 px-5 py-3 bg-white text-zinc-950 text-sm font-semibold rounded-xl hover:bg-amber-50 transition-colors shadow-sm shrink-0"
             >
-              Email founder@vauxvoice.com
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                />
               </svg>
+              Connect with Google
             </a>
           </div>
         </div>
       )}
 
-      {/* Sync status strip — read-only status for the connected booking platform */}
-      {integration?.platform && integration.status === "connected" && PLATFORM_COLORS[integration.platform] && (
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-zinc-200 rounded-2xl">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          <span className="text-xs font-bold text-zinc-800">
-            {PLATFORM_COLORS[integration.platform].label}
-          </span>
-          <span className="text-[11px] text-zinc-500">·</span>
-          <span className="text-[11px] text-zinc-500">{formatSyncAgo(integration.last_synced_at)}</span>
-        </div>
-      )}
+      {/* Sync status pill + Sync now button — shared across calendar, providers, clients */}
+      <SyncStatusBar onSyncComplete={() => loadMonth(cursor)} />
 
       {/* Month header + legend */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

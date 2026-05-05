@@ -69,6 +69,48 @@ When callers ask "who works there?" or "who do you have for [service]?", answer 
 `;
 }
 
+/**
+ * Fetch tenants.booking_settings.service_durations and format as a system-prompt
+ * block. Powers AI answers like "How long is a HydraFacial?" without a tool
+ * call. Returns empty string when no per-service durations are configured —
+ * the AI then says "I'd estimate around an hour" or punts to staff.
+ *
+ * Mirrors the same source the Google Calendar adapter reads from (via
+ * loadTenantIntegration → ctx.tenantData.serviceDurations) so what the AI
+ * SAYS the appointment will take matches what gets carved out on the calendar.
+ */
+async function buildServiceDurationsBlock(tenantId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("tenants")
+    .select("booking_settings")
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  type Settings = { service_durations?: Record<string, number> };
+  const durations = (data?.booking_settings as Settings | null)?.service_durations;
+  if (!durations || typeof durations !== "object") return "";
+
+  const entries = Object.entries(durations).filter(
+    ([k, v]) => k !== "default" && typeof v === "number" && v > 0
+  );
+  if (entries.length === 0) return "";
+
+  // Sort longest first — typically pricier/more involved treatments matter more
+  // when scheduling and AI should mention duration prominently for those.
+  entries.sort((a, b) => (b[1] as number) - (a[1] as number));
+
+  const lines = entries.map(([name, mins]) => `- ${name}: ${mins} minutes`);
+  const defaultMins = typeof durations.default === "number" ? durations.default : 60;
+
+  return `
+## Service durations
+${lines.join("\n")}
+- All other services: ${defaultMins} minutes by default
+
+When callers ask how long an appointment takes, answer using these durations directly. The booking system carves out exactly this much time, so what you tell the caller matches what gets booked on the calendar.
+`;
+}
+
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 /**
@@ -104,7 +146,12 @@ export async function buildAssistantConfig(
   // Fetch the active staff roster — injected into the system prompt so the
   // AI can introduce providers, answer "who's here?", and steer callers
   // toward specialists based on ai_notes/specialties.
-  const providerRoster = await buildProviderRoster(tenant.id);
+  // In parallel, fetch per-service durations from tenants.booking_settings
+  // so AI answers about appointment length match what gets booked.
+  const [providerRoster, serviceDurationsBlock] = await Promise.all([
+    buildProviderRoster(tenant.id),
+    buildServiceDurationsBlock(tenant.id),
+  ]);
 
   // SMS consent capture is only relevant when at least one outbound SMS
   // feature is on for this tenant. We add both the prompt block and the
@@ -117,7 +164,14 @@ export async function buildAssistantConfig(
   );
   const consentBlock = smsAny ? buildConsentPromptBlock(tenant) : "";
 
-  const systemPrompt = buildSystemPrompt(tenant, "", callerContext, providerRoster, consentBlock);
+  const systemPrompt = buildSystemPrompt(
+    tenant,
+    "",
+    callerContext,
+    providerRoster,
+    consentBlock,
+    serviceDurationsBlock
+  );
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
   const serverUrl = WEBHOOK_BASE_URL + "/api/vapi/webhook";
@@ -352,7 +406,8 @@ function buildSystemPrompt(
   kbContext: string,
   callerContext: string = "",
   providerRoster: string = "",
-  consentBlock: string = ""
+  consentBlock: string = "",
+  serviceDurationsBlock: string = ""
 ): string {
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", {
@@ -498,6 +553,9 @@ ${overrideLines}`
   const membershipEnabled = Boolean(bc?.membership_enabled);
   const membershipDetails = bc?.membership_details?.trim();
   const membershipSignupUrl = bc?.membership_signup_url?.trim();
+  const bookingConstraints = bc?.booking_constraints?.trim();
+  const intakeFormEnabled = Boolean(bc?.intake_form_enabled);
+  const intakeFormUrl = bc?.intake_form_url?.trim();
 
   const locationBlock = directions
     ? `\n## Location & Parking\n${directions}\nWhen callers ask "where are you?" or about parking, answer directly using this info.\n`
@@ -516,6 +574,21 @@ ${overrideLines}`
         }When cost, loyalty, or returning-client topics come up — especially if the caller sounds like they'd be a fit — warmly mention the membership. If they're interested, offer to text them the signup link via the send_sms tool. Don't push; one mention is enough unless they ask for more.\n`
       : "";
 
+  // Plain-English booking constraints — equipment/room/scheduling rules
+  // the platform can't enforce on its own. The AI checks these before
+  // confirming a slot. Stand-in for full resource modeling.
+  const bookingConstraintsBlock = bookingConstraints
+    ? `\n## Booking Constraints\nBefore confirming any slot, check these rules:\n${bookingConstraints}\nIf a requested slot would violate one, propose the next compatible time. Don't confirm a booking that breaks a constraint.\n`
+    : "";
+
+  // Intake form awareness — the URL itself goes out via SMS post-booking
+  // (see lib/intake-form.ts). The AI just needs to know to mention it
+  // when callers ask about pre-visit paperwork.
+  const intakeFormBlock =
+    intakeFormEnabled && intakeFormUrl
+      ? `\n## Intake Forms\nAfter every booking, we automatically text the caller a link to our intake form. When they ask about paperwork, what to bring, or pre-appointment prep, confirm the form will arrive by text shortly and they should fill it out before arriving. Don't read the URL out loud — the SMS handles delivery.\n`
+      : "";
+
   return `You are a friendly, professional AI Clientele Specialist for ${tenant.name}, a med spa business.
 
 ## Your Role
@@ -526,7 +599,7 @@ ${overrideLines}`
 
 ## Current Time
 ${timeStr} (Pacific Time)
-${callerContext}${providerRoster}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}
+${callerContext}${providerRoster}${serviceDurationsBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}

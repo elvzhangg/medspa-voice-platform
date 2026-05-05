@@ -6,6 +6,7 @@ interface StaffMember {
   id: string;
   name: string;
   title: string | null;
+  bio: string | null;
   services: string[] | null;
   specialties: string[] | null;
   ai_notes: string | null;
@@ -282,6 +283,16 @@ function ProviderCard({
       </div>
 
       <div className="space-y-3 pl-16">
+        {member.bio && (
+          <div>
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">
+              Intro (synced from platform)
+            </label>
+            <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">
+              {member.bio}
+            </p>
+          </div>
+        )}
         <div>
           <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">
             Specialties (what callers should match them to)

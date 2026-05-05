@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import PdfUploadButton from "../../_components/PdfUploadButton";
 
 interface Template {
   id: string;
@@ -18,8 +19,11 @@ interface ApiResponse {
 }
 
 export default function PostProcedurePage() {
-  const params = useParams();
-  const slug = (params?.tenant as string) || "";
+  // See messaging/page.tsx — same routing quirk: the dashboard's file route
+  // is /dashboard/..., middleware rewrites /[slug]/dashboard/... onto it,
+  // useParams() can't see the slug. Read it off usePathname() instead.
+  const pathname = usePathname() ?? "";
+  const slug = pathname.split("/").filter(Boolean)[0] ?? "";
   const [templates, setTemplates] = useState<Template[]>([]);
   const [seenServices, setSeenServices] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,9 +200,19 @@ export default function PostProcedurePage() {
                 </p>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                  Aftercare instructions
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                    Aftercare instructions
+                  </label>
+                  <PdfUploadButton
+                    label="Import from PDF"
+                    onExtracted={({ text }) =>
+                      setEditing((prev) =>
+                        prev ? { ...prev, guideline_text: text } : prev
+                      )
+                    }
+                  />
+                </div>
                 <textarea
                   rows={8}
                   value={editing.guideline_text}
@@ -206,6 +220,9 @@ export default function PostProcedurePage() {
                   placeholder="Avoid alcohol for 24 hours. Don't lie down for 4 hours. Skip workouts today..."
                   className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-400 outline-none resize-none"
                 />
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  Upload a PDF and we&apos;ll fill the box with its text — review before saving.
+                </p>
               </div>
             </div>
             <div className="px-6 py-4 bg-zinc-50/60 border-t border-zinc-100 flex justify-end gap-2">

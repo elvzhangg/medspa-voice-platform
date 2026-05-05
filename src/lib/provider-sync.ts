@@ -65,9 +65,9 @@ export async function syncProvidersForTenant(tenantId: string): Promise<SyncResu
   base.fetched = providers.length;
   const now = new Date().toISOString();
 
-  // Upsert each provider. We can't use a single onConflict upsert because
-  // we want to preserve ai_notes/specialties on updates — so we split
-  // insert vs update based on existing external_id.
+  // Bulk-fetch existing rows so we can compute deactivations after the
+  // upsert (terminated staff = previously seen externalId not in this
+  // sync's response).
   const { data: existing } = await supabaseAdmin
     .from("staff")
     .select("id, external_id")
@@ -79,45 +79,41 @@ export async function syncProvidersForTenant(tenantId: string): Promise<SyncResu
     if (row.external_id) existingByExt.set(row.external_id, row.id);
   }
 
+  // Single bulk upsert. Conflict-policy preservation of ai_notes /
+  // specialties relies on a Postgres quirk: ON CONFLICT DO UPDATE only
+  // touches columns present in the insert payload. Omitting ai_notes
+  // and specialties from the payload means existing values are
+  // untouched on update. New rows get the table default (null / empty
+  // array). Same effect as the old split-update-vs-insert branch, but
+  // 1 round-trip instead of N.
   const seenExternalIds = new Set<string>();
-
-  for (const p of providers) {
+  const upserts = providers.map((p) => {
     seenExternalIds.add(p.externalId);
-
-    const platformFields = {
+    return {
+      tenant_id: tenantId,
+      external_source: adapter.platform,
+      external_id: p.externalId,
       name: p.name,
       title: p.title ?? null,
       services: p.services ?? [],
       working_hours: p.workingHours ?? null,
+      bio: p.bio ?? null,
       active: p.active !== false,
       last_synced_at: now,
+      // OMITTED: ai_notes, specialties — preserved on update via
+      // ON CONFLICT DO UPDATE; default null/[] on insert.
     };
+  });
 
-    const id = existingByExt.get(p.externalId);
-    if (id) {
-      // Update — do NOT touch ai_notes / specialties (tenant-authored).
-      const { error } = await supabaseAdmin
-        .from("staff")
-        .update(platformFields)
-        .eq("id", id);
-      if (error) {
-        console.error("PROVIDER_SYNC_UPDATE_ERR", tenantId, p.externalId, error.message);
-        continue;
-      }
-    } else {
-      // Insert — new provider we've never seen.
-      const { error } = await supabaseAdmin.from("staff").insert({
-        tenant_id: tenantId,
-        external_source: adapter.platform,
-        external_id: p.externalId,
-        ...platformFields,
-      });
-      if (error) {
-        console.error("PROVIDER_SYNC_INSERT_ERR", tenantId, p.externalId, error.message);
-        continue;
-      }
+  if (upserts.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("staff")
+      .upsert(upserts, { onConflict: "tenant_id,external_source,external_id" });
+    if (error) {
+      console.error("PROVIDER_SYNC_BULK_UPSERT_ERR", tenantId, error.message);
+      return { ...base, errored: true, errorMessage: error.message };
     }
-    base.upserted++;
+    base.upserted = upserts.length;
   }
 
   // Soft-deactivate rows that used to come from this platform but weren't

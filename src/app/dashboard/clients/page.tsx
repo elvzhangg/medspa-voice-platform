@@ -4,6 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDismiss } from "../_components/useDismiss";
 
+interface MembershipRow {
+  externalId?: string;
+  name: string;
+  kind?: "membership" | "package";
+  remaining?: number;
+  total?: number;
+  program?: string;
+  expiresAt?: string;
+}
+
 interface Client {
   id: string;
   phone: string;
@@ -22,6 +32,32 @@ interface Client {
   tags: string[];
   staff_notes: string | null;
   no_personalization: boolean;
+  // Phase 2: platform-pulled spend + memberships (jsonb on the row).
+  total_sales_cents?: number | null;
+  last_purchase_at?: string | null;
+  active_memberships?: MembershipRow[] | null;
+  package_balances?: MembershipRow[] | null;
+  // Phase 2: platform-side visit metrics (populated by the recent-client
+  // aggregator that reads calendar_events). The list view falls back to
+  // these when Vaux-internal counters are zero.
+  platform_visit_count?: number | null;
+  platform_last_visit_at?: string | null;
+  favorite_service?: string | null;
+  favorite_staff?: string | null;
+}
+
+// Pick whichever timestamp is more recent — gracefully handles either
+// being null. Used by the table's "Last Seen" column to merge Vaux call
+// recency with platform visit recency.
+function mostRecent(a: string | null | undefined, b: string | null | undefined): string | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
+function fmtUsd(cents: number | null | undefined) {
+  if (typeof cents !== "number") return "—";
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 interface AuditRow {
@@ -123,9 +159,9 @@ export default function ClientsPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Name</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Phone</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Calls</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Bookings</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Visits</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Service</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Call</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Last Seen</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tags</th>
               </tr>
             </thead>
@@ -139,9 +175,19 @@ export default function ClientsPage() {
                   <td className="px-5 py-3.5 font-medium text-zinc-900">{displayName(c)}</td>
                   <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.phone}</td>
                   <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_calls}</td>
-                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">{c.total_bookings}</td>
-                  <td className="px-5 py-3.5 text-zinc-500">{c.last_service || "—"}</td>
-                  <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">{fmtDate(c.last_call_at)}</td>
+                  {/* Visits = bigger of (AI bookings, platform visit count).
+                      Platform side counts walk-ins + online + front-desk
+                      bookings; AI side captures only Vaux-driven ones.
+                      Bigger of the two is the most useful single signal. */}
+                  <td className="px-5 py-3.5 text-zinc-600 tabular-nums">
+                    {Math.max(c.total_bookings ?? 0, c.platform_visit_count ?? 0)}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-500">
+                    {c.last_service || c.favorite_service || "—"}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">
+                    {fmtDate(mostRecent(c.last_call_at, c.platform_last_visit_at))}
+                  </td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-1 flex-wrap">
                       {(c.tags || []).slice(0, 3).map((t) => (
@@ -312,6 +358,68 @@ function ClientDrawer({
                 <p className="text-xs text-zinc-400 italic">Couldn&apos;t load brief.</p>
               )}
             </section>
+
+            {/* Platform spend + memberships — only renders when we have at
+                least one signal, so empty placeholders don't clutter
+                self-managed (non-platform) tenants. */}
+            {(typeof profile.total_sales_cents === "number" ||
+              (profile.active_memberships && profile.active_memberships.length > 0) ||
+              (profile.package_balances && profile.package_balances.length > 0)) && (
+              <section className="space-y-3">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                  Memberships & Spend
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Stat label="Lifetime spend" value={fmtUsd(profile.total_sales_cents)} />
+                  <Stat
+                    label="Last purchase"
+                    value={profile.last_purchase_at ? fmtDate(profile.last_purchase_at) : "—"}
+                  />
+                </div>
+                {profile.active_memberships && profile.active_memberships.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Active memberships
+                    </p>
+                    {profile.active_memberships.map((m, i) => (
+                      <div
+                        key={`${m.externalId ?? i}`}
+                        className="flex items-baseline justify-between text-xs px-3 py-2 bg-amber-50/60 border border-amber-200 rounded-lg"
+                      >
+                        <span className="font-semibold text-zinc-800">{m.name}</span>
+                        <span className="text-zinc-500">
+                          {typeof m.remaining === "number"
+                            ? `${m.remaining}${typeof m.total === "number" ? `/${m.total}` : ""} remaining`
+                            : "Active"}
+                          {m.expiresAt ? ` · expires ${fmtDate(m.expiresAt)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {profile.package_balances && profile.package_balances.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Packages
+                    </p>
+                    {profile.package_balances.map((p, i) => (
+                      <div
+                        key={`${p.externalId ?? i}`}
+                        className="flex items-baseline justify-between text-xs px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg"
+                      >
+                        <span className="font-semibold text-zinc-800">{p.name}</span>
+                        <span className="text-zinc-500">
+                          {typeof p.remaining === "number"
+                            ? `${p.remaining}${typeof p.total === "number" ? `/${p.total}` : ""} remaining`
+                            : "Active"}
+                          {p.expiresAt ? ` · expires ${fmtDate(p.expiresAt)}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="space-y-3">
               <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Identity</h3>

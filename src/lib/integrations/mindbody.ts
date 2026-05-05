@@ -2,12 +2,16 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type {
   AdapterContext,
   AdapterSlot,
+  AdapterAppointment,
   AdapterBookingInput,
   AdapterBookingResult,
   AdapterTestResult,
   AdapterWebhookEvent,
   AdapterWebhookEventType,
   AdapterProvider,
+  AdapterClientRecord,
+  AdapterClientHistory,
+  AdapterMembership,
   BookingAdapter,
 } from "./types";
 
@@ -33,6 +37,55 @@ import type {
  */
 
 const BASE_URL = "https://api.mindbodyonline.com/public/v6";
+
+/**
+ * Coerce a Mindbody time value to "HH:MM". Mindbody is inconsistent —
+ * sometimes "09:00", sometimes "1900-01-01T09:00:00" (an arbitrary date
+ * with the time of day). Returns null when the input doesn't parse so
+ * the caller can decide whether to drop the day.
+ */
+function toHHMM(t: string | undefined | null): string | null {
+  if (!t) return null;
+  // Already short form
+  const short = /^(\d{2}):(\d{2})/.exec(t);
+  if (short) return `${short[1]}:${short[2]}`;
+  // ISO-ish — pull the time portion after the T
+  const iso = /T(\d{2}):(\d{2})/.exec(t);
+  if (iso) return `${iso[1]}:${iso[2]}`;
+  return null;
+}
+
+/**
+ * Map Mindbody's per-staff `Availabilities` array to our weekly
+ * working_hours JSONB shape. Returns undefined if nothing parseable so
+ * the writer falls through to null (sync preserves "no schedule data"
+ * rather than fabricating one).
+ */
+function parseAvailabilities(
+  rows: Array<{ DayOfWeek?: string; StartTime?: string; EndTime?: string }> | undefined
+): Record<string, { open: string; close: string }> | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  const out: Record<string, { open: string; close: string }> = {};
+  for (const r of rows) {
+    const day = r.DayOfWeek?.toLowerCase();
+    const open = toHHMM(r.StartTime);
+    const close = toHHMM(r.EndTime);
+    if (!day || !open || !close) continue;
+    // Multiple ranges per day collapse to widest open–close (rare for
+    // appointment-style staff; common for class instructors with split
+    // morning/afternoon shifts). Keep the earliest open and latest close.
+    const existing = out[day];
+    if (!existing) {
+      out[day] = { open, close };
+    } else {
+      out[day] = {
+        open: open < existing.open ? open : existing.open,
+        close: close > existing.close ? close : existing.close,
+      };
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 async function getStaffToken(ctx: AdapterContext): Promise<string> {
   const { api_key, site_id, staff_username, staff_password } = ctx.credentials;
@@ -181,24 +234,42 @@ const adapter: BookingAdapter = {
 
   async listProviders(ctx): Promise<AdapterProvider[]> {
     // /staff/staff returns active staff for the site (scoped to LocationId
-    // when supplied). Mindbody also has /staff/staffpermissions but we
-    // don't need that detail — just name + title.
+    // when supplied). Filters=AppointmentInstructor narrows to staff who
+    // actually take bookings (skips reception/owner/sentinel rows).
+    //
+    // Two Mindbody-specific quirks worth knowing:
+    //   1. JobTitles isn't returned by default — would need a separate
+    //      /staff/staffpermissions call. Title stays null until that work.
+    //   2. Mindbody doesn't return an `Active` field on default-listed
+    //      staff (the endpoint pre-filters to active). active=true is
+    //      therefore the safe default; deactivation is detected at sync
+    //      time when a previously-seen externalId disappears from the
+    //      response (handled in provider-sync.ts).
+    //   3. Services per staff are NOT on /staff/staff. They live in the
+    //      session-type ↔ staff matrix that requires a /sale/services
+    //      join. Left empty here — see the "richer staff" follow-up.
     const locationId = ctx.config.location_id;
-    const path = locationId
-      ? `/staff/staff?LocationId=${encodeURIComponent(locationId)}&Limit=200`
-      : "/staff/staff?Limit=200";
+    const filterClause = "Filters=AppointmentInstructor";
+    const locClause = locationId ? `&LocationId=${encodeURIComponent(locationId)}` : "";
+    const path = `/staff/staff?${filterClause}${locClause}&Limit=200`;
 
+    interface MbAvailability {
+      DayOfWeek?: string;       // "Monday" | "Tuesday" | ...
+      StartTime?: string;       // "1900-01-01T09:00:00" or "09:00"
+      EndTime?: string;
+    }
     interface MbStaffRow {
       Id: number;
       FirstName?: string;
       LastName?: string;
       Name?: string;
+      DisplayName?: string;
       Bio?: string;
       AlwaysAllowDoubleBooking?: boolean;
-      IsIndependentContractor?: boolean;
-      Active?: boolean;
-      /** Mindbody returns a JobTitles array per staffer */
+      IndependentContractor?: boolean;
+      /** Mindbody returns a JobTitles array per staffer when permissioned */
       JobTitles?: Array<{ Name?: string }>;
+      Availabilities?: MbAvailability[];
     }
     const res = await mbFetch<{ StaffMembers?: MbStaffRow[] }>(ctx, path);
     const rows = res?.StaffMembers ?? [];
@@ -206,18 +277,310 @@ const adapter: BookingAdapter = {
     return rows
       .map((s) => {
         const name =
+          s.DisplayName?.trim() ||
           s.Name?.trim() ||
           `${s.FirstName ?? ""} ${s.LastName ?? ""}`.trim();
         if (!name) return null;
-        const title = s.JobTitles?.[0]?.Name;
         return {
           externalId: String(s.Id),
           name,
-          title,
-          active: s.Active !== false,
+          title: s.JobTitles?.[0]?.Name,
+          bio: s.Bio?.trim() || undefined,
+          workingHours: parseAvailabilities(s.Availabilities),
+          // No Active field on /staff/staff — provider-sync handles
+          // deactivation by tracking which IDs disappear between syncs.
+          active: true,
         } as AdapterProvider;
       })
       .filter((p): p is AdapterProvider => p !== null);
+  },
+
+  async listAppointments(ctx, { since, until }): Promise<AdapterAppointment[]> {
+    // Mindbody's /appointment/staffappointments requires StaffIds. We
+    // pull the active roster first, then page through appointments per
+    // 30-day window (the endpoint caps date ranges at 31 days). Staff
+    // tokens are required — addclient/staff appointment data is gated.
+    const locationId = ctx.config.location_id;
+    const staffPath = locationId
+      ? `/staff/staff?LocationId=${encodeURIComponent(locationId)}&Limit=200`
+      : "/staff/staff?Limit=200";
+    const staffRes = await mbFetch<{ StaffMembers?: { Id: number }[] }>(ctx, staffPath);
+    const staffIds = (staffRes?.StaffMembers ?? []).map((s) => s.Id);
+    if (staffIds.length === 0) return [];
+    const staffParam = staffIds.join(",");
+
+    interface MbAppointment {
+      Id: number;
+      StartDateTime: string;
+      EndDateTime?: string;
+      Status?: string;
+      ClientId?: string;
+      Client?: { FirstName?: string; LastName?: string; MobilePhone?: string; Phone?: string };
+      Staff?: { Id?: number; Name?: string };
+      SessionType?: { Name?: string };
+    }
+
+    const out: AdapterAppointment[] = [];
+    const chunkDays = 30;
+    let cursor = new Date(since);
+    const end = new Date(until);
+
+    while (cursor < end) {
+      const chunkEnd = new Date(Math.min(cursor.getTime() + chunkDays * 86_400_000, end.getTime()));
+      const startDate = cursor.toISOString().slice(0, 10);
+      const endDate = chunkEnd.toISOString().slice(0, 10);
+
+      let offset = 0;
+      const PAGE = 200;
+      while (true) {
+        const params = new URLSearchParams({
+          StaffIds: staffParam,
+          StartDate: startDate,
+          EndDate: endDate,
+          Limit: String(PAGE),
+          Offset: String(offset),
+        });
+        if (locationId) params.set("LocationIds", locationId);
+
+        const page = await mbFetch<{ StaffAppointments?: MbAppointment[] }>(
+          ctx,
+          `/appointment/staffappointments?${params}`,
+          { authed: true }
+        );
+        const rows = page?.StaffAppointments ?? [];
+        for (const a of rows) {
+          if (!a.StartDateTime) continue;
+          const raw = (a.Status || "").trim();
+          let status: AdapterAppointment["status"] = "confirmed";
+          if (/cancel|no ?show/i.test(raw)) status = "cancelled";
+          else if (/complet|closed|paid/i.test(raw)) status = "completed";
+
+          const customerName = [a.Client?.FirstName, a.Client?.LastName]
+            .filter(Boolean)
+            .join(" ") || undefined;
+
+          out.push({
+            externalId: String(a.Id),
+            startTime: a.StartDateTime,
+            endTime: a.EndDateTime,
+            serviceName: a.SessionType?.Name,
+            staffName: a.Staff?.Name,
+            customerName,
+            customerPhone: a.Client?.MobilePhone || a.Client?.Phone,
+            status,
+            platformStatus: raw || undefined,
+          });
+        }
+        if (rows.length < PAGE) break;
+        offset += PAGE;
+      }
+
+      // Advance cursor by chunkDays (exclusive of the prior endDate to
+      // avoid double-counting an appointment that straddles midnight)
+      cursor = new Date(chunkEnd.getTime() + 86_400_000);
+    }
+
+    return out;
+  },
+
+  async listClients(ctx, { modifiedSince, limit } = {}): Promise<AdapterClientRecord[]> {
+    // Mindbody's /client/clients returns the directory. Authed (PII).
+    // `LastModifiedDate` filters server-side to clients touched after a
+    // given ISO date — handy for incremental syncs after the first.
+    //
+    // Many records have null phones in `-99` and even in some real
+    // tenants who never collected mobile numbers; we still return them
+    // here and let the orchestrator decide whether to skip-on-no-phone.
+    interface MbClient {
+      Id?: string;
+      UniqueId?: number;
+      FirstName?: string;
+      LastName?: string;
+      Email?: string;
+      MobilePhone?: string;
+      HomePhone?: string;
+      WorkPhone?: string;
+      LastModifiedDateTime?: string;
+      CreationDate?: string;
+    }
+
+    const PAGE = 200;
+    const HARD_CAP = limit ?? 2000; // ceiling so a 50k-client clinic doesn't run forever
+    const out: AdapterClientRecord[] = [];
+    let offset = 0;
+
+    while (out.length < HARD_CAP) {
+      const params = new URLSearchParams({
+        Limit: String(Math.min(PAGE, HARD_CAP - out.length)),
+        Offset: String(offset),
+      });
+      if (modifiedSince) params.set("LastModifiedDate", modifiedSince);
+
+      const page = await mbFetch<{ Clients?: MbClient[] }>(
+        ctx,
+        `/client/clients?${params}`,
+        { authed: true }
+      );
+      const rows = page?.Clients ?? [];
+      for (const c of rows) {
+        const externalId = c.Id?.toString() || (c.UniqueId !== undefined ? String(c.UniqueId) : null);
+        if (!externalId) continue;
+        out.push({
+          externalId,
+          firstName: c.FirstName?.trim() || undefined,
+          lastName: c.LastName?.trim() || undefined,
+          email: c.Email?.trim() || undefined,
+          // Prefer mobile (more likely to match a voice call). Fall through
+          // to home/work so a clinic that only collected a single number
+          // still matches.
+          phone: c.MobilePhone || c.HomePhone || c.WorkPhone || undefined,
+          lastModified: c.LastModifiedDateTime,
+        });
+      }
+      if (rows.length < PAGE) break;
+      offset += PAGE;
+    }
+
+    return out;
+  },
+
+  async getClientHistory(ctx, { phone }): Promise<AdapterClientHistory | null> {
+    // Three-step pull keyed off the caller's phone:
+    //   1. /client/clients?SearchText=<phone>      → resolve to ClientId
+    //   2. /sale/sales?ClientId=<id>               → lifetime spend + last purchase
+    //   3. /client/clientservices?ClientId=<id>    → memberships + package balances
+    //
+    // Visits[] left empty: voice-call client context is well-served by the
+    // recent-from-calendar aggregator (which reads calendar_events
+    // populated by listAppointments). Pulling /appointment/clientappointments
+    // for every call would be a per-tenant hit on the Mindbody rate limit.
+    if (!phone) return null;
+
+    interface MbClientRow {
+      Id?: string;
+      UniqueId?: number;
+      FirstName?: string;
+      LastName?: string;
+      Email?: string;
+      MobilePhone?: string;
+      HomePhone?: string;
+    }
+    const search = await mbFetch<{ Clients?: MbClientRow[] }>(
+      ctx,
+      `/client/clients?SearchText=${encodeURIComponent(phone)}&Limit=5`,
+      { authed: true }
+    );
+    const matches = search?.Clients ?? [];
+    // Mindbody's SearchText is fuzzy across phones, names, emails. Tighten
+    // with an exact phone check (digits-only) to avoid grabbing a stranger
+    // whose name happens to match digits in the phone.
+    const digits = phone.replace(/\D/g, "");
+    const matched = matches.find((c) =>
+      [c.MobilePhone, c.HomePhone].some(
+        (p) => (p || "").replace(/\D/g, "") === digits
+      )
+    ) ?? matches[0];
+    if (!matched) return null;
+    const clientId = matched.Id || (matched.UniqueId !== undefined ? String(matched.UniqueId) : null);
+    if (!clientId) return null;
+
+    // ── Sales: lifetime spend + last purchase ────────────────────────────
+    interface MbSaleItem { TotalAmount?: number; Description?: string; IsService?: boolean }
+    interface MbSale {
+      Id?: number;
+      SaleDateTime?: string;
+      ClientId?: string;
+      PurchasedItems?: MbSaleItem[];
+    }
+    let totalCents = 0;
+    let lastPurchaseAt: string | undefined;
+    try {
+      // Pull all sales for this client. Mindbody pages 200 max; most
+      // returning clients have <50 sales lifetime, single page is enough.
+      const salesRes = await mbFetch<{ Sales?: MbSale[] }>(
+        ctx,
+        `/sale/sales?ClientId=${encodeURIComponent(clientId)}&Limit=200`,
+        { authed: true }
+      );
+      for (const s of salesRes?.Sales ?? []) {
+        const items = s.PurchasedItems ?? [];
+        for (const it of items) {
+          if (typeof it.TotalAmount === "number") {
+            totalCents += Math.round(it.TotalAmount * 100);
+          }
+        }
+        if (s.SaleDateTime) {
+          if (!lastPurchaseAt || new Date(s.SaleDateTime) > new Date(lastPurchaseAt)) {
+            lastPurchaseAt = s.SaleDateTime;
+          }
+        }
+      }
+    } catch (err) {
+      // Sales failure shouldn't kill the whole sync — log and continue
+      // with whatever we got. Memberships still get pulled.
+      console.error("MINDBODY_SALES_FETCH_ERR:", err);
+    }
+
+    // ── Memberships + packages from /client/clientservices ──────────────
+    interface MbClientService {
+      Id?: number;
+      Name?: string;
+      Count?: number;
+      Remaining?: number;
+      Current?: boolean;
+      ActiveDate?: string;
+      ExpirationDate?: string;
+      Program?: { Name?: string; ScheduleType?: string };
+    }
+    const memberships: AdapterMembership[] = [];
+    const packages: AdapterMembership[] = [];
+    try {
+      const csRes = await mbFetch<{ ClientServices?: MbClientService[] }>(
+        ctx,
+        `/client/clientservices?ClientId=${encodeURIComponent(clientId)}&Limit=200`,
+        { authed: true }
+      );
+      for (const cs of csRes?.ClientServices ?? []) {
+        if (!cs.Current) continue;        // skip expired/cancelled
+        if (!cs.Name || cs.Id === undefined) continue;
+
+        const programName = cs.Program?.Name;
+        // Mindbody doesn't have a clean "is this a recurring membership
+        // vs. a one-time package?" flag. Heuristic: if the program name
+        // contains "membership"/"contract" OR the count is null/undefined
+        // (unlimited), treat as membership. Everything else with a finite
+        // remaining count is a package.
+        const looksMembership =
+          /membership|contract|subscription/i.test(programName || "") ||
+          (cs.Count === undefined || cs.Count === null);
+
+        const item: AdapterMembership = {
+          externalId: String(cs.Id),
+          name: cs.Name,
+          kind: looksMembership ? "membership" : "package",
+          remaining: typeof cs.Remaining === "number" ? cs.Remaining : undefined,
+          total: typeof cs.Count === "number" ? cs.Count : undefined,
+          program: programName,
+          expiresAt: cs.ExpirationDate,
+        };
+        if (item.kind === "membership") memberships.push(item);
+        else packages.push(item);
+      }
+    } catch (err) {
+      console.error("MINDBODY_CLIENTSERVICES_FETCH_ERR:", err);
+    }
+
+    return {
+      clientId,
+      firstName: matched.FirstName?.trim() || undefined,
+      lastName: matched.LastName?.trim() || undefined,
+      email: matched.Email?.trim() || undefined,
+      visits: [],                        // intentionally empty — see header
+      lifetimeValueCents: totalCents > 0 ? totalCents : undefined,
+      lastPurchaseAt,
+      activeMemberships: memberships.length > 0 ? memberships : undefined,
+      packageBalances: packages.length > 0 ? packages : undefined,
+    };
   },
 
   async parseWebhookEvent(ctx, { headers, rawBody }): Promise<AdapterWebhookEvent | null> {
