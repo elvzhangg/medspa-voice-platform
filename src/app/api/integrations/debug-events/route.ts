@@ -171,6 +171,19 @@ export async function GET() {
     }
   }
 
+  // 3) Also peek into our own calendar_events table to see what got
+  //    persisted from prior syncs. Same time window as the API query
+  //    so we can compare side-by-side.
+  const { data: storedEvents } = await supabaseAdmin
+    .from("calendar_events")
+    .select(
+      "id, title, start_time, end_time, status, external_source, external_id, customer_name, service_type, last_synced_at"
+    )
+    .eq("tenant_id", tenantId)
+    .gte("start_time", timeMin)
+    .lt("start_time", timeMax)
+    .order("start_time", { ascending: true });
+
   return NextResponse.json({
     config: {
       default_calendar_id: defaultCalId,
@@ -181,5 +194,11 @@ export async function GET() {
     calendarsQueried: calendarIdsToQuery,
     calendarList, // raw response so we can see ALL calendars the user has
     eventResults: calendarResults,
+    // Peek at our own DB so we can see whether events from the API
+    // actually made it through the upsert path.
+    storedEvents: {
+      count: storedEvents?.length ?? 0,
+      rows: storedEvents ?? [],
+    },
   });
 }
