@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ensureFreshAccessToken } from "@/lib/google-oauth";
+import { runFullTenantSync } from "@/lib/appointment-sync";
 
 /**
  * GET /api/integrations/debug-events
@@ -21,11 +22,28 @@ import { ensureFreshAccessToken } from "@/lib/google-oauth";
  * Calls Google directly with a 30-day-back/90-day-forward window. Lists
  * all events including cancellations and recurring expansions.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const tenant = await getCurrentTenant();
   if (!tenant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const tenantId = (tenant as unknown as { id: string }).id;
+
+  // Optional ?run=true: trigger an actual sync first so we can see what
+  // the upsert path is doing. Bypasses the cooldown check on the regular
+  // /api/integrations/me/sync endpoint, since this is for debugging.
+  const shouldRun = req.nextUrl.searchParams.get("run") === "true";
+  let runResult: unknown = null;
+  if (shouldRun) {
+    try {
+      runResult = await runFullTenantSync(tenantId);
+    } catch (err) {
+      runResult = {
+        threwException: true,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      };
+    }
+  }
 
   // Resolve config (timezone, calendar IDs)
   const { data: integ } = await supabaseAdmin
@@ -200,5 +218,9 @@ export async function GET() {
       count: storedEvents?.length ?? 0,
       rows: storedEvents ?? [],
     },
+    // If ?run=true was set, the result of running runFullTenantSync
+    // (fetched / upserted counts + any error). storedEvents above is
+    // queried AFTER the run, so it should reflect the new state.
+    forceSyncResult: shouldRun ? runResult : null,
   });
 }
