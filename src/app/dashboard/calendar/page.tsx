@@ -133,6 +133,21 @@ export default function CalendarPage() {
     loadMonth(cursor);
   }, [cursor, loadMonth]);
 
+  // After the initial load, give the background sync triggered by
+  // /api/integrations/me a few seconds to run, then refetch. Without this,
+  // a stale-data page load sees the OLD calendar_events and the user thinks
+  // sync didn't work — even though the sync IS running and completes ~5s
+  // after page mount. One extra fetch at +6s catches the new rows without
+  // requiring a manual refresh.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      loadMonth(cursor);
+    }, 6000);
+    return () => clearTimeout(t);
+    // Only run on mount (or month change) — covers the common case where
+    // a freshly-arrived sync's results haven't been fetched yet.
+  }, [cursor, loadMonth]);
+
   // Group events by YYYY-MM-DD for fast cell lookup
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalEvent[]> = {};

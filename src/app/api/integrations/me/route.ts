@@ -24,7 +24,7 @@ export async function GET() {
   // Webhooks fire per-event (every appointment change); sync runs are
   // bulk reconciliation. Both indicate "we touched the platform recently."
   let lastSyncedAt: string | null = null;
-  let needsBootstrap = false;
+  let needsRefresh = false;
   if (tenant.integration_platform) {
     const { data } = await supabaseAdmin
       .from("tenant_integrations")
@@ -39,13 +39,27 @@ export async function GET() {
     } else {
       lastSyncedAt = webhookAt ?? syncAt;
     }
-    needsBootstrap =
-      tenant.integration_status === "connected" && syncAt === null;
+
+    // Self-heal: trigger a background sync if connected AND freshness signal
+    // is stale (or absent). The original bootstrap only fired on syncAt===null,
+    // which left tenants stuck in stale state if an earlier sync ran with old
+    // adapter code that returned fetched=0 (e.g. before listAppointments was
+    // implemented). 5-min threshold matches the cron's 15-min cadence loosely
+    // — guarantees that if a tenant is actively browsing, their data is at
+    // most 5 min old without thrashing the platform's API.
+    const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+    const lastSignal = lastSyncedAt ? new Date(lastSyncedAt).getTime() : 0;
+    const isStale = Date.now() - lastSignal > STALE_THRESHOLD_MS;
+    needsRefresh = tenant.integration_status === "connected" && isStale;
   }
 
-  if (needsBootstrap) {
+  if (needsRefresh) {
+    // Fire-and-forget. The cron-style sync handles errors internally and
+    // bumps last_synced_at on completion, so a subsequent page load reflects
+    // the new state. We don't await here because a 5-10s sync would slow
+    // every dashboard load by that much.
     void runFullTenantSync(tenant.id).catch((err) => {
-      console.error("INTEGRATION_BOOTSTRAP_SYNC_ERR:", tenant.id, err);
+      console.error("INTEGRATION_REFRESH_SYNC_ERR:", tenant.id, err);
     });
   }
 
