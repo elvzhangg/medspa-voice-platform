@@ -157,10 +157,12 @@ function heightPxForRange(startIso: string, endIso: string | null | undefined): 
 }
 
 export default function CalendarPage() {
-  const [cursor, setCursor] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
+  // Cursor is interpreted differently by each view (any-day-in-month for
+  // month view; any-day-in-week for week view; the day itself for day view),
+  // so we initialize to today. This way week view lands on the *current*
+  // week — not the week containing the 1st of the current month, which
+  // could be the previous calendar week.
+  const [cursor, setCursor] = useState<Date>(() => new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
