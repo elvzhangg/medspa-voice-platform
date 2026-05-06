@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 type Stage = "top_of_funnel" | "crm" | "rejected";
 
@@ -633,12 +634,18 @@ export default function CrmPage() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-gray-900 block">{p.business_name}</span>
+                      <Link
+                        href={`/admin/crm/${p.id}`}
+                        className="font-semibold text-gray-900 hover:text-indigo-600 hover:underline block"
+                      >
+                        {p.business_name}
+                      </Link>
                       {p.website && (
                         <a
                           href={p.website.startsWith("http") ? p.website : `https://${p.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="text-xs text-indigo-500 hover:underline block max-w-[180px] truncate"
                         >
                           {p.website.replace(/^https?:\/\//, "")}
