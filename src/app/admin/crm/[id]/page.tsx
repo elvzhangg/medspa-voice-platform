@@ -93,6 +93,44 @@ function fmtDate(s: string | null): string {
   return new Date(s).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
+interface EditableFields {
+  business_name: string;
+  website: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  address: string;
+  booking_platform: string;
+  owner_name: string;
+  owner_email: string;
+  owner_title: string;
+  services_summary: string;
+  pricing_notes: string;
+  notes: string;
+}
+
+function blankEditForm(): EditableFields {
+  return {
+    business_name: "",
+    website: "",
+    email: "",
+    phone: "",
+    city: "",
+    state: "",
+    address: "",
+    booking_platform: "",
+    owner_name: "",
+    owner_email: "",
+    owner_title: "",
+    services_summary: "",
+    pricing_notes: "",
+    notes: "",
+  };
+}
+
+const PLATFORM_OPTIONS = ["Acuity", "Boulevard", "Mindbody", "Other"];
+
 export default function CrmProspectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [prospect, setProspect] = useState<Prospect | null>(null);
@@ -100,6 +138,13 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  // Edit mode for the basic + contact fields. Rich agent-collected JSONB
+  // (procedures, providers, hours, FAQs, sources) stays read-only — those
+  // are extraction outputs, not human-curated.
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditableFields>(blankEditForm());
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -138,6 +183,56 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
     } else {
       const err = await res.json().catch(() => ({}));
       setActionMsg({ kind: "error", text: err.error ?? "Failed to update" });
+    }
+  }
+
+  function beginEdit() {
+    if (!prospect) return;
+    setEditForm({
+      business_name: prospect.business_name ?? "",
+      website: prospect.website ?? "",
+      email: prospect.email ?? "",
+      phone: prospect.phone ?? "",
+      city: prospect.city ?? "",
+      state: prospect.state ?? "",
+      address: prospect.address ?? "",
+      booking_platform: prospect.booking_platform ?? "",
+      owner_name: prospect.owner_name ?? "",
+      owner_email: prospect.owner_email ?? "",
+      owner_title: prospect.owner_title ?? "",
+      services_summary: prospect.services_summary ?? "",
+      pricing_notes: prospect.pricing_notes ?? "",
+      notes: prospect.notes ?? "",
+    });
+    setEditing(true);
+    setActionMsg(null);
+  }
+
+  async function saveEdit() {
+    if (!prospect) return;
+    setSavingEdit(true);
+    setActionMsg(null);
+    // Convert "" → null so empty fields clear in the database rather than
+    // staying as empty strings (which would still satisfy a `NOT NULL` check
+    // and pollute filters).
+    const payload: Record<string, string | null> = {};
+    for (const [k, v] of Object.entries(editForm)) {
+      payload[k] = v.trim() === "" ? null : v.trim();
+    }
+    const res = await fetch(`/api/admin/crm/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setSavingEdit(false);
+    if (res.ok) {
+      const data = await res.json();
+      setProspect(data.prospect);
+      setEditing(false);
+      setActionMsg({ kind: "ok", text: "Saved changes" });
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setActionMsg({ kind: "error", text: err.error ?? "Failed to save" });
     }
   }
 
@@ -223,6 +318,15 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
 
           {/* Stage actions */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {!editing && (
+              <button
+                onClick={beginEdit}
+                disabled={acting}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              >
+                Edit
+              </button>
+            )}
             {prospect.crm_stage !== "crm" && (
               <button
                 onClick={() => moveTo("crm")}
@@ -288,43 +392,92 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
 
       {/* Single panel containing all the rich fields. Two-column layout for
           contact info; everything else stacks. */}
-      <Panel title="Business Info" subtitle="From research agent">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <Field label="Owner / Manager">
-            {prospect.owner_name ? (
-              <span>
-                {prospect.owner_name}
-                {prospect.owner_title && <span className="text-gray-400"> · {prospect.owner_title}</span>}
-              </span>
-            ) : (
-              <Muted />
-            )}
-          </Field>
-          <Field label="Owner email">
-            {prospect.owner_email ? (
-              <a href={`mailto:${prospect.owner_email}`} className="text-indigo-600 hover:underline">
-                {prospect.owner_email}
-              </a>
-            ) : (
-              <Muted />
-            )}
-          </Field>
-          <Field label="General email">
-            {prospect.email ? (
-              <a href={`mailto:${prospect.email}`} className="text-indigo-600 hover:underline">
-                {prospect.email}
-              </a>
-            ) : (
-              <Muted />
-            )}
-          </Field>
-          <Field label="Phone">{prospect.phone ?? <Muted />}</Field>
-          <Field label="Address" className="col-span-2">
-            {prospect.address ?? <Muted />}
-          </Field>
-          <Field label="Researched">{fmtDate(prospect.researched_at)}</Field>
-          <Field label="Added to CRM">{fmtDate(prospect.crm_promoted_at)}</Field>
-        </div>
+      <Panel title="Business Info" subtitle={editing ? "Editing — changes save to the database" : "From research agent (click Edit to change)"}>
+        {editing ? (
+          <>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <EditField label="Business name" className="col-span-2" value={editForm.business_name} onChange={(v) => setEditForm({ ...editForm, business_name: v })} />
+              <EditField label="Owner name" value={editForm.owner_name} onChange={(v) => setEditForm({ ...editForm, owner_name: v })} />
+              <EditField label="Owner title" value={editForm.owner_title} onChange={(v) => setEditForm({ ...editForm, owner_title: v })} placeholder="Owner, Medical Director…" />
+              <EditField label="Owner email" type="email" value={editForm.owner_email} onChange={(v) => setEditForm({ ...editForm, owner_email: v })} />
+              <EditField label="General email" type="email" value={editForm.email} onChange={(v) => setEditForm({ ...editForm, email: v })} placeholder="info@…" />
+              <EditField label="Phone" value={editForm.phone} onChange={(v) => setEditForm({ ...editForm, phone: v })} />
+              <EditField label="Website" value={editForm.website} onChange={(v) => setEditForm({ ...editForm, website: v })} placeholder="example.com" />
+              <EditField label="City" value={editForm.city} onChange={(v) => setEditForm({ ...editForm, city: v })} />
+              <EditField label="State" value={editForm.state} onChange={(v) => setEditForm({ ...editForm, state: v })} placeholder="CA" />
+              <EditField label="Address" className="col-span-2" value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} />
+              <div className="col-span-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Booking platform</p>
+                <select
+                  value={editForm.booking_platform}
+                  onChange={(e) => setEditForm({ ...editForm, booking_platform: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  <option value="">— Unknown —</option>
+                  {PLATFORM_OPTIONS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <EditField label="Services summary" multiline className="col-span-2" value={editForm.services_summary} onChange={(v) => setEditForm({ ...editForm, services_summary: v })} placeholder="Botox, fillers, laser…" />
+              <EditField label="Pricing notes" multiline className="col-span-2" value={editForm.pricing_notes} onChange={(v) => setEditForm({ ...editForm, pricing_notes: v })} />
+              <EditField label="Internal notes" multiline className="col-span-2" value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} placeholder="High call volume, missed connection from Q1…" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40"
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                disabled={savingEdit}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <Field label="Owner / Manager">
+              {prospect.owner_name ? (
+                <span>
+                  {prospect.owner_name}
+                  {prospect.owner_title && <span className="text-gray-400"> · {prospect.owner_title}</span>}
+                </span>
+              ) : (
+                <Muted />
+              )}
+            </Field>
+            <Field label="Owner email">
+              {prospect.owner_email ? (
+                <a href={`mailto:${prospect.owner_email}`} className="text-indigo-600 hover:underline">
+                  {prospect.owner_email}
+                </a>
+              ) : (
+                <Muted />
+              )}
+            </Field>
+            <Field label="General email">
+              {prospect.email ? (
+                <a href={`mailto:${prospect.email}`} className="text-indigo-600 hover:underline">
+                  {prospect.email}
+                </a>
+              ) : (
+                <Muted />
+              )}
+            </Field>
+            <Field label="Phone">{prospect.phone ?? <Muted />}</Field>
+            <Field label="Address" className="col-span-2">
+              {prospect.address ?? <Muted />}
+            </Field>
+            <Field label="Researched">{fmtDate(prospect.researched_at)}</Field>
+            <Field label="Added to CRM">{fmtDate(prospect.crm_promoted_at)}</Field>
+          </div>
+        )}
 
         {locations.length > 0 && (
           <Subsection title={`Locations (${locations.length})`}>
@@ -503,6 +656,47 @@ function Field({ label, children, className }: { label: string; children: React.
 
 function Muted() {
   return <span className="text-gray-300">—</span>;
+}
+
+function EditField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  multiline = false,
+  className,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  multiline?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={2}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      )}
+    </div>
+  );
 }
 
 function SourceLink({ url }: { url: string }) {
