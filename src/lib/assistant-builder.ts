@@ -33,7 +33,15 @@ async function buildProviderRoster(tenantId: string): Promise<string> {
     .order("name");
 
   const rows = (data ?? []) as StaffRow[];
-  if (rows.length === 0) return "";
+  if (rows.length === 0) {
+    // No staff yet — but the AI still gets asked "who works there?". Without
+    // this block it drifts into "I don't have a knowledge base..." territory,
+    // leaking internal terminology. Give it a graceful, on-brand fallback.
+    return `
+## Providers at this clinic
+The team roster hasn't been shared with you. When a caller asks "who works there?", "who do you have for [service]?", or wants a provider intro, NEVER say you don't have a list, system, database, or knowledge base. Instead respond warmly and offer a human follow-up, e.g.: "Our team will be the best to walk you through that — I can have someone reach out by text with provider details, or get you on the books for a consult, whichever you prefer."
+`;
+  }
 
   const lines = rows.map((s) => {
     const parts: string[] = [`- ${s.name}`];
@@ -410,11 +418,32 @@ function buildSystemPrompt(
   serviceDurationsBlock: string = ""
 ): string {
   const now = new Date();
+  const tz = "America/Los_Angeles";
   const timeStr = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "America/Los_Angeles",
+    timeZone: tz,
   });
+  // Build today's calendar date in Pacific time, then derive tomorrow's date
+  // arithmetically (one Pacific day later). Doing this with toLocaleDateString
+  // avoids UTC-vs-Pacific midnight drift bugs.
+  const ymdParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const todayYmd = `${ymdParts.find(p => p.type === "year")!.value}-${ymdParts.find(p => p.type === "month")!.value}-${ymdParts.find(p => p.type === "day")!.value}`;
+  const todayWeekday = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }).format(now);
+  const todayLong = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, weekday: "long", month: "long", day: "numeric", year: "numeric",
+  }).format(now);
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(tomorrow);
+  const tomorrowYmd = `${tParts.find(p => p.type === "year")!.value}-${tParts.find(p => p.type === "month")!.value}-${tParts.find(p => p.type === "day")!.value}`;
+  const tomorrowWeekday = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }).format(tomorrow);
 
   // Availability-first booking workflow
   const forwardInstruction = `
@@ -429,7 +458,7 @@ Conversationally collect:
       Then ALWAYS follow up: "And if [Provider] happens to not be available, would you be open to seeing someone else, or would you rather wait for [Provider] specifically?"
       Capture the answer as provider_flexibility — e.g. "open to any other aesthetician", "second choice would be Dr. Mia", "would rather wait for Dr. Sarah".
     - If they're open → no preference; skip the flexibility question.
-  • Preferred date (or a day range like "sometime next week")
+  • Preferred date (or a day range like "sometime next week") — convert to YYYY-MM-DD using the rules in "Resolving Dates" above before any tool call.
   • Preferred time (or a window like "afternoon")
 
 ### Step 2 — Check availability using get_available_slots (MANDATORY)
@@ -449,8 +478,9 @@ Then:
 Never invent, guess, or assume a slot is open. Only offer times returned by get_available_slots.
 
 ### Step 3 — Collect caller identity (only after a slot is agreed)
-  • Full name
-  • Best callback phone number (read digits back to confirm)
+Now ask for both — naturally, in the same turn if it flows:
+  • Full name. If you only got a first name earlier, ask for the last name now: "And can I get your last name?"
+  • Best callback phone number. After they say it, ALWAYS read it back digit-by-digit to confirm: "Let me make sure I got that — five-five-five, two-three-four, five-six-seven-eight, is that right?" If they correct you, repeat the read-back with the new number until they confirm.
 
 ### Step 4 — Call 'book_appointment' for the agreed slot
 Pass: service, preferred_date, preferred_time (the verified-available one), customer_name, customer_phone, provider_preference (the provider name from Step 1, or "No preference"), and provider_flexibility (their answer from Step 1, or omit if no provider preference).
@@ -597,18 +627,35 @@ ${overrideLines}`
 - Provide information about policies and procedures
 - Escalate complex medical questions to human staff
 
-## Current Time
-${timeStr} (Pacific Time)
+## Today's Date & Time (Pacific)
+- Right now: ${todayLong}, ${timeStr}
+- TODAY = ${todayYmd} (${todayWeekday})
+- TOMORROW = ${tomorrowYmd} (${tomorrowWeekday})
+
+## Resolving Dates the Caller Says
+Always convert the caller's words into a real YYYY-MM-DD before any tool call. Use TODAY above as your anchor. Examples (anchored to today = ${todayYmd}):
+- "today" → ${todayYmd}
+- "tomorrow" → ${tomorrowYmd}
+- "this Friday" / "next Friday" → the upcoming Friday after ${todayYmd}; if today IS Friday, "this Friday" = today, "next Friday" = 7 days later.
+- "next week" / "sometime next week" → pick a sensible weekday in the week of (${todayYmd} + 7 days) and confirm with the caller.
+- "the 15th" → the next 15th on or after ${todayYmd}.
+
+If you're unsure which date the caller means, briefly read it back: "Just to confirm — Wednesday the 12th, is that right?" Never pass a relative phrase like "tomorrow" into get_available_slots or book_appointment — always pass YYYY-MM-DD.
 ${callerContext}${providerRoster}${serviceDurationsBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 ${forwardInstruction}
-## Guidelines
-- Be warm, professional, and concise - this is a phone call
-- Speak naturally without markdown formatting
-- If you don't know something, use the search_knowledge_base tool
-- Never make up prices or services - always verify with the knowledge base
-- For booking requests, collect name, phone, service, and preferred time
+## How to Talk (this is a phone call, not a brochure)
+- Keep replies SHORT — 1–2 sentences by default. Long monologues feel robotic over the phone.
+- Answer the literal question first, then offer "Want me to walk through pricing / aftercare / who does it?" — let the caller pull more if they want it.
+- When asked about a service (e.g. "tell me about Botox"), give one warm sentence on what it is and one short sentence on the typical use case. Do NOT proactively list pricing, durations, downtime, contraindications, or every detail you know. If they want price, they'll ask.
+- When asked about pre-care or aftercare, give the 1–2 most important rules (e.g. "Skip alcohol for 24 hours and no strenuous workouts that day"). Don't read a full checklist unless they ask "what else?"
+- Speak naturally, no markdown, no bullet lists out loud, no headings.
+- NEVER tell the caller you "don't have" some internal thing. Banned phrases: "knowledge base", "database", "system", "records", "list", "tool", "prompt", "tenant", "calendar event", "AI", "model", "I don't have access to…", "I don't have information on…", "my system doesn't have…", "I'm not able to look that up". These all sound robotic and break the human feel. Instead, just say warmly: "Let me have someone from our team text or call you back on that — what's the best way to reach you?" or "I want to make sure you get the right answer on that — let me have [the team / the front desk] follow up with you." This applies to ANY topic — provider intros, pricing you can't verify, policies, hours on a specific date, anything.
+- If a tool returns a long block of info, summarize it in one or two sentences before speaking. Don't read it verbatim.
+- If you don't have specific info, offer to have a team member text or call back rather than guessing.
+- Never make up prices, services, providers, or hours.
+- For booking requests, follow the workflow above (name early, then service / provider / date / time).
 ${depositInstruction}
 - For any other payments or billing questions, use the create_payment_link tool as well
 

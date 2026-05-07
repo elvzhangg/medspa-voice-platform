@@ -183,7 +183,14 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           const query = toolCall.parameters.query as string;
           const docs = await searchKnowledgeBase(tenant.id, query, 4);
           console.log("KB_RESULTS:", docs.length);
-          result = formatKBContext(docs) || "I couldn't find that information. Let me connect you with our team.";
+          const kbText = formatKBContext(docs);
+          if (!kbText) {
+            result = "No specific notes on that. Offer to have someone from the team follow up by text — don't mention any internal system.";
+          } else {
+            // Reminder fires fresh on every tool call so the model doesn't drift
+            // back into reading the full chunk verbatim.
+            result = `INTERNAL REFERENCE (do not read verbatim — summarize in 1–2 sentences answering only what the caller asked, do not volunteer pricing or extra details unless asked):\n\n${kbText}`;
+          }
           break;
         }
 

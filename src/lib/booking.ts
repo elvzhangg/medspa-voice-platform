@@ -373,7 +373,7 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
     // booked_via_ai=true so the Revenue card attributes this appointment
     // correctly even in internal mode (where there's no platform webhook
     // to later tag it for us).
-    await supabaseAdmin.from("calendar_events").insert({
+    const { error: calErr } = await supabaseAdmin.from("calendar_events").insert({
       tenant_id: request.tenantId,
       title: `${request.customerName} - ${request.service}`,
       start_time: startTime.toISOString(),
@@ -384,6 +384,20 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
       status: "confirmed",
       booked_via_ai: true,
     });
+    if (calErr) {
+      // Loud — previously this insert had no error handling, so a failure
+      // (RLS, schema drift, type mismatch) silently dropped the event off
+      // the calendar even though the booking_request looked fine.
+      console.error("CALENDAR_EVENT_INSERT_FAILED:", calErr, {
+        tenant_id: request.tenantId,
+        start_time: startTime.toISOString(),
+      });
+      return {
+        success: false,
+        message:
+          "I'm sorry, I couldn't lock that on our calendar just now. Let me have someone from the team reach out to confirm — what's the best number to text?",
+      };
+    }
   } else {
     // No specific slot — shouldn't happen under the new workflow, but be defensive
     const { error: reqErr } = await supabaseAdmin.from("booking_requests").insert({
@@ -418,29 +432,43 @@ async function bookInternal(request: BookingRequest): Promise<BookingResult> {
 
 /**
  * Accepts "2024-11-15" + a time like "2pm" / "14:00" / "2:00 PM" and returns
- * a real Date. Returns null if unparseable.
+ * a real Date. Also accepts "today"/"tomorrow" in the date slot as a defensive
+ * layer — the prompt instructs the AI to convert relative dates upfront, but
+ * if it slips, we'd rather book at the right day than fail silently. Returns
+ * null and logs when truly unparseable.
  */
 function normalizeSlotStart(date: string, time: string): Date | null {
+  let d8 = (date || "").trim().toLowerCase();
+  if (d8 === "today") {
+    d8 = new Date().toISOString().slice(0, 10);
+  } else if (d8 === "tomorrow") {
+    d8 = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+  const t = (time || "").trim();
+
   // Already HH:MM (24h)
-  const hhmm = time.match(/^(\d{1,2}):(\d{2})$/);
+  const hhmm = t.match(/^(\d{1,2}):(\d{2})$/);
   if (hhmm) {
-    const d = new Date(`${date}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00`);
-    return isNaN(d.getTime()) ? null : d;
+    const d = new Date(`${d8}T${hhmm[1].padStart(2, "0")}:${hhmm[2]}:00`);
+    if (!isNaN(d.getTime())) return d;
   }
   // Natural: "2pm", "2:30 pm", "2:00 PM"
-  const natural = time.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  const natural = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
   if (natural) {
     let h = parseInt(natural[1], 10);
     const m = natural[2] ? parseInt(natural[2], 10) : 0;
     const ampm = natural[3].toLowerCase();
     if (ampm === "pm" && h < 12) h += 12;
     if (ampm === "am" && h === 12) h = 0;
-    const d = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
-    return isNaN(d.getTime()) ? null : d;
+    const d = new Date(`${d8}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+    if (!isNaN(d.getTime())) return d;
   }
   // Fallback: try Date() directly
-  const d = new Date(`${date}T${time}`);
-  return isNaN(d.getTime()) ? null : d;
+  const d = new Date(`${d8}T${t}`);
+  if (!isNaN(d.getTime())) return d;
+
+  console.warn("NORMALIZE_SLOT_FAILED:", { date, time });
+  return null;
 }
 
 /**
