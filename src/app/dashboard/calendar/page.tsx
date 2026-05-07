@@ -25,12 +25,19 @@ const AI_COLOR = { bg: "bg-amber-100", text: "text-amber-900", label: "AI booked
 
 type ViewMode = "month" | "week" | "day";
 
-// Time-grid bounds used by week + day views. Wider than typical med spa
-// hours (most run 9-7) so 7am setup blocks and 9pm late evening events
-// still render at top/bottom of the grid rather than getting clipped.
+// Time-grid bounds used by week + day views. Wide enough to cover early
+// setup blocks (7am) through late evening events (10pm-ish), so an event
+// at 8:30pm with the default 1-hour duration still fits inside the grid
+// without spilling past the bottom row. Anything beyond this range is
+// clamped, but the grid itself is wrapped in a scrollable container so
+// extending the range doesn't blow up the page height.
 const HOUR_GRID_START = 7;
-const HOUR_GRID_END = 21; // exclusive
+const HOUR_GRID_END = 23; // exclusive — last labeled row is 10 PM
 const HOUR_ROW_PX = 56;
+// Max height of the scrollable time-grid viewport. Keeps the calendar
+// card from pushing the footer way down on tall screens; users can
+// scroll within the grid to see early-morning or late-night slots.
+const TIME_GRID_MAX_HEIGHT = "calc(100vh - 320px)";
 
 interface IntegrationStatus {
   platform: string | null;
@@ -70,6 +77,20 @@ function eventColor(ev: CalEvent) {
     return PLATFORM_COLORS[ev.external_source];
   }
   return AI_COLOR;
+}
+
+// Uniform "Service · Customer" label so AI-booked, platform-synced, and
+// manual events read the same on the grid. Falls back to whichever side is
+// present, then finally to the raw title (which upstream sources set
+// inconsistently — Boulevard uses appointment titles, Vivienne uses the
+// service name, etc.).
+function eventLabel(ev: Pick<CalEvent, "title" | "service_type" | "customer_name">): string {
+  const service = ev.service_type?.trim();
+  const customer = ev.customer_name?.trim();
+  if (service && customer) return `${service} · ${customer}`;
+  if (service) return service;
+  if (customer) return customer;
+  return ev.title;
 }
 
 function monthKey(d: Date) {
@@ -578,12 +599,12 @@ export default function CalendarPage() {
                         className={`w-full text-left px-2 py-1 rounded-lg ${c.bg} ${c.text} text-[11px] font-semibold truncate hover:ring-2 hover:ring-offset-1 hover:ring-amber-300 transition ${
                           cancelled ? "line-through opacity-60" : ""
                         }`}
-                        title={`${formatTime(ev.start_time)} · ${ev.title}`}
+                        title={`${formatTime(ev.start_time)} · ${eventLabel(ev)}`}
                       >
                         <span className="font-mono text-[10px] opacity-70">
                           {formatTime(ev.start_time)}
                         </span>{" "}
-                        {ev.title}
+                        {eventLabel(ev)}
                       </button>
                     );
                   })}
@@ -630,7 +651,12 @@ export default function CalendarPage() {
               );
             })}
           </div>
-          {/* Time grid */}
+          {/* Time grid — wrapped in a scrollable container so events at
+              any hour stay visible without bloating the page height. */}
+          <div
+            className="overflow-y-auto"
+            style={{ maxHeight: TIME_GRID_MAX_HEIGHT }}
+          >
           <div
             className="grid relative"
             style={{
@@ -693,12 +719,12 @@ export default function CalendarPage() {
                           top: topPxForTime(ev.start_time),
                           height: heightPxForRange(ev.start_time, ev.end_time),
                         }}
-                        title={`${formatTime(ev.start_time)} · ${ev.title}`}
+                        title={`${formatTime(ev.start_time)} · ${eventLabel(ev)}`}
                       >
                         <div className="font-mono text-[10px] opacity-70">
                           {formatTime(ev.start_time)}
                         </div>
-                        <div className="truncate">{ev.title}</div>
+                        <div className="truncate">{eventLabel(ev)}</div>
                       </button>
                     );
                   })}
@@ -706,12 +732,17 @@ export default function CalendarPage() {
               );
             })}
           </div>
+          </div>
         </div>
       )}
 
       {/* DAY VIEW — single-day timeline, more vertical room per event */}
       {viewMode === "day" && (
         <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+          <div
+            className="overflow-y-auto"
+            style={{ maxHeight: TIME_GRID_MAX_HEIGHT }}
+          >
           <div
             className="grid relative"
             style={{
@@ -765,16 +796,12 @@ export default function CalendarPage() {
                       {formatTime(ev.start_time)}
                       {ev.end_time ? ` – ${formatTime(ev.end_time)}` : ""}
                     </div>
-                    <div className="truncate">{ev.title}</div>
-                    {ev.customer_name && (
-                      <div className="text-xs opacity-80 truncate">
-                        {ev.customer_name}
-                      </div>
-                    )}
+                    <div className="truncate">{eventLabel(ev)}</div>
                   </button>
                 );
               })}
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -815,7 +842,7 @@ export default function CalendarPage() {
                   {monthKey(new Date(selected.start_time))} · {new Date(selected.start_time).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                 </p>
                 <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mt-1">
-                  {selected.title}
+                  {eventLabel(selected)}
                 </h3>
               </div>
               <button
