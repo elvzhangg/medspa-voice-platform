@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import SmartImportModal from "./SmartImportModal";
 
 interface StaffMember {
   id: string;
@@ -32,6 +33,7 @@ export default function ProvidersPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [isSmartImporting, setIsSmartImporting] = useState(false);
   const [newStaff, setNewStaff] = useState({
     name: "",
     title: "",
@@ -102,13 +104,28 @@ export default function ProvidersPage() {
             Your AI reads these notes aloud when callers ask about providers or need a recommendation.
           </p>
         </div>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="px-4 py-2 bg-white text-amber-900 border border-amber-400 shadow-sm font-bold rounded-lg hover:bg-[#fdf9ec] hover:border-amber-500 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
-        >
-          <span>+</span> Add Provider
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsSmartImporting(true)}
+            className="px-4 py-2 bg-white text-zinc-700 border border-zinc-300 font-bold rounded-lg hover:bg-zinc-50 transition-all flex items-center gap-2"
+            title="Paste a URL, text, or PDF and we'll extract providers + services automatically"
+          >
+            <span>✨</span> Smart import
+          </button>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="px-4 py-2 bg-white text-amber-900 border border-amber-400 shadow-sm font-bold rounded-lg hover:bg-[#fdf9ec] hover:border-amber-500 transition-all shadow-md shadow-amber-100 flex items-center gap-2"
+          >
+            <span>+</span> Add Provider
+          </button>
+        </div>
       </div>
+
+      <SmartImportModal
+        open={isSmartImporting}
+        onClose={() => setIsSmartImporting(false)}
+        onApplied={fetchStaff}
+      />
 
       {isAdding && (
         <div className="mb-8 bg-white p-6 rounded-xl border-2 border-amber-200 shadow-sm">
