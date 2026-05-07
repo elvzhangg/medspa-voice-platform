@@ -13,6 +13,22 @@ import {
   lookupCaller,
 } from "@/lib/client-intelligence";
 
+/**
+ * Normalize a phone number string the AI passed us into a clean 10-digit
+ * US number. Strips parens, dashes, spaces, country-code prefixes. Returns
+ * null when the result isn't exactly 10 digits — caller should re-ask.
+ *
+ * Belt-and-suspenders for the prompt-side rules in Step 3 of the booking
+ * workflow. If the AI mishears or the model passes "5552345" with missing
+ * digits, we'd rather bounce than write a half-baked number to the DB.
+ */
+function normalizePhone(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  let digits = String(raw).replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+  return digits.length === 10 ? digits : null;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   console.log("WEBHOOK_RAW:", JSON.stringify(body).slice(0, 2000));
@@ -232,6 +248,17 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             referred_by,
           } = toolCall.parameters as Record<string, string>;
 
+          // Phone normalization defensive layer. The AI is instructed to pass
+          // a 10-digit string, but we strip non-digits and drop a leading 1
+          // here as a safety net — and bounce back to the AI if we still
+          // don't end up with 10 digits, so it re-asks instead of writing
+          // a malformed number into booking_requests.
+          const normalizedPhone = normalizePhone(customer_phone);
+          if (!normalizedPhone) {
+            result = `I want to make sure I have your number right — that didn't come through as a complete 10-digit number. Could you say it once more, slowly?`;
+            break;
+          }
+
           // bookAppointment now handles availability re-check + customer SMS
           // confirmation + staff SMS forward internally. Backup preferences
           // are attached later via the update_booking_preferences tool.
@@ -241,7 +268,7 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             preferredDate: preferred_date,
             preferredTime: preferred_time,
             customerName: customer_name,
-            customerPhone: customer_phone,
+            customerPhone: normalizedPhone,
             referredBy: referred_by,
             providerPreference: provider_preference,
             providerFlexibility: provider_flexibility,
@@ -249,13 +276,13 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 
           // Cache what we just learned about this caller on their profile.
           // Split "First Last" best-effort; staff can correct in dashboard.
-          if (customer_phone && customer_name) {
+          if (normalizedPhone && customer_name) {
             const parts = customer_name.trim().split(/\s+/);
             const first = parts[0] || null;
             const last = parts.length > 1 ? parts.slice(1).join(" ") : null;
             updateClientProfile({
               tenantId: tenant.id,
-              phone: customer_phone,
+              phone: normalizedPhone,
               updates: {
                 first_name: first,
                 last_name: last,
@@ -322,9 +349,11 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             time_preference,
           } = toolCall.parameters as Record<string, string>;
 
+          // Normalize so this match-by-phone aligns with what we wrote
+          // during book_appointment (also normalized).
           const prefResult = await updateBookingPreferences({
             tenantId: tenant.id,
-            customerPhone: customer_phone,
+            customerPhone: normalizePhone(customer_phone) ?? customer_phone,
             backupSlots: backup_slots,
             timePreference: time_preference,
           });
