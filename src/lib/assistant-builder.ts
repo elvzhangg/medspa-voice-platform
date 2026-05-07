@@ -388,6 +388,28 @@ export async function buildAssistantConfig(
       },
       server: { url: serverUrl },
     },
+    {
+      type: "function",
+      function: {
+        name: "record_followup_task",
+        description: "Record a task for the clinic's staff to handle AFTER the call ends. Call this every time you commit to a follow-up — e.g. you defer a medical question (\"someone from our team will reach out\"), agree to a callback you can't make yourself, or promise a sunburn check, allergy review, insurance question, or any \"the team will follow up\" moment. The task lands in the staff Call Log dashboard for action. ALWAYS call this at the moment you make the promise, not at end of call.",
+        parameters: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              description: "Concise description of what staff needs to do, in their voice. e.g. 'Call back to check on sunburn before next Botox session', 'Confirm if filler is OK with current medication list', 'Text Cherry financing application link'."
+            },
+            customer_name: {
+              type: "string",
+              description: "The caller's name (first or full) if known, so the staff member knows who to follow up with."
+            },
+          },
+          required: ["action"],
+        },
+      },
+      server: { url: serverUrl },
+    },
   ];
 
   if (smsAny) {

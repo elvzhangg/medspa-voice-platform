@@ -14,12 +14,52 @@ export default async function CallLogsPage({
 
   const { data } = await supabaseAdmin
     .from("call_logs")
-    .select("id, caller_number, duration_seconds, summary, transcript, created_at")
+    .select("id, vapi_call_id, caller_number, duration_seconds, summary, transcript, created_at")
     .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const calls: CallLog[] = data ?? [];
+  const callRows = (data ?? []) as Array<{
+    id: string;
+    vapi_call_id: string;
+    caller_number: string | null;
+    duration_seconds: number | null;
+    summary: string | null;
+    transcript: string | null;
+    created_at: string;
+  }>;
+
+  // Attach AI-recorded follow-up tasks per call. The AI calls
+  // record_followup_task during the conversation; staff action them
+  // from this dashboard. Pulled in one batch to keep the page snappy
+  // even with 100 calls listed.
+  const vapiIds = callRows.map((c) => c.vapi_call_id).filter(Boolean);
+  const { data: followupRows } = vapiIds.length
+    ? await supabaseAdmin
+        .from("call_followups")
+        .select("id, vapi_call_id, action, status, created_at, completed_at")
+        .eq("tenant_id", tenant.id)
+        .in("vapi_call_id", vapiIds)
+        .order("created_at", { ascending: true })
+    : { data: [] };
+
+  const followupsByCall = new Map<string, CallLog["followups"]>();
+  for (const f of followupRows ?? []) {
+    const list = followupsByCall.get(f.vapi_call_id) ?? [];
+    list.push({
+      id: f.id,
+      action: f.action,
+      status: f.status as "pending" | "done",
+      created_at: f.created_at,
+      completed_at: f.completed_at,
+    });
+    followupsByCall.set(f.vapi_call_id, list);
+  }
+
+  const calls: CallLog[] = callRows.map((c) => ({
+    ...c,
+    followups: followupsByCall.get(c.vapi_call_id) ?? [],
+  }));
 
   return (
     <div>

@@ -2,13 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 
+export interface CallFollowup {
+  id: string;
+  action: string;
+  status: "pending" | "done";
+  created_at: string;
+  completed_at: string | null;
+}
+
 export interface CallLog {
   id: string;
+  vapi_call_id: string;
   caller_number: string | null;
   duration_seconds: number | null;
   summary: string | null;
   transcript: string | null;
   created_at: string;
+  followups: CallFollowup[];
 }
 
 function formatDuration(seconds: number | null): string {
@@ -29,7 +39,29 @@ export default function CallRow({
   // Deep-link from Ask Vivienne source pills: highlighted=true auto-expands
   // the row and scrolls it into view. Brief amber glow so the eye lands on it.
   const [expanded, setExpanded] = useState(Boolean(highlighted));
+  // Local mirror of the followups so the "Mark done" button reflects state
+  // immediately without waiting for a page reload.
+  const [followups, setFollowups] = useState<CallFollowup[]>(call.followups);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  const pendingCount = followups.filter((f) => f.status === "pending").length;
+
+  async function markDone(id: string) {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/calls/followups/${id}/done`, { method: "POST" });
+      if (res.ok) {
+        setFollowups((list) =>
+          list.map((f) =>
+            f.id === id ? { ...f, status: "done" as const, completed_at: new Date().toISOString() } : f
+          )
+        );
+      }
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!highlighted) return;
@@ -64,9 +96,17 @@ export default function CallRow({
           {formatDuration(call.duration_seconds)}
         </td>
         <td className="px-5 py-3.5 text-zinc-500 max-w-xs">
-          <p className="truncate">
-            {call.summary || <span className="text-zinc-300">No summary</span>}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="truncate flex-1">
+              {call.summary || <span className="text-zinc-300">No summary</span>}
+            </p>
+            {pendingCount > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                {pendingCount} task{pendingCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">
           {new Date(call.created_at).toLocaleDateString("en-US", {
@@ -96,6 +136,44 @@ export default function CallRow({
         <tr className="bg-[#fdf9ec]/60 border-b border-amber-200">
           <td colSpan={5} className="px-5 py-5">
             <div className="space-y-4 max-w-3xl">
+              {followups.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
+                    Follow-up tasks
+                  </p>
+                  <ul className="space-y-1.5">
+                    {followups.map((f) => (
+                      <li
+                        key={f.id}
+                        className={`flex items-start gap-2 rounded-lg border p-2.5 text-sm ${
+                          f.status === "done"
+                            ? "border-zinc-200 bg-white text-zinc-400 line-through"
+                            : "border-amber-200 bg-white text-zinc-800"
+                        }`}
+                      >
+                        <span className="flex-1">{f.action}</span>
+                        {f.status === "pending" ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markDone(f.id);
+                            }}
+                            disabled={updatingId === f.id}
+                            className="shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-50"
+                          >
+                            {updatingId === f.id ? "…" : "Mark done"}
+                          </button>
+                        ) : (
+                          <span className="shrink-0 text-[11px] uppercase tracking-wider text-zinc-400">
+                            Done
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {call.summary && (
                 <div>
                   <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">

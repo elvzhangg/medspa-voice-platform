@@ -545,6 +545,36 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           break;
         }
 
+        case "record_followup_task": {
+          if (!tenant) {
+            result = "Got it.";
+            break;
+          }
+          const { action, customer_name } = toolCall.parameters as Record<string, string>;
+          const vapiCallId = (call?.id as string) || "";
+          if (!vapiCallId || !action?.trim()) {
+            // Defensive — without a call id we can't link this back to a call.
+            result = "Got it.";
+            break;
+          }
+          const { error: fuErr } = await supabaseAdmin.from("call_followups").insert({
+            tenant_id: tenant.id,
+            vapi_call_id: vapiCallId,
+            customer_phone: inboundCallerNumber || null,
+            customer_name: customer_name?.trim() || null,
+            action: action.trim(),
+            status: "pending",
+          });
+          if (fuErr) {
+            console.error("FOLLOWUP_INSERT_ERROR:", fuErr);
+            result = "Got it.";
+          } else {
+            console.log("FOLLOWUP_RECORDED:", action);
+            result = "Got it, I've made a note for the team to follow up on that.";
+          }
+          break;
+        }
+
         default:
           console.error("UNKNOWN_TOOL:", JSON.stringify(toolCall));
           result = "Tool not recognized: " + toolCall.name;

@@ -127,10 +127,25 @@ async function sendCustomerConfirmation(
   const fromNumber = tenant.twilio_phone_number || process.env.TWILIO_FROM_NUMBER;
 
   if (!accountSid || !authToken || !fromNumber) {
-    console.warn("CUSTOMER_CONFIRMATION_SMS_SKIPPED: no Twilio credentials");
+    // Surface exactly which credentials are missing — quick to diagnose
+    // when "I didn't get a text" comes back from a test call.
+    console.warn("CUSTOMER_CONFIRMATION_SMS_SKIPPED: missing Twilio creds", {
+      tenant_id: tenant.id,
+      tenant_has_sid: Boolean(tenant.twilio_account_sid),
+      tenant_has_token: Boolean(tenant.twilio_auth_token),
+      tenant_has_from: Boolean(tenant.twilio_phone_number),
+      env_has_sid: Boolean(process.env.TWILIO_ACCOUNT_SID),
+      env_has_token: Boolean(process.env.TWILIO_AUTH_TOKEN),
+      env_has_from: Boolean(process.env.TWILIO_FROM_NUMBER),
+    });
     return;
   }
-  if (!request.customerPhone) return;
+  if (!request.customerPhone) {
+    console.warn("CUSTOMER_CONFIRMATION_SMS_SKIPPED: no customerPhone on booking request", {
+      tenant_id: tenant.id,
+    });
+    return;
+  }
 
   const whenLine = request.preferredDate && request.preferredTime
     ? `${request.preferredDate} at ${request.preferredTime}`
