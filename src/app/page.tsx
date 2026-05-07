@@ -143,7 +143,6 @@ export default function HomePage() {
       <Features />
       <Integrations />
       <Testimonials />
-      <Pricing />
       <DemoSection />
       <Footer />
     </div>
@@ -255,7 +254,7 @@ function Nav() {
         </Link>
 
         <div className="hidden md:flex items-center gap-0.5 px-2 py-1.5 rounded-full bg-ink-800/60 border border-sage-800/25 backdrop-blur-md">
-          {["How It Works", "Features", "Pricing"].map((label) => (
+          {["How It Works", "Features"].map((label) => (
             <a
               key={label}
               href={`#${label.toLowerCase().replace(/ /g, "-")}`}
@@ -885,7 +884,7 @@ function QuoteCard({ quote, index, visible }: {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Platform Showcase — demo video + 3 capability cards
+   Platform Showcase — 3 capability cards
 ═══════════════════════════════════════════════════════════════════ */
 const PLATFORM_CAPS = [
   {
@@ -924,75 +923,6 @@ const PLATFORM_CAPS = [
   },
 ];
 
-function VideoShowcase() {
-  const card = useReveal();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const toggle = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (v.paused) {
-      v.muted = false;
-      v.currentTime = 0;
-      v.play().catch(() => {});
-      setPlaying(true);
-    } else {
-      v.pause();
-      setPlaying(false);
-    }
-  };
-  return (
-    <div
-      ref={card.ref}
-      className={`reveal-up ${card.visible ? "visible" : ""} relative rounded-[28px] overflow-hidden border border-sage-800/40 bg-gradient-to-br from-ink-900 to-em-950/40 shadow-2xl shadow-em-950/30`}
-    >
-      <div className="relative aspect-[21/10]">
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          autoPlay
-          loop
-          preload="auto"
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          className="absolute inset-0 w-full h-full object-cover opacity-55"
-          src="/hero-video-2.mp4"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-ink-900/25 via-transparent to-ink-900/75" />
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-          <p className="text-[10px] font-bold text-sage-300 uppercase tracking-[0.3em]">
-            Watch Vivienne in action
-          </p>
-          <button
-            onClick={toggle}
-            aria-label={playing ? "Pause" : "Play"}
-            className="group relative w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center hover:scale-[1.06] transition-transform shadow-2xl"
-          >
-            {!playing && (
-              <span className="absolute inset-0 rounded-full border border-white/25 animate-ping pointer-events-none" />
-            )}
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="white"
-              className={playing ? "" : "ml-1"}
-            >
-              {playing ? (
-                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-              ) : (
-                <path d="M8 5v14l11-7z" />
-              )}
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PlatformShowcase() {
   const head = useReveal();
   const cards = useReveal(0.1);
@@ -1025,9 +955,7 @@ function PlatformShowcase() {
           </p>
         </div>
 
-        <VideoShowcase />
-
-        <div ref={cards.ref} className="grid md:grid-cols-3 gap-5 mt-8">
+        <div ref={cards.ref} className="grid md:grid-cols-3 gap-5">
           {PLATFORM_CAPS.map((cap, i) => (
             <div
               key={cap.title}
@@ -1184,89 +1112,6 @@ function Testimonials() {
         </div>
       </div>
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-sage-800/12 to-transparent" />
-    </section>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════
-   Pricing
-═══════════════════════════════════════════════════════════════════ */
-const PLANS = [
-  { name: "Starter",    price: "$199",   desc: "For single-location med spas", features: ["1 phone number","Up to 500 calls/mo","Custom knowledge base","Call dashboard","Email support","Billing FAQ support"] },
-  { name: "Growth",     price: "$499",   desc: "For growing practices",        features: ["Up to 3 phone numbers","Unlimited calls","Appointment booking integration","Call transcripts & analytics","Priority support","SMS follow-up","Outbound reminder campaigns","Referral tracking"], featured: true },
-  { name: "Enterprise", price: "Custom", desc: "For multi-location groups",    features: ["Unlimited numbers","Unlimited calls","Custom integrations","Dedicated account manager","White-label options","SLA guarantee","Custom outbound campaigns","Advanced referral analytics"] },
-];
-
-function Pricing() {
-  const head  = useReveal();
-  const cards = useReveal(0.1);
-  return (
-    <section id="pricing" className="py-32 bg-transparent relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_45%_at_20%_70%,rgba(251,191,36,0.05),transparent)] pointer-events-none" />
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-20">
-          <div ref={head.ref}>
-            <span className={`reveal-blur ${head.visible ? "visible" : ""} inline-block text-[10px] font-bold text-em-400 uppercase tracking-[0.3em] border border-em-900/50 bg-em-950/40 px-4 py-1.5 rounded-full mb-6`}>
-              Pricing
-            </span>
-            <div className={`line-expand-center mx-auto h-px bg-gradient-to-r from-transparent via-em-600/30 to-transparent max-w-xs mb-8 ${head.visible ? "visible" : ""}`} />
-            <h2 className={`reveal-tilt ${head.visible ? "visible" : ""} text-[clamp(32px,4.5vw,58px)] font-medium text-sage-100 tracking-[-0.005em]`} style={{ transitionDelay: "80ms" }}>
-              <span className="italic">Simple</span>, transparent pricing
-            </h2>
-            <p className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`} style={{ transitionDelay: "160ms" }}>
-              Less than the cost of a part-time receptionist. Cancel anytime.
-            </p>
-          </div>
-        </div>
-
-        <div ref={cards.ref} className="grid md:grid-cols-3 gap-4 items-start">
-          {PLANS.map((plan, i) => (
-            <div
-              key={plan.name}
-              className={`reveal-scale ${cards.visible ? "visible" : ""} relative rounded-2xl p-8 border transition-all ${
-                plan.featured
-                  ? "border-em-500/60 bg-gradient-to-b from-em-500 to-em-600 -mt-4 animate-glow-pulse"
-                  : "glass-glow hover:border-em-500/40"
-              }`}
-              style={{ transitionDelay: `${i * 130}ms` }}
-            >
-              {plan.featured && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-gold-400 to-gold-500 text-ink-950 text-[10px] font-bold px-5 py-2 rounded-full whitespace-nowrap shadow-lg shadow-gold-500/25 animate-gold-pulse">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              <p className={`font-serif font-medium text-lg tracking-normal ${plan.featured ? "text-white" : "text-sage-200"}`}>{plan.name}</p>
-              <div className="mt-4 mb-1 flex items-end gap-1">
-                <span className={`font-serif text-[clamp(32px,4.5vw,58px)] font-medium tracking-tight ${plan.featured ? "text-white" : "text-sage-100"}`}>{plan.price}</span>
-                {plan.price !== "Custom" && <span className={`text-sm mb-2 ${plan.featured ? "text-white/70" : "text-sage-600"}`}>/month</span>}
-              </div>
-              <p className={`text-sm mb-7 ${plan.featured ? "text-white/75" : "text-sage-600"}`}>{plan.desc}</p>
-              <Link
-                href="/book-a-demo"
-                className={`block text-center py-3 rounded-xl font-medium text-sm transition-all mb-7 ${
-                  plan.featured
-                    ? "bg-gold-400 text-em-600 hover:bg-gold-300"
-                    : "bg-ink-800/80 text-sage-200 hover:bg-ink-700/80 border border-sage-800/30"
-                }`}
-              >
-                {plan.price === "Custom" ? "Contact Sales" : "Start Free Trial"}
-              </Link>
-              <ul className="space-y-3.5">
-                {plan.features.map((f) => (
-                  <li key={f} className={`text-sm flex items-start gap-3 ${plan.featured ? "text-white/85" : "text-sage-600"}`}>
-                    <svg className={`w-4 h-4 shrink-0 mt-0.5 ${plan.featured ? "text-gold-400" : "text-em-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }
