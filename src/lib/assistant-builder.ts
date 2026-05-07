@@ -192,6 +192,24 @@ export async function buildAssistantConfig(
   ]);
   const businessHoursBlock = buildBusinessHoursBlock(tenant);
 
+  // Inbound caller-id, normalized to 10 digits when possible. Injected into
+  // the prompt so Step 3 can ask "is the number you're calling from OK?"
+  // and read it back in 3-3-4 grouping. Empty when blocked/anonymous —
+  // AI then falls through to the generic "give me your number" protocol.
+  const inboundDigits = callerNumber ? callerNumber.replace(/\D+/g, "") : "";
+  const inboundTen =
+    inboundDigits.length === 11 && inboundDigits.startsWith("1")
+      ? inboundDigits.slice(1)
+      : inboundDigits.length === 10
+      ? inboundDigits
+      : "";
+  const inboundReadback = inboundTen
+    ? `${inboundTen.slice(0, 3)}-${inboundTen.slice(3, 6)}-${inboundTen.slice(6)}`
+    : "";
+  const inboundCallerBlock = inboundTen
+    ? `\n## Inbound Caller Line\nThe number this caller is calling from is: ${inboundReadback} (${inboundTen}). Use this as the default callback number unless they explicitly tell you otherwise — see Step 3 of the booking workflow.\n`
+    : `\n## Inbound Caller Line\nThe caller's number was not provided (blocked or anonymous). You'll need to ask for a callback number explicitly — see Step 3.\n`;
+
   // SMS consent capture is only relevant when at least one outbound SMS
   // feature is on for this tenant. We add both the prompt block and the
   // record_sms_consent tool conditionally so calls stay short for tenants
@@ -210,7 +228,9 @@ export async function buildAssistantConfig(
     providerRoster,
     consentBlock,
     serviceDurationsBlock,
-    businessHoursBlock
+    businessHoursBlock,
+    inboundCallerBlock,
+    inboundTen
   );
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
@@ -448,8 +468,16 @@ function buildSystemPrompt(
   providerRoster: string = "",
   consentBlock: string = "",
   serviceDurationsBlock: string = "",
-  businessHoursBlock: string = ""
+  businessHoursBlock: string = "",
+  inboundCallerBlock: string = "",
+  inboundTen: string = ""
 ): string {
+  // Derive the formatted read-back string from the 10-digit param so the
+  // booking-workflow template literal can reference it. Empty when no
+  // inbound caller-id was provided — the Step 3 conditional handles that.
+  const inboundReadback = inboundTen.length === 10
+    ? `${inboundTen.slice(0, 3)}-${inboundTen.slice(3, 6)}-${inboundTen.slice(6)}`
+    : "";
   const now = new Date();
   const tz = "America/Los_Angeles";
   const timeStr = now.toLocaleTimeString("en-US", {
@@ -546,20 +574,28 @@ Then:
 Never invent, guess, or assume a slot is open. Only offer times returned by get_available_slots.
 
 ### Step 3 — Collect caller identity (only after a slot is agreed)
-Now ask for both — naturally, in the same turn if it flows:
-  • Full name. If you only got a first name earlier, ask for the last name now: "And can I get your last name?"
-  • Best callback phone number. **A US phone number is exactly 10 digits** (e.g. 555-234-5678). If they include a leading "1" (the country code), drop the 1 — that's not part of the 10-digit number. Treat what they say as a stream of digits: ignore parens, dashes, the words "area code", spaces, and "and" — only count actual digit-words.
+Ask for both — naturally, in the same turn if it flows:
 
-Phone-number protocol (do this every time, no exceptions):
+**Full name.** If you only got a first name earlier, ask for the last name now: "And can I get your last name?"
+  • If the name sounds at all uncommon (anything you wouldn't bet money on the spelling of — non-English names, double letters, unusual vowels, anything where 'k' vs 'c' or 'y' vs 'i' is plausible), ask them to spell it: "How do you spell that?" Don't trust the speech recognition on names. Common-as-mud names (John, Mary, Smith) you can skip the spelling on. When in doubt, ask.
+  • Same for an ambiguous first name (Caitlyn/Caitlin, Brian/Bryan, Sara/Sarah, Steven/Stephen, Jeffrey/Geoffrey).
+
+**Best callback phone number.** ${inboundTen ? `Default to the inbound line. The number they're calling from is ${inboundReadback} (see Inbound Caller Line block above) — start with: "Is the number you're calling from, ${inboundReadback}, the best way to reach you?" Read it back in 3-3-4, single digits.` : "The caller's incoming number wasn't shared (blocked or anonymous), so you'll need to ask outright."}
+
+  • **If they say YES** → use the inbound number as customer_phone. You're done with phone collection — move on.
+  • **If they say NO** or want to give a different number → fall into the 10-digit protocol below.
+  • **If you weren't given an inbound number at all** (blocked caller) → skip straight to the 10-digit protocol.
+
+10-digit protocol (only when they're giving you a different number):
+A US phone number is exactly 10 digits (e.g. 555-234-5678). If they include a leading "1" (the country code), drop the 1. Treat what they say as a stream of digits: ignore parens, dashes, the words "area code", spaces, and "and" — only count actual digit-words.
   1. After they finish saying it, count the digits in your head. If you have fewer than 10, you're missing some — say "I think I caught only [N] digits — can you say it once more, slowly?" Do NOT try to guess.
   2. If you have more than 10 (e.g. they said "1, 555…"), drop the leading 1.
   3. Read the 10 digits back in 3-3-4 grouping, one digit at a time: "Let me make sure — five-five-five, two-three-four, five-six-seven-eight, is that right?" Never read them as full numbers like "five fifty-five" — always single digits.
   4. If they correct any part, write down the new digits and read the FULL 10-digit number back again from scratch. Repeat until they confirm.
   5. Only after they say "yes that's right" (or equivalent), pass it to book_appointment as a 10-digit string.
 
-Common pitfalls to watch for:
-  • They say "my number is the same as the one I'm calling from" → use the caller's incoming number; still read it back to confirm.
-  • They give a number with an extension ("555-234-5678 extension 12") → ignore the extension, just keep the 10 digits.
+Common pitfalls:
+  • Number with an extension ("555-234-5678 extension 12") → ignore the extension, just keep the 10 digits.
   • They mumble or two digits run together → ALWAYS re-ask if you're not certain you heard 10 distinct digits.
 
 ### Step 4 — Call 'book_appointment' for the agreed slot
@@ -721,7 +757,7 @@ Always convert the caller's words into a real YYYY-MM-DD before any tool call. U
 - "the 15th" → the next 15th on or after ${todayYmd}.
 
 If you're unsure which date the caller means, briefly read it back: "Just to confirm — Wednesday the 12th, is that right?" Never pass a relative phrase like "tomorrow" into get_available_slots or book_appointment — always pass YYYY-MM-DD.
-${callerContext}${providerRoster}${serviceDurationsBlock}${businessHoursBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
+${callerContext}${inboundCallerBlock}${providerRoster}${serviceDurationsBlock}${businessHoursBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
 
