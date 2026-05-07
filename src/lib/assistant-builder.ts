@@ -119,6 +119,36 @@ When callers ask how long an appointment takes, answer using these durations dir
 `;
 }
 
+/**
+ * Format the tenant's clinic-level open/close hours into a system-prompt
+ * block. The AI uses this to (a) reject impossible booking times like
+ * "Sunday at 11am" when the clinic is closed Sundays, and (b) answer
+ * "are you open right now?" without a tool call. Empty/missing hours
+ * yields an empty string — no block injected, no false claims about
+ * being open.
+ */
+function buildBusinessHoursBlock(tenant: Tenant): string {
+  const hours = tenant.business_hours;
+  if (!hours || typeof hours !== "object") return "";
+
+  const lines: string[] = [];
+  for (const day of DAY_ORDER) {
+    const block = (hours as Record<string, { open?: string; close?: string } | null | undefined>)[day];
+    if (block?.open && block?.close) {
+      lines.push(`- ${DAY_LABELS[day]}: ${block.open}–${block.close}`);
+    } else {
+      lines.push(`- ${DAY_LABELS[day]}: CLOSED`);
+    }
+  }
+
+  return `
+## Clinic Hours
+${lines.join("\n")}
+
+Use these to sanity-check any time the caller proposes. If they ask for a slot on a day we're CLOSED, say so plainly and offer the next open day. If they ask for a time outside the open hours on a day we're open, push to the closest in-hours alternative. Never offer or book a time the clinic isn't open.
+`;
+}
+
 const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 /**
@@ -160,6 +190,7 @@ export async function buildAssistantConfig(
     buildProviderRoster(tenant.id),
     buildServiceDurationsBlock(tenant.id),
   ]);
+  const businessHoursBlock = buildBusinessHoursBlock(tenant);
 
   // SMS consent capture is only relevant when at least one outbound SMS
   // feature is on for this tenant. We add both the prompt block and the
@@ -178,7 +209,8 @@ export async function buildAssistantConfig(
     callerContext,
     providerRoster,
     consentBlock,
-    serviceDurationsBlock
+    serviceDurationsBlock,
+    businessHoursBlock
   );
 
   // Each tool MUST have server.url set, otherwise Vapi won't call our server for tool execution
@@ -415,7 +447,8 @@ function buildSystemPrompt(
   callerContext: string = "",
   providerRoster: string = "",
   consentBlock: string = "",
-  serviceDurationsBlock: string = ""
+  serviceDurationsBlock: string = "",
+  businessHoursBlock: string = ""
 ): string {
   const now = new Date();
   const tz = "America/Los_Angeles";
@@ -447,19 +480,33 @@ function buildSystemPrompt(
 
   // Availability-first booking workflow
   const forwardInstruction = `
+## Caller Intent — figure this out FIRST
+Before you start any booking workflow, listen for what the caller actually wants:
+
+  • **New appointment** → use the booking workflow below.
+  • **Cancel an existing appointment** → you can't cancel directly. Say warmly: "I'm not able to cancel from this line, but I can have someone from the team text or call you right back to take care of that. What's the best number to reach you?" Then capture their callback number using the same 10-digit phone protocol from Step 3 below, and call 'send_sms' with a message to the front desk style ("Caller [name] would like to cancel [appointment if known] — please follow up at [phone]"). Do NOT pretend the cancellation is done.
+  • **Reschedule an existing appointment** → same as cancel: not directly handled here. Say: "I can help you with that — let me have someone from the team reach out so we don't accidentally double-book you. What's the best number?" Then send_sms to the front desk with the request.
+  • **General question** (hours, services, pricing, who works there) → answer it; don't push booking.
+  • **Mixed** ("I want to reschedule my Tuesday and also book a filler") → handle the new booking via the workflow, and queue the reschedule as a handoff via send_sms.
+
+Never tell the caller "your appointment is cancelled" or "your appointment has been moved" — you don't have the tools to do that. Only the team can.
+
 ## Appointment Booking Workflow — Service & Provider → Availability → Book → Backups
 Follow these steps IN ORDER. Provider preference is a HARD filter on availability and must be confirmed BEFORE checking open slots.
 
 ### Step 1 — Figure out what service + who they want to see
 Conversationally collect:
-  • Service (e.g. Botox, HydraFacial)
+  • **Who is the appointment for?** Quickly verify whether the caller is booking for themselves or someone else. If it's clearly for themselves (e.g. "I'd like to come in") just continue. If anything suggests otherwise ("I want to book my mom", "this is for my daughter"), ask: "Got it — and who am I booking this for? Just need their name and best contact number for the appointment record." Capture THEIR name and phone as customer_name + customer_phone (not the caller's). Note in your head that the caller is booking on behalf of someone, so don't confuse identities later.
+  • **Service.** Match what they ask for against the Service durations block above and any KB context. If the service isn't something we offer, do NOT invent details, pricing, or a duration — say plainly: "We don't offer [service] here, but [closest service we do offer] is similar — would that be of interest, or would you rather have someone follow up with you about your specific question?" Never tell them about a service we don't run.
   • Provider preference: ask "Do you have a specific provider or aesthetician you'd like to see, or are you open to anyone?"
     - If they name someone → capture the name (e.g. "Dr. Sarah") as provider_preference.
       Then ALWAYS follow up: "And if [Provider] happens to not be available, would you be open to seeing someone else, or would you rather wait for [Provider] specifically?"
       Capture the answer as provider_flexibility — e.g. "open to any other aesthetician", "second choice would be Dr. Mia", "would rather wait for Dr. Sarah".
     - If they're open → no preference; skip the flexibility question.
-  • Preferred date (or a day range like "sometime next week") — convert to YYYY-MM-DD using the rules in "Resolving Dates" above before any tool call.
-  • Preferred time (or a window like "afternoon")
+  • Preferred date (or a day range like "sometime next week") — convert to YYYY-MM-DD using the rules in "Resolving Dates" above before any tool call. Cross-check against Clinic Hours: if that day is CLOSED, push to the next open day before continuing.
+  • Preferred time. Two hard rules:
+    1. **AM/PM is mandatory.** If the caller says just "9" or "3", you do NOT know if they mean morning or afternoon — ASK: "Just to confirm, 3 in the afternoon?" Don't assume from context. The clinic isn't open at 3am, so silently picking PM is still a habit you must break — confirm it.
+    2. **Time must be inside Clinic Hours for that day.** If they ask for a time before open or after close, say so plainly: "We're actually open from [open] to [close] that day — would [closest in-hours time] work, or another day?" Don't pass an out-of-hours time into get_available_slots.
 
 ### Step 2 — Check availability using get_available_slots (MANDATORY)
 Call 'get_available_slots' with:
@@ -653,9 +700,15 @@ Always convert the caller's words into a real YYYY-MM-DD before any tool call. U
 - "the 15th" → the next 15th on or after ${todayYmd}.
 
 If you're unsure which date the caller means, briefly read it back: "Just to confirm — Wednesday the 12th, is that right?" Never pass a relative phrase like "tomorrow" into get_available_slots or book_appointment — always pass YYYY-MM-DD.
-${callerContext}${providerRoster}${serviceDurationsBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
+${callerContext}${providerRoster}${serviceDurationsBlock}${businessHoursBlock}${locationBlock}${paymentMethodsBlock}${paymentBlock}${membershipBlock}${bookingConstraintsBlock}${intakeFormBlock}
 ## Remembering the Caller
 When the caller naturally shares information that would help us serve them better next time — their full name, email address, who referred them, a provider they want to stick with, a time-of-day preference, or something we should remember (e.g. an allergy or that they prefer texts) — call the 'update_client_profile' tool with their phone number and the relevant fields. Do this silently, in the background; don't announce that you're "saving" anything. Never interrogate them for profile fields — only capture what they volunteer.
+
+When capturing an **email address**, never trust what STT gives you on first try — emails are full of letters that sound alike (m/n, b/d/p, s/f). Protocol:
+  1. Treat "at" as "@" and "dot" as ".". Strip spaces.
+  2. Read it back letter-by-letter, slowly: "Let me confirm — that's L-I-L-Y, at, G-M-A-I-L, dot, C-O-M, lily@gmail.com. Did I get that right?"
+  3. If they correct any character, re-read the FULL address letter-by-letter again from scratch.
+  4. Only after they confirm, pass it into update_client_profile.
 ${forwardInstruction}
 ## How to Talk (this is a phone call, not a brochure)
 - Keep replies SHORT — 1–2 sentences by default. Long monologues feel robotic over the phone.
