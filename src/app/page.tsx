@@ -1240,8 +1240,8 @@ function Footer() {
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-sage-400">
-            <a href="#" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Privacy Policy</a>
-            <a href="#" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Terms of Service</a>
+            <Link href="/privacy" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Terms of Service</Link>
             <a href="mailto:hello@vauxvoice.com" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Contact</a>
           </div>
           <p className="text-sm text-sage-400">© 2026 VauxVoice. All rights reserved.</p>
