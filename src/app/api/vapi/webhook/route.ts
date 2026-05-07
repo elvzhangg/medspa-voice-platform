@@ -184,6 +184,15 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
   let tenant = phoneNumberId ? await getTenantByVapiPhoneNumberId(phoneNumberId) : null;
   if (!tenant && dialedNumber) tenant = await getTenantByPhoneNumber(dialedNumber);
 
+  // Inbound caller-id from the telco — most reliable identifier for THIS
+  // call. We pin all client_profile writes to this number so a caller who
+  // mis-states their callback number once or twice doesn't end up as 2-3
+  // separate clients in the CRM. The AI-captured phone is still saved as
+  // the booking's callback number (where the SMS confirmation goes), but
+  // the client identity stays one-to-one with the actual line that called.
+  const inboundCallerNumber =
+    (call?.customer as Record<string, unknown> | undefined)?.number as string | undefined;
+
   const results = await Promise.all(
     toolList.map(async (toolCall) => {
       console.log("EXEC_TOOL:", toolCall.name, JSON.stringify(toolCall.parameters));
@@ -276,13 +285,19 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
 
           // Cache what we just learned about this caller on their profile.
           // Split "First Last" best-effort; staff can correct in dashboard.
-          if (normalizedPhone && customer_name) {
+          // Pin the profile update to the inbound caller-id (the actual
+          // line on the call), not the AI-captured callback number — those
+          // can differ legitimately, but the CLIENT is the inbound line.
+          // Only fall back to the AI-captured phone if caller-id is missing
+          // (e.g. blocked/anonymous).
+          const profilePhone = inboundCallerNumber || normalizedPhone;
+          if (profilePhone && customer_name) {
             const parts = customer_name.trim().split(/\s+/);
             const first = parts[0] || null;
             const last = parts.length > 1 ? parts.slice(1).join(" ") : null;
             updateClientProfile({
               tenantId: tenant.id,
-              phone: normalizedPhone,
+              phone: profilePhone,
               updates: {
                 first_name: first,
                 last_name: last,
@@ -314,14 +329,19 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
             notes,
           } = toolCall.parameters as Record<string, string>;
 
-          if (!phone) {
-            result = "I need a phone number on file to update this client's record.";
+          // Pin to inbound caller-id, never the AI-passed phone — same
+          // dedup reasoning as book_appointment. The AI may pass a phone
+          // mid-correction, and we must NOT spawn a fresh client_profile
+          // for each variant. Only fall back if caller-id is unknown.
+          const profilePhone = inboundCallerNumber || phone;
+          if (!profilePhone) {
+            result = "Noted.";
             break;
           }
 
           await updateClientProfile({
             tenantId: tenant.id,
-            phone,
+            phone: profilePhone,
             updates: {
               first_name: first_name || undefined,
               last_name: last_name || undefined,
