@@ -2,6 +2,7 @@
 
 import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const ADMIN_PASSWORD = "medspa2026";
@@ -129,8 +130,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
           {/* Header stripe */}
           <div className="bg-slate-900 px-8 py-6">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-white font-bold text-lg tracking-tight">VauxVoice</span>
+            <div className="flex items-center gap-3 mb-1">
+              <Image
+                src="/vauxvoice-logo.png"
+                alt="VauxVoice"
+                width={599}
+                height={103}
+                priority
+                className="h-7 w-auto"
+              />
               <span className="text-[10px] font-semibold bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
                 Admin
               </span>
@@ -173,7 +181,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-white font-bold text-base tracking-tight">VauxVoice</span>
+            <Image
+              src="/vauxvoice-logo.png"
+              alt="VauxVoice"
+              width={599}
+              height={103}
+              priority
+              className="h-6 w-auto"
+            />
             <span className="text-[9px] font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wider">
               Admin
             </span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 /* ════════════════════════════════════════════════════════════════════
    Hooks
@@ -235,22 +236,15 @@ function Nav() {
       scrolled ? "bg-ink-950/90 backdrop-blur-2xl border-b border-sage-800/20" : "bg-transparent"
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-[68px] flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-            <defs>
-              <linearGradient id="nav-g" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#f59e0b"/>
-                <stop offset="100%" stopColor="#09090b"/>
-              </linearGradient>
-            </defs>
-            <rect x="1"  y="10" width="5" height="12" rx="2.5" fill="url(#nav-g)"/>
-            <rect x="8"  y="5"  width="5" height="22" rx="2.5" fill="url(#nav-g)"/>
-            <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#nav-g)"/>
-            <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#nav-g)"/>
-          </svg>
-          <span className="font-serif text-[clamp(22px,2.2vw,28px)] font-medium tracking-[0.08em] text-sage-100 group-hover:text-sage-200 transition-colors">
-            Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
-          </span>
+        <Link href="/" className="flex items-center group">
+          <Image
+            src="/vauxvoice-logo.png"
+            alt="VauxVoice"
+            width={599}
+            height={103}
+            priority
+            className="h-8 md:h-9 w-auto transition-opacity group-hover:opacity-90"
+          />
         </Link>
 
         <div className="hidden md:flex items-center gap-0.5 px-2 py-1.5 rounded-full bg-ink-800/60 border border-sage-800/25 backdrop-blur-md">
@@ -1222,22 +1216,14 @@ function Footer() {
     <footer className="border-t border-sage-800/25 py-14 bg-transparent relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
-              <defs>
-                <linearGradient id="f-g" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b"/>
-                  <stop offset="100%" stopColor="#09090b"/>
-                </linearGradient>
-              </defs>
-              <rect x="1"  y="10" width="5" height="12" rx="2.5" fill="url(#f-g)"/>
-              <rect x="8"  y="5"  width="5" height="22" rx="2.5" fill="url(#f-g)"/>
-              <rect x="15" y="7"  width="5" height="18" rx="2.5" fill="url(#f-g)"/>
-              <rect x="22" y="11" width="5" height="10" rx="2.5" fill="url(#f-g)"/>
-            </svg>
-            <span className="font-serif font-medium tracking-[0.08em] text-lg text-sage-100">
-              Vaux<span className="gradient-text" style={{ animation: "none", backgroundSize: "100% 100%" }}>Voice</span>
-            </span>
+          <div className="flex items-center">
+            <Image
+              src="/vauxvoice-logo.png"
+              alt="VauxVoice"
+              width={599}
+              height={103}
+              className="h-7 w-auto"
+            />
           </div>
           <div className="flex items-center gap-2 text-sm text-sage-400">
             <Link href="/privacy" className="px-3 py-2 rounded-md hover:text-sage-100 hover:bg-ink-800/60 transition-colors">Privacy Policy</Link>

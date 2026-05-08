@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import Image from "next/image";
 import { getSession, getCurrentTenant } from "@/lib/supabase-server";
 import SignOutButton from "./_components/SignOutButton";
 import SidebarNav from "./_components/SidebarNav";
@@ -39,8 +40,18 @@ export default async function DashboardLayout({
         <SidebarNav brandPrefix={brandPrefix} />
 
         {/* Footer */}
-        <div className="px-3 pb-4 pt-2 border-t border-zinc-100">
+        <div className="px-3 pb-4 pt-2 border-t border-zinc-100 space-y-3">
           <SignOutButton />
+          <div className="mx-2 rounded-lg bg-slate-900 px-3 py-2 flex items-center gap-2">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">Powered by</span>
+            <Image
+              src="/vauxvoice-logo.png"
+              alt="VauxVoice"
+              width={599}
+              height={103}
+              className="h-3.5 w-auto"
+            />
+          </div>
         </div>
       </aside>
 
