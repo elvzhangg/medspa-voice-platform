@@ -62,6 +62,7 @@ export default async function DashboardPage() {
     callsPriorWeekRes,
     bookingsThisWeekRes,
     bookingsPriorWeekRes,
+    totalBookingsThisWeekRes,
     newClientsThisWeekRes,
     newClientsPriorWeekRes,
     todayEventsRes,
@@ -90,13 +91,20 @@ export default async function DashboardPage() {
       .from("calendar_events")
       .select("id, service_type, created_at")
       .eq("tenant_id", tenant.id)
+      .eq("booked_via_ai", true)
       .gte("created_at", weekStart),
     supabaseAdmin
       .from("calendar_events")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenant.id)
+      .eq("booked_via_ai", true)
       .gte("created_at", priorWeekStart)
       .lt("created_at", weekStart),
+    supabaseAdmin
+      .from("calendar_events")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .gte("created_at", weekStart),
     supabaseAdmin
       .from("client_profiles")
       .select("id", { count: "exact", head: true })
@@ -194,11 +202,8 @@ export default async function DashboardPage() {
   const afterHoursPrior = Math.round(priorWeekCalls * afterHoursRatio);
 
   const bookingsCount = bookingsThisWeek.length;
-  const conversion = callsThisWeek.length
-    ? Math.round((bookingsCount / callsThisWeek.length) * 100)
-    : 0;
   const priorWeekBookings = bookingsPriorWeekRes.count ?? 0;
-  const priorConversion = priorWeekCalls ? Math.round((priorWeekBookings / priorWeekCalls) * 100) : 0;
+  const totalBookingsThisWeek = totalBookingsThisWeekRes.count ?? 0;
 
   const newClients: Delta = {
     current: newClientsThisWeekRes.count ?? 0,
@@ -206,7 +211,6 @@ export default async function DashboardPage() {
   };
   const bookings: Delta = { current: bookingsCount, prior: priorWeekBookings };
   const afterHours: Delta = { current: afterHoursCount, prior: afterHoursPrior };
-  const conv: Delta = { current: conversion, prior: priorConversion };
 
   // Revenue is only counted for visits whose calendar_event was AI-booked.
   // Two steps: (1) pull the set of AI-booked external_ids for the tenant,
@@ -369,8 +373,8 @@ export default async function DashboardPage() {
           value={bookings.current}
           unit={bookings.current === 1 ? "appointment" : "appointments"}
           suffix={
-            callsThisWeek.length && conv.current > 0
-              ? `${conv.current}% · ${bookings.current} of ${callsThisWeek.length} calls`
+            totalBookingsThisWeek > 0
+              ? `${bookings.current} of ${totalBookingsThisWeek} total ${totalBookingsThisWeek === 1 ? "booking" : "bookings"}`
               : ""
           }
           delta={bookings}
