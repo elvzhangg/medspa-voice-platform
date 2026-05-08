@@ -713,7 +713,11 @@ export default function TermsPage() {
             <address className="not-italic mt-5 p-5 rounded-xl border border-sage-800/40 bg-ink-800/40">
               <p className="font-medium text-sage-100">VauxVoice, Inc.</p>
               <p className="text-sage-400 text-sm mt-1">
-                [Mailing address &mdash; to be added before publication]
+                2261 Market Street STE 91769
+                <br />
+                San Francisco, CA 94114
+                <br />
+                United States
               </p>
               <p className="text-sage-300 text-sm mt-3">
                 Email:{" "}
