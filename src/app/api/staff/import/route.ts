@@ -147,8 +147,12 @@ async function readPdf(req: NextRequest): Promise<{ text: string; filename: stri
 }
 
 async function readUrl(url: string): Promise<{ text: string }> {
-  if (!url || !/^https?:\/\//i.test(url)) {
-    throw new Error("Provide a full http(s) URL");
+  url = url.trim();
+  if (!url) {
+    throw new Error("Provide a URL");
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
   }
   let res: Response;
   try {
