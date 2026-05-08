@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { getCurrentTenant } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase";
 import CallRow, { type CallLog } from "./CallRow";
@@ -7,7 +8,7 @@ export default async function CallLogsPage({
 }: {
   searchParams: Promise<{ call?: string }>;
 }) {
-  const tenant = (await getCurrentTenant()) as { id: string } | null;
+  const tenant = (await getCurrentTenant()) as { id: string; slug: string } | null;
   if (!tenant) return null;
 
   const { call: highlightedCallId } = await searchParams;
@@ -29,37 +30,87 @@ export default async function CallLogsPage({
     created_at: string;
   }>;
 
-  // Attach AI-recorded follow-up tasks per call. The AI calls
-  // record_followup_task during the conversation; staff action them
-  // from this dashboard. Pulled in one batch to keep the page snappy
-  // even with 100 calls listed.
+  // Attach AI-recorded follow-up tasks per call. Tasks may link via the
+  // legacy vapi_call_id (live calls) or via the newer call_log_id
+  // (chat/backfill/manual). We pull both flavors in one query and dedupe
+  // by row id below.
   const vapiIds = callRows.map((c) => c.vapi_call_id).filter(Boolean);
-  const { data: followupRows } = vapiIds.length
+  const callIds = callRows.map((c) => c.id);
+  const filterParts: string[] = [];
+  if (vapiIds.length) {
+    filterParts.push(`vapi_call_id.in.(${vapiIds.map((v) => `"${v}"`).join(",")})`);
+  }
+  if (callIds.length) {
+    filterParts.push(`call_log_id.in.(${callIds.map((c) => `"${c}"`).join(",")})`);
+  }
+  const { data: followupRows } = filterParts.length
     ? await supabaseAdmin
         .from("call_followups")
-        .select("id, vapi_call_id, action, status, created_at, completed_at")
+        .select("id, vapi_call_id, call_log_id, action, status, created_at, completed_at")
         .eq("tenant_id", tenant.id)
-        .in("vapi_call_id", vapiIds)
+        .or(filterParts.join(","))
         .order("created_at", { ascending: true })
     : { data: [] };
 
-  const followupsByCall = new Map<string, CallLog["followups"]>();
-  for (const f of followupRows ?? []) {
-    const list = followupsByCall.get(f.vapi_call_id) ?? [];
-    list.push({
-      id: f.id,
-      action: f.action,
-      status: f.status as "pending" | "done",
-      created_at: f.created_at,
-      completed_at: f.completed_at,
-    });
-    followupsByCall.set(f.vapi_call_id, list);
+  const followupsByKey = new Map<string, CallLog["followups"]>();
+  const seenForKey = new Map<string, Set<string>>();
+  for (const f of (followupRows ?? []) as Array<{
+    id: string;
+    vapi_call_id: string;
+    call_log_id: string | null;
+    action: string;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+  }>) {
+    // Index under whichever ids the row carries — vapi for live, call_log
+    // for chat/backfill — so the lookup below succeeds regardless.
+    const keys = [f.vapi_call_id, f.call_log_id].filter(Boolean) as string[];
+    for (const key of keys) {
+      const seen = seenForKey.get(key) ?? new Set<string>();
+      if (seen.has(f.id)) continue;
+      seen.add(f.id);
+      seenForKey.set(key, seen);
+
+      const list = followupsByKey.get(key) ?? [];
+      list.push({
+        id: f.id,
+        action: f.action,
+        status: f.status as "pending" | "done",
+        created_at: f.created_at,
+        completed_at: f.completed_at,
+      });
+      followupsByKey.set(key, list);
+    }
   }
 
-  const calls: CallLog[] = callRows.map((c) => ({
-    ...c,
-    followups: followupsByCall.get(c.vapi_call_id) ?? [],
-  }));
+  const calls: CallLog[] = callRows.map((c) => {
+    const merged: CallLog["followups"] = [];
+    const seen = new Set<string>();
+    for (const list of [followupsByKey.get(c.vapi_call_id), followupsByKey.get(c.id)]) {
+      if (!list) continue;
+      for (const f of list) {
+        if (seen.has(f.id)) continue;
+        seen.add(f.id);
+        merged.push(f);
+      }
+    }
+    return { ...c, followups: merged };
+  });
+
+  // Brand-prefixed link base for navigation to the detail page.
+  const headerList = await headers();
+  const xUrl = headerList.get("x-url") || "";
+  const brandSlug = (() => {
+    try {
+      const u = new URL(xUrl);
+      const seg = u.pathname.split("/").filter(Boolean)[0];
+      return seg && seg !== "dashboard" ? seg : tenant.slug;
+    } catch {
+      return tenant.slug;
+    }
+  })();
+  const brandPrefix = `/${brandSlug}`;
 
   return (
     <div>
@@ -104,6 +155,7 @@ export default async function CallLogsPage({
                 <CallRow
                   key={call.id}
                   call={call}
+                  brandPrefix={brandPrefix}
                   highlighted={call.id === highlightedCallId}
                 />
               ))}
