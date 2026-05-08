@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 
 export interface CallDetailFollowup {
   id: string;
@@ -11,17 +11,26 @@ export interface CallDetailFollowup {
   completed_at: string | null;
 }
 
+interface ProposedTaskCard {
+  // Stable client-side id so the per-card "Adding..." spinner and the
+  // dismiss/confirm state can survive re-renders cleanly.
+  uid: string;
+  action: string;
+  status: "pending" | "added" | "dismissed";
+}
+
 interface ChatMsg {
   role: "user" | "assistant";
   content: string;
-  // When the assistant is proposing a new follow-up task, the user must
-  // confirm before it lands in the tasks list. Cleared after action.
-  proposedTask?: { action: string } | null;
+  // When the assistant proposes follow-up tasks, render one confirm card
+  // per task. User must explicitly add each before it lands in the DB.
+  proposedTasks?: ProposedTaskCard[];
 }
 
 interface Props {
   callId: string;
   callerPhone: string | null;
+  callerName: string | null;
   callDurationSeconds: number | null;
   callSummary: string | null;
   callTranscript: string | null;
@@ -42,9 +51,15 @@ export default function CallDetailView(props: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [confirmingTaskIdx, setConfirmingTaskIdx] = useState<number | null>(null);
+  const [confirmingUid, setConfirmingUid] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Pre-formatted transcript with role labels rewritten to friendly names.
+  const formattedTranscript = useMemo(
+    () => formatTranscript(props.callTranscript, props.callerName, props.callerPhone),
+    [props.callTranscript, props.callerName, props.callerPhone]
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -88,14 +103,19 @@ export default function CallDetailView(props: Props) {
       if (!res.ok) throw new Error((await res.json()).error || "Vivienne is unavailable");
       const data = (await res.json()) as {
         reply: string;
-        proposedTask?: { action: string } | null;
+        proposedTasks?: Array<{ action: string }>;
       };
+      const proposed: ProposedTaskCard[] = (data.proposedTasks ?? []).map((t, idx) => ({
+        uid: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        action: t.action,
+        status: "pending" as const,
+      }));
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
           content: data.reply || "—",
-          proposedTask: data.proposedTask ?? null,
+          proposedTasks: proposed,
         },
       ]);
     } catch (e) {
@@ -105,8 +125,8 @@ export default function CallDetailView(props: Props) {
     }
   }
 
-  async function confirmTask(msgIdx: number, action: string) {
-    setConfirmingTaskIdx(msgIdx);
+  async function confirmTask(msgIdx: number, uid: string, action: string) {
+    setConfirmingUid(uid);
     setError(null);
     try {
       const res = await fetch(`/api/calls/${props.callId}/followups`, {
@@ -117,24 +137,38 @@ export default function CallDetailView(props: Props) {
       if (!res.ok) throw new Error((await res.json()).error || "Couldn't add task");
       const data = (await res.json()) as { followup: CallDetailFollowup };
       setFollowups((list) => [...list, data.followup]);
-      // Clear the proposal so the chat row no longer shows confirm buttons.
+      // Mark this specific card as added; siblings stay actionable.
       setMessages((list) =>
-        list.map((m, i) => (i === msgIdx ? { ...m, proposedTask: null } : m))
+        list.map((m, i) =>
+          i === msgIdx
+            ? {
+                ...m,
+                proposedTasks: m.proposedTasks?.map((t) =>
+                  t.uid === uid ? { ...t, status: "added" as const } : t
+                ),
+              }
+            : m
+        )
       );
-      setMessages((list) => [
-        ...list,
-        { role: "assistant", content: "Added. You'll see it in the tasks list above." },
-      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add task");
     } finally {
-      setConfirmingTaskIdx(null);
+      setConfirmingUid(null);
     }
   }
 
-  function dismissTaskProposal(msgIdx: number) {
+  function dismissTask(msgIdx: number, uid: string) {
     setMessages((list) =>
-      list.map((m, i) => (i === msgIdx ? { ...m, proposedTask: null } : m))
+      list.map((m, i) =>
+        i === msgIdx
+          ? {
+              ...m,
+              proposedTasks: m.proposedTasks?.map((t) =>
+                t.uid === uid ? { ...t, status: "dismissed" as const } : t
+              ),
+            }
+          : m
+      )
     );
   }
 
@@ -148,8 +182,13 @@ export default function CallDetailView(props: Props) {
         <div className="bg-white rounded-xl border border-zinc-200 p-5">
           <div className="flex items-baseline gap-3">
             <p className="text-lg font-bold text-zinc-900">
-              {formatPhone(props.callerPhone) || "Unknown caller"}
+              {props.callerName || formatPhone(props.callerPhone) || "Unknown caller"}
             </p>
+            {props.callerName && props.callerPhone && (
+              <p className="text-xs text-zinc-500 font-mono">
+                {formatPhone(props.callerPhone)}
+              </p>
+            )}
             <p className="text-xs text-zinc-500">
               {new Date(props.callCreatedAt).toLocaleString("en-US")}
               {props.callDurationSeconds
@@ -228,9 +267,9 @@ export default function CallDetailView(props: Props) {
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
             Transcript
           </p>
-          {props.callTranscript ? (
+          {formattedTranscript ? (
             <pre className="text-xs text-zinc-600 whitespace-pre-wrap bg-zinc-50/60 rounded-lg border border-zinc-100 p-4 max-h-[480px] overflow-y-auto font-sans leading-relaxed">
-              {props.callTranscript}
+              {formattedTranscript}
             </pre>
           ) : (
             <p className="text-xs text-zinc-400">No transcript captured for this call.</p>
@@ -254,7 +293,8 @@ export default function CallDetailView(props: Props) {
                   What did the caller want?
                 </p>
                 <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Try: <em>&ldquo;Did they ask about pricing?&rdquo;</em> ·{" "}
+                  Try: <em>&ldquo;Is there a task here?&rdquo;</em> ·{" "}
+                  <em>&ldquo;Did we promise anything?&rdquo;</em> ·{" "}
                   <em>&ldquo;Add a task to text her the HydraFacial menu&rdquo;</em>
                 </p>
               </div>
@@ -274,34 +314,83 @@ export default function CallDetailView(props: Props) {
                     {m.content}
                   </div>
                 </div>
-                {m.role === "assistant" && m.proposedTask && (
-                  <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-700 mb-1">
-                      New task
-                    </p>
-                    <p className="text-sm text-zinc-800 leading-relaxed">
-                      {m.proposedTask.action}
-                    </p>
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          confirmTask(i, m.proposedTask!.action)
-                        }
-                        disabled={confirmingTaskIdx === i}
-                        className="rounded-md border border-violet-400 bg-white px-2.5 py-1 text-xs font-semibold text-violet-800 hover:bg-violet-50 disabled:opacity-50"
+                {m.role === "assistant" && m.proposedTasks && m.proposedTasks.length > 0 && (
+                  <div className="space-y-1.5">
+                    {m.proposedTasks.map((t) => (
+                      <div
+                        key={t.uid}
+                        className={`rounded-lg border p-3 ${
+                          t.status === "added"
+                            ? "border-emerald-200 bg-emerald-50/50"
+                            : t.status === "dismissed"
+                              ? "border-zinc-200 bg-zinc-50/50 opacity-60"
+                              : "border-violet-200 bg-violet-50/50"
+                        }`}
                       >
-                        {confirmingTaskIdx === i ? "Adding…" : "Add task"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => dismissTaskProposal(i)}
-                        disabled={confirmingTaskIdx === i}
-                        className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 hover:text-zinc-900 disabled:opacity-50"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
+                        <p
+                          className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
+                            t.status === "added"
+                              ? "text-emerald-700"
+                              : t.status === "dismissed"
+                                ? "text-zinc-400"
+                                : "text-violet-700"
+                          }`}
+                        >
+                          {t.status === "added"
+                            ? "✓ Added"
+                            : t.status === "dismissed"
+                              ? "Dismissed"
+                              : "New task"}
+                        </p>
+                        <p
+                          className={`text-sm leading-relaxed ${
+                            t.status === "dismissed"
+                              ? "text-zinc-400 line-through"
+                              : "text-zinc-800"
+                          }`}
+                        >
+                          {t.action}
+                        </p>
+                        {t.status === "pending" && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => confirmTask(i, t.uid, t.action)}
+                              disabled={confirmingUid === t.uid}
+                              className="rounded-md border border-violet-400 bg-white px-2.5 py-1 text-xs font-semibold text-violet-800 hover:bg-violet-50 disabled:opacity-50"
+                            >
+                              {confirmingUid === t.uid ? "Adding…" : "Add task"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => dismissTask(i, t.uid)}
+                              disabled={confirmingUid === t.uid}
+                              className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 hover:text-zinc-900 disabled:opacity-50"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {m.proposedTasks.length > 1 &&
+                      m.proposedTasks.some((t) => t.status === "pending") && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pending = m.proposedTasks!.filter((t) => t.status === "pending");
+                            (async () => {
+                              for (const t of pending) {
+                                await confirmTask(i, t.uid, t.action);
+                              }
+                            })();
+                          }}
+                          disabled={confirmingUid !== null}
+                          className="text-[11px] font-semibold text-violet-800 hover:text-violet-950 underline underline-offset-2 disabled:opacity-50"
+                        >
+                          Add all
+                        </button>
+                      )}
                   </div>
                 )}
               </div>
@@ -348,6 +437,41 @@ export default function CallDetailView(props: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Rewrite line-leading speaker labels in the raw transcript so the staff
+// view shows clean role names. Vapi's transcripts come through as either
+// "user:" / "assistant:" or "User:" / "AI:" / "Bot:" — we cover the common
+// shapes. The caller line gets the caller's name when known so it's clear
+// who's who; falls back to the phone, then plain "Caller".
+function formatTranscript(
+  raw: string | null,
+  callerName: string | null,
+  callerPhone: string | null
+): string {
+  if (!raw) return "";
+  const callerLabel = callerName?.trim()
+    ? `Caller (${callerName.trim()})`
+    : callerPhone?.trim()
+      ? `Caller (${callerPhone.trim()})`
+      : "Caller";
+  return raw.replace(
+    /^[ \t]*(AI|Assistant|Bot|Agent|assistant|ai|bot|agent|Vivienne|vivienne|User|Caller|user|caller|Customer|customer)[ \t]*:[ \t]*/gm,
+    (_match, role: string) => {
+      const norm = role.toLowerCase();
+      if (
+        norm === "ai" ||
+        norm === "assistant" ||
+        norm === "bot" ||
+        norm === "agent" ||
+        norm === "vivienne"
+      ) {
+        return "Vivienne (AI): ";
+      }
+      // user / caller / customer → caller
+      return `${callerLabel}: `;
+    }
   );
 }
 

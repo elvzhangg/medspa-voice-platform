@@ -5,25 +5,30 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 // Per-call "Ask Vivienne" chat. Stateless on the server: each request
 // receives the full message history plus the call transcript and
-// summary, replies with a narrative answer, and may *propose* a follow-
-// up task. A proposed task is rendered as a confirmable card in the UI;
-// nothing lands in the database until the user clicks "Add task" (handled
-// by the sibling /followups POST endpoint). This avoids the model
-// silently committing tasks the user didn't authorize.
+// summary, replies with a narrative answer, and may *propose* one or
+// more follow-up tasks. Proposed tasks are rendered as confirmable
+// cards in the UI; nothing lands in the database until the user clicks
+// "Add task" (handled by the sibling /followups POST endpoint). This
+// avoids the model silently committing tasks the user didn't authorize.
 
 type Ctx = { params: Promise<{ id: string }> };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "placeholder" });
 const MODEL = "gpt-4o";
+const MAX_PROPOSED_TASKS = 6;
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+interface ProposedTask {
+  action: string;
+}
+
 interface ChatResponse {
   reply: string;
-  proposedTask: { action: string } | null;
+  proposedTasks: ProposedTask[];
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
@@ -79,22 +84,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
-  let parsed: ChatResponse = { reply: "", proposedTask: null };
+  let parsed: ChatResponse = { reply: "", proposedTasks: [] };
   try {
     const j = JSON.parse(raw) as Partial<{
       reply: string;
-      propose_task: boolean;
-      task_action: string;
+      proposed_tasks: Array<{ action?: string }>;
     }>;
+    const tasks = Array.isArray(j.proposed_tasks)
+      ? j.proposed_tasks
+          .filter((t) => t && typeof t.action === "string" && t.action.trim())
+          .map((t) => ({ action: t.action!.trim().slice(0, 500) }))
+          .slice(0, MAX_PROPOSED_TASKS)
+      : [];
     parsed = {
       reply: (j.reply ?? "").trim(),
-      proposedTask:
-        j.propose_task && j.task_action?.trim()
-          ? { action: j.task_action.trim() }
-          : null,
+      proposedTasks: tasks,
     };
   } catch {
-    parsed = { reply: raw, proposedTask: null };
+    parsed = { reply: raw, proposedTasks: [] };
   }
 
   return NextResponse.json(parsed);
@@ -121,19 +128,21 @@ function buildSystemPrompt(args: {
 
   return `You are Vivienne, the AI Clientele Specialist for ${tenantName}. The clinic owner is asking you about a specific call. Answer based ONLY on the transcript and summary below — never make up facts that aren't present.
 
-# When to propose a task
+# When to propose tasks
 
 Be PROACTIVE about surfacing follow-up tasks. A "task" is a concrete action the clinic team needs to take *after* the call — calling the customer back, texting them info, confirming an appointment, having a provider answer a deferred question, etc.
 
-Propose a task (set propose_task=true) in any of these situations:
+Propose tasks in any of these situations:
 
-1. **Direct request** — owner says "add a task to X", "remind me to X", "make a note to X". Use their wording.
+1. **Direct request** — owner says "add a task to X", "remind me to X", "make a note to X". Use their wording. Usually one task.
 
-2. **Indirect signal** — owner asks about an unfulfilled commitment from the call, e.g. "didn't they say staff would reach out about X?", "weren't we going to text her pricing?", "what about the consultation she wanted?", "this is a task". The fact they're asking means it should be tracked. Answer their question AND propose the task in the same turn.
+2. **Indirect signal** — owner asks about an unfulfilled commitment from the call, e.g. "didn't they say staff would reach out?", "weren't we going to text her pricing?", "what about the consultation she wanted?", "this is a task". The fact they're asking means it should be tracked. Answer their question AND propose the task in the same turn.
 
-3. **Question reveals a gap** — owner asks something like "did they want a callback?" or "did we promise anything?", and the transcript shows the receptionist DID promise something that hasn't been logged yet. Surface it.
+3. **Audit question** — owner asks open-ended "is there a task here?", "anything to follow up on?", "did we promise anything?", "what did we miss?", "any follow-ups?". Re-read the transcript carefully and propose EVERY uncommitted promise, request, or deferred question you find — up to 6. Do not stop at one.
 
-DO NOT propose tasks for things the caller already accomplished on the call (booked an appointment, got a question fully answered) or for general factual questions ("what service did she want?").
+4. **Question reveals a gap** — even on a regular factual question, if the answer reveals an unfulfilled promise the team should track, propose it alongside your factual answer.
+
+DO NOT propose tasks for things the caller already accomplished on the call (booked an appointment, got a question fully answered) or for general factual questions ("what service did she want?") unless those questions reveal a gap (#4).
 
 # How to phrase tasks
 
@@ -153,7 +162,7 @@ Good: "Text Lillian the HydraFacial pricing she asked about"
 Tasks already logged for this call (DO NOT propose anything that overlaps with these — mention them instead):
 ${existingBlock}
 
-If the owner asks about a follow-up that's already on the list, just say "That's already on the task list" and don't propose it again.
+If the owner asks about follow-ups that are all already on the list, say "Those are already on the task list" and don't propose anything.
 
 # Call context
 - Caller phone: ${call.caller_number ?? "unknown"}
@@ -168,10 +177,12 @@ ${transcriptExcerpt || "(no transcript available)"}
 # Response format (MANDATORY)
 Return strict JSON with exactly these keys:
 {
-  "reply": "your conversational reply to the owner — keep it 1-3 sentences, natural and warm. If proposing a task, end with something like 'Want me to add this as a task?' so they know to look at the confirm card.",
-  "propose_task": false,
-  "task_action": ""
+  "reply": "your conversational reply to the owner — 1-3 sentences, natural and warm. If proposing tasks, give context (e.g. 'I found 3 things she asked about that aren't logged yet.') so they know to look at the confirm cards.",
+  "proposed_tasks": [
+    { "action": "specific imperative task one" },
+    { "action": "specific imperative task two" }
+  ]
 }
 
-When proposing, set propose_task=true and fill task_action with the specific imperative one-liner. The UI shows the confirm button — never claim a task is "added" or "done" yourself; only the user clicking confirm does that.`;
+If you have no tasks to propose, return proposed_tasks as an empty array []. The UI shows confirm buttons for each — never claim a task is "added" or "done" yourself; only the user clicking confirm does that.`;
 }

@@ -47,6 +47,25 @@ export default async function CallDetailPage({ params }: PageProps) {
     completed_at: string | null;
   }>).map((f) => ({ ...f }));
 
+  // Best-effort caller name lookup so the transcript reads "Caller (Lillian)"
+  // instead of an anonymous "user:". Returning callers usually have a
+  // client_profiles row keyed on phone; first-time callers don't, and we
+  // gracefully fall back to the phone number.
+  let callerName: string | null = null;
+  if (call.caller_number) {
+    const { data: profile } = await supabaseAdmin
+      .from("client_profiles")
+      .select("first_name, last_name")
+      .eq("tenant_id", tenant.id)
+      .eq("phone", call.caller_number)
+      .maybeSingle();
+    if (profile) {
+      const p = profile as { first_name: string | null; last_name: string | null };
+      const parts = [p.first_name, p.last_name].filter((s) => s && s.trim()) as string[];
+      if (parts.length) callerName = parts.join(" ");
+    }
+  }
+
   return (
     <div>
       <div className="mb-4">
@@ -62,6 +81,7 @@ export default async function CallDetailPage({ params }: PageProps) {
       <CallDetailView
         callId={call.id}
         callerPhone={call.caller_number}
+        callerName={callerName}
         callDurationSeconds={call.duration_seconds}
         callSummary={call.summary}
         callTranscript={call.transcript}
