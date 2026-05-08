@@ -74,7 +74,6 @@ export default async function DashboardPage() {
     weeklyAftercareRes,
     providerDemandRes,
     nextWeekEventsRes,
-    aiBookedIdsRes,
   ] = await Promise.all([
     supabaseAdmin
       .from("call_logs")
@@ -95,7 +94,7 @@ export default async function DashboardPage() {
       .gte("created_at", weekStart),
     supabaseAdmin
       .from("calendar_events")
-      .select("id", { count: "exact", head: true })
+      .select("id, created_at")
       .eq("tenant_id", tenant.id)
       .eq("booked_via_ai", true)
       .gte("created_at", priorWeekStart)
@@ -172,16 +171,6 @@ export default async function DashboardPage() {
         new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString()
       )
       .neq("status", "cancelled"),
-    // AI-attributed booking keys — external_ids of calendar_events that
-    // originated from a Vivienne booking. The Revenue card then filters
-    // client_visits down to just these to isolate AI-driven revenue from
-    // walk-ins or platform-native bookings.
-    supabaseAdmin
-      .from("calendar_events")
-      .select("external_id")
-      .eq("tenant_id", tenant.id)
-      .eq("booked_via_ai", true)
-      .not("external_id", "is", null),
   ]);
 
   // ── Derived metrics ─────────────────────────────────────────────────────
@@ -201,9 +190,26 @@ export default async function DashboardPage() {
   const priorWeekCalls = callsPriorWeekRes.count ?? 0;
   const afterHoursPrior = Math.round(priorWeekCalls * afterHoursRatio);
 
+  const bookingsPriorWeek = (bookingsPriorWeekRes.data ?? []) as Array<{ id: string; created_at: string }>;
   const bookingsCount = bookingsThisWeek.length;
-  const priorWeekBookings = bookingsPriorWeekRes.count ?? 0;
+  const priorWeekBookings = bookingsPriorWeek.length;
   const totalBookingsThisWeek = totalBookingsThisWeekRes.count ?? 0;
+
+  const afterHoursBookingsCount = bookingsThisWeek.filter((b) =>
+    isAfterHours(new Date(b.created_at), tenant.business_hours ?? undefined)
+  ).length;
+  const afterHoursBookingsPrior = bookingsPriorWeek.filter((b) =>
+    isAfterHours(new Date(b.created_at), tenant.business_hours ?? undefined)
+  ).length;
+
+  // Cap at 100% — Vivienne can't legitimately book more than she answered, and
+  // a >100% rate (from test data or duplicate bookings) reads as broken.
+  const conversion = callsThisWeek.length
+    ? Math.min(100, Math.round((bookingsCount / callsThisWeek.length) * 100))
+    : 0;
+  const priorConversion = priorWeekCalls
+    ? Math.min(100, Math.round((priorWeekBookings / priorWeekCalls) * 100))
+    : 0;
 
   const newClients: Delta = {
     current: newClientsThisWeekRes.count ?? 0,
@@ -211,44 +217,22 @@ export default async function DashboardPage() {
   };
   const bookings: Delta = { current: bookingsCount, prior: priorWeekBookings };
   const afterHours: Delta = { current: afterHoursCount, prior: afterHoursPrior };
+  const afterHoursBookings: Delta = { current: afterHoursBookingsCount, prior: afterHoursBookingsPrior };
+  const conv: Delta = { current: conversion, prior: priorConversion };
 
-  // Revenue is only counted for visits whose calendar_event was AI-booked.
-  // Two steps: (1) pull the set of AI-booked external_ids for the tenant,
-  // (2) fetch client_visits within each week window filtered by those ids.
-  // If there are no AI-booked events yet, we skip the second query and
-  // render the empty state.
-  const aiExternalIds = Array.from(
-    new Set(
-      ((aiBookedIdsRes.data ?? []) as Array<{ external_id: string | null }>)
-        .map((r) => r.external_id)
-        .filter((id): id is string => Boolean(id))
-    )
-  );
-
-  let revenue: Delta = { current: 0, prior: 0 };
-  if (aiExternalIds.length > 0) {
-    const [thisWeekVisits, priorWeekVisits] = await Promise.all([
-      supabaseAdmin
-        .from("client_visits")
-        .select("price_cents")
-        .eq("tenant_id", tenant.id)
-        .in("external_id", aiExternalIds)
-        .gte("visit_at", weekStart),
-      supabaseAdmin
-        .from("client_visits")
-        .select("price_cents")
-        .eq("tenant_id", tenant.id)
-        .in("external_id", aiExternalIds)
-        .gte("visit_at", priorWeekStart)
-        .lt("visit_at", weekStart),
-    ]);
-    const sumCents = (rows: Array<{ price_cents: number | null }> | null) =>
-      (rows ?? []).reduce((acc, r) => acc + (r.price_cents ?? 0), 0);
-    revenue = {
-      current: sumCents(thisWeekVisits.data as Array<{ price_cents: number | null }> | null),
-      prior: sumCents(priorWeekVisits.data as Array<{ price_cents: number | null }> | null),
-    };
-  }
+  // Card 3 prefers bookings-while-closed framing when any exist; otherwise
+  // falls back to calls-while-closed so the card still surfaces value.
+  const afterHoursDisplay = afterHoursBookings.current > 0
+    ? {
+        value: afterHoursBookings.current,
+        unit: afterHoursBookings.current === 1 ? "booking while closed" : "bookings while closed",
+        delta: afterHoursBookings,
+      }
+    : {
+        value: afterHours.current,
+        unit: afterHours.current === 1 ? "call while closed" : "calls while closed",
+        delta: afterHours,
+      };
 
   // ── Today strip ─────────────────────────────────────────────────────────
   const todayEvents = (todayEventsRes.data ?? []) as CalendarEvent[];
@@ -361,11 +345,14 @@ export default async function DashboardPage() {
 
       {/* Hero: 4 ROI cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <RevenueCard
-          label="Revenue from Vivienne"
-          cents={revenue.current}
-          delta={revenue}
-          emptyState="Populates when a visit Vivienne booked completes on your connected platform. Walk-ins and platform-native bookings are intentionally excluded."
+        <RoiCard
+          accent="violet"
+          label="Booking rate"
+          value={conv.current}
+          unit="of inbound calls became bookings"
+          delta={conv}
+          isPercent
+          emptyState="Populates once Vivienne starts handling calls this week."
         />
         <RoiCard
           accent="emerald"
@@ -383,10 +370,10 @@ export default async function DashboardPage() {
         <RoiCard
           accent="amber"
           label="After-hours coverage"
-          value={afterHours.current}
-          unit={afterHours.current === 1 ? "call while closed" : "calls while closed"}
-          delta={afterHours}
-          emptyState="Calls that came in outside business hours."
+          value={afterHoursDisplay.value}
+          unit={afterHoursDisplay.unit}
+          delta={afterHoursDisplay.delta}
+          emptyState="Bookings and calls outside business hours show up here."
         />
         <RoiCard
           accent="sky"
@@ -574,67 +561,6 @@ export default async function DashboardPage() {
 }
 
 // ─── Components ───────────────────────────────────────────────────────────
-
-function RevenueCard({
-  label,
-  cents,
-  delta,
-  emptyState,
-}: {
-  label: string;
-  cents: number;
-  delta: Delta;
-  emptyState: string;
-}) {
-  const isZero = delta.current === 0 && delta.prior === 0;
-  const diffCents = delta.current - delta.prior;
-  return (
-    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden hover:shadow-sm transition-all">
-      <div className="h-1 bg-gradient-to-r from-lime-300 to-emerald-500" />
-      <div className="p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
-        {isZero ? (
-          <>
-            <p className="text-xl font-serif text-zinc-900 mt-2">—</p>
-            <p className="text-xs text-zinc-500 mt-1.5 leading-snug">{emptyState}</p>
-          </>
-        ) : (
-          <>
-            <p className="text-3xl font-bold text-zinc-900 tabular-nums mt-2">
-              {formatCurrency(cents)}
-            </p>
-            <p className="text-xs text-zinc-500 mt-0.5">from completed AI-booked visits</p>
-            {delta.prior > 0 && <RevenueDeltaChip diffCents={diffCents} />}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RevenueDeltaChip({ diffCents }: { diffCents: number }) {
-  if (diffCents === 0) {
-    return <p className="text-[11px] text-zinc-400 mt-2">= same as last week</p>;
-  }
-  const positive = diffCents > 0;
-  const arrow = positive ? "↑" : "↓";
-  const color = positive ? "text-emerald-700" : "text-rose-600";
-  return (
-    <p className={`text-[11px] font-semibold ${color} mt-2`}>
-      {arrow} {formatCurrency(Math.abs(diffCents))} vs last week
-    </p>
-  );
-}
-
-function formatCurrency(cents: number): string {
-  const dollars = cents / 100;
-  if (dollars >= 10000) return `$${Math.round(dollars).toLocaleString()}`;
-  return dollars.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
-}
 
 function RoiCard({
   accent,
