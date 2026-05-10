@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { PDFParse } from "pdf-parse";
 import { getCurrentTenant } from "@/lib/supabase-server";
+
+// pdf-parse is dynamically imported inside readPdf(). Top-level import broke
+// the route module under Next 16's Turbopack builds: pdf-parse v2 ships a
+// `browser` export that the bundler picks up before serverExternalPackages
+// can externalise it, and the resulting load failure 500'd every request to
+// this route — including URL/text flows that never touch a PDF.
 
 /**
  * POST /api/staff/import
@@ -141,6 +146,7 @@ async function readPdf(req: NextRequest): Promise<{ text: string; filename: stri
     throw new Error(`PDF too large (max ${MAX_BYTES / 1024 / 1024} MB)`);
   }
   const buf = Buffer.from(await file.arrayBuffer());
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buf });
   const result = await parser.getText();
   return { text: result.text ?? "", filename: file.name ?? null };
