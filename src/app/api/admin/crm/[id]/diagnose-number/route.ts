@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { buildAssistantConfig } from "@/lib/assistant-builder";
+import type { Tenant } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -114,12 +116,50 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     findings.push({ ok: false, label: "Fetch Vapi number config", detail: vapiError ?? "no vapi_phone_number_id" });
   }
 
+  // Actually call buildAssistantConfig — this is what our webhook would
+  // return to Vapi on assistant-request. If it throws or returns something
+  // missing required fields, that's why Vapi says "no assistant".
+  let assistantPreview: Record<string, unknown> | null = null;
+  let assistantBuildError: string | null = null;
+  try {
+    const fullTenant = await supabaseAdmin.from("tenants").select("*").eq("id", tenant.id).single();
+    if (fullTenant.data) {
+      const cfg = await buildAssistantConfig(fullTenant.data as Tenant);
+      assistantPreview = cfg as unknown as Record<string, unknown>;
+      const hasName = !!cfg.name;
+      const hasModel = !!cfg.model;
+      const hasVoice = !!cfg.voice;
+      const hasFirstMessage = !!cfg.firstMessage;
+      findings.push({
+        ok: hasName && hasModel && hasVoice && hasFirstMessage,
+        label: "buildAssistantConfig returns a usable assistant",
+        detail: [
+          hasName ? "name ✓" : "name ✗",
+          hasModel ? "model ✓" : "model ✗",
+          hasVoice ? "voice ✓" : "voice ✗",
+          hasFirstMessage ? "firstMessage ✓" : "firstMessage ✗",
+        ].join(" · "),
+      });
+    } else {
+      findings.push({ ok: false, label: "buildAssistantConfig — tenant fetch", detail: "no tenant row" });
+    }
+  } catch (e) {
+    assistantBuildError = (e as Error).message;
+    findings.push({
+      ok: false,
+      label: "buildAssistantConfig threw",
+      detail: assistantBuildError,
+    });
+  }
+
   const allOk = findings.every((f) => f.ok);
   return NextResponse.json({
     tenant,
     expected_webhook: EXPECTED_WEBHOOK,
     vapi_number: vapiNumber,
     vapi_error: vapiError,
+    assistant_preview: assistantPreview,
+    assistant_build_error: assistantBuildError,
     findings,
     healthy: allOk,
   });
