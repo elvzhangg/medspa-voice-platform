@@ -10,6 +10,25 @@ const DAY_LABELS: Record<string, string> = {
   thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun",
 };
 
+const VAPI_NAME_LIMIT = 40;
+
+/**
+ * Fit an assistant.name within Vapi's 40-character ceiling without cutting
+ * mid-word. If the name overflows, drop trailing words until it fits and
+ * append an ellipsis. If even the first word is too long (no whitespace to
+ * trim), hard-truncate so we still produce a valid name rather than failing.
+ */
+function fitAssistantName(name: string): string {
+  const clean = name.trim();
+  if (clean.length <= VAPI_NAME_LIMIT) return clean;
+  // Reserve one char for the ellipsis.
+  const room = VAPI_NAME_LIMIT - 1;
+  const trimmed = clean.slice(0, room).replace(/\s+\S*$/, "");
+  // If the first word alone exceeds the limit, fall back to a hard slice.
+  const base = trimmed.length > 0 ? trimmed : clean.slice(0, room);
+  return base + "…";
+}
+
 interface StaffRow {
   name: string;
   title: string | null;
@@ -444,9 +463,9 @@ export async function buildAssistantConfig(
   // "{tenant.name} AI Clientele Specialist" form blows past that for any
   // business name over ~16 chars and Vapi rejects the whole assistant
   // ("assistant-request-returned-invalid-assistant"), which silently breaks
-  // every call. Just use the business name and truncate.
+  // every call. Truncate at a word boundary so the name still reads.
   return {
-    name: tenant.name.slice(0, 40),
+    name: fitAssistantName(tenant.name),
     model: {
       provider: "openai",
       model: "gpt-4o",
