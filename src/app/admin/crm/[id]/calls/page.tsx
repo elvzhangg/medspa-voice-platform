@@ -160,19 +160,22 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
 
       {diagnosis && (
         <div className={`rounded-xl border p-4 ${diagnosis.healthy ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
             <p className={`text-sm font-semibold ${diagnosis.healthy ? "text-emerald-800" : "text-amber-800"}`}>
               {diagnosis.healthy ? "✓ Call routing looks healthy" : "⚠ Call routing has issues"}
             </p>
-            {!diagnosis.healthy && (
-              <button
-                onClick={autoFix}
-                disabled={fixing}
-                className="text-xs font-semibold bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 disabled:opacity-50"
-              >
-                {fixing ? "Fixing…" : "Auto-fix (re-patch webhook)"}
-              </button>
-            )}
+            <button
+              onClick={autoFix}
+              disabled={fixing}
+              className={`text-xs font-semibold px-3 py-1 rounded disabled:opacity-50 ${
+                diagnosis.healthy
+                  ? "border border-gray-300 text-gray-700 hover:bg-white"
+                  : "bg-amber-600 text-white hover:bg-amber-700"
+              }`}
+              title="Re-PATCH the Vapi number's webhook to point at this app and clear any assistant override"
+            >
+              {fixing ? "Fixing…" : diagnosis.healthy ? "Re-patch webhook anyway" : "Auto-fix (re-patch webhook)"}
+            </button>
           </div>
           {diagnosis.vapi_error && (
             <p className="text-xs text-red-700 mb-2">Vapi API error: {diagnosis.vapi_error}</p>
