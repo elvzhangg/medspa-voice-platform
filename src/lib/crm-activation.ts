@@ -7,7 +7,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // place so we can swap globally.
 const CHAT_MODEL = "claude-opus-4-6";
 
-export type StepKey = "tenant" | "number" | "knowledge" | "email";
+export type StepKey = "tenant" | "knowledge" | "email";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -15,22 +15,16 @@ export interface ChatTurn {
   at: string;
 }
 
+// Combined tenant + Vapi number step. Commit buys the number first, then
+// inserts the tenant with the real phone_number — so a successful commit
+// means BOTH exist. On Vapi failure the commit aborts cleanly with no half
+// tenant.
 export interface TenantDraft {
   name: string;
   slug: string;
   greeting_message: string;
   voice_id: string;
-}
-
-// `area_code` is the next code we'll TRY on commit; status reflects the most
-// recent commit attempt. "pending" means we haven't tried yet; "failed" lets
-// the user revise area code or click Retry.
-export interface NumberDraft {
   area_code: string | null;
-  status: "pending" | "provisioned" | "failed";
-  phone_number?: string | null;
-  vapi_phone_number_id?: string | null;
-  last_error?: string | null;
 }
 
 export interface KnowledgeChunk {
@@ -61,7 +55,6 @@ export interface StepState<T> {
 
 export interface ActivationState {
   tenant?: StepState<TenantDraft>;
-  number?: StepState<NumberDraft>;
   knowledge?: StepState<KnowledgeDraft>;
   email?: StepState<EmailDraft>;
 }

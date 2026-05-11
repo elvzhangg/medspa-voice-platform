@@ -5,13 +5,12 @@ import Link from "next/link";
 
 interface ChatTurn { role: "user" | "assistant"; content: string; at: string }
 
-interface TenantDraft { name: string; slug: string; greeting_message: string; voice_id: string }
-interface NumberDraft {
+interface TenantDraft {
+  name: string;
+  slug: string;
+  greeting_message: string;
+  voice_id: string;
   area_code: string | null;
-  status: "pending" | "provisioned" | "failed";
-  phone_number?: string | null;
-  vapi_phone_number_id?: string | null;
-  last_error?: string | null;
 }
 interface KbChunk { title: string; content: string; category: "services" | "pricing" | "policies" | "faq" | "general" }
 interface KnowledgeDraft { chunks: KbChunk[]; warnings?: string[] }
@@ -28,7 +27,6 @@ interface StepState<T> {
 
 interface ActivationState {
   tenant?: StepState<TenantDraft>;
-  number?: StepState<NumberDraft>;
   knowledge?: StepState<KnowledgeDraft>;
   email?: StepState<EmailDraft>;
 }
@@ -98,7 +96,7 @@ export default function ActivatePage({ params }: { params: Promise<{ id: string 
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Activate {prospect.business_name}</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Step the prospect through tenant setup, phone number, knowledge base, and outreach. Each step has a chat — push back if anything looks off.
+          Step the prospect through tenant + number, knowledge base, and outreach. Each step has a chat — push back if anything looks off.
         </p>
       </div>
 
@@ -106,15 +104,8 @@ export default function ActivatePage({ params }: { params: Promise<{ id: string 
         endpoint={`${stepBase}/tenant`}
         step={state.tenant}
         prospectName={prospect.business_name}
-        tenantId={prospect.tenant_id}
-        onChange={load}
-      />
-
-      <NumberStep
-        endpoint={`${stepBase}/number`}
-        step={state.number}
-        tenantReady={!!prospect.tenant_id}
         prospectPhone={prospect.phone}
+        tenantId={prospect.tenant_id}
         currentTenantPhone={tenant?.phone_number ?? null}
         onChange={load}
       />
@@ -122,7 +113,7 @@ export default function ActivatePage({ params }: { params: Promise<{ id: string 
       <KnowledgeStep
         endpoint={`${stepBase}/knowledge`}
         step={state.knowledge}
-        tenantReady={!!prospect.tenant_id}
+        tenantReady={!!prospect.tenant_id && !isSentinelPhone(tenant?.phone_number ?? null)}
         onChange={load}
       />
 
@@ -131,11 +122,15 @@ export default function ActivatePage({ params }: { params: Promise<{ id: string 
         step={state.email}
         recipient={prospect.owner_email ?? prospect.email}
         ownerName={prospect.owner_name}
-        demoNumberReady={state.number?.draft?.status === "provisioned"}
+        demoNumberReady={!!prospect.tenant_id && !isSentinelPhone(tenant?.phone_number ?? null)}
         onChange={load}
       />
     </div>
   );
+}
+
+function isSentinelPhone(p: string | null): boolean {
+  return !!p && p.startsWith("pending:");
 }
 
 /* ─────── Step components ─────── */
@@ -269,19 +264,28 @@ function useStepActions(endpoint: string, onChange: () => void) {
   return { busy, err, call };
 }
 
-/* ─── 1. Tenant ─── */
+/* ─── 1. Tenant + Vapi number ─── */
 function TenantStep({
-  endpoint, step, prospectName, tenantId, onChange,
+  endpoint, step, prospectName, prospectPhone, tenantId, currentTenantPhone, onChange,
 }: {
   endpoint: string;
   step?: StepState<TenantDraft>;
   prospectName: string;
+  prospectPhone: string | null;
   tenantId: string | null;
+  currentTenantPhone: string | null;
   onChange: () => void;
 }) {
   const { busy, err, call } = useStepActions(endpoint, onChange);
   const draft = step?.draft;
-  const status: StepStatus = tenantId ? "done" : draft ? "ready" : "idle";
+  const sentinel = isSentinelPhone(currentTenantPhone);
+  // Sentinel = a tenant left in "pending:" state by the pre-merge flow; the
+  // user needs to click Commit again to finish buying the real number.
+  const status: StepStatus =
+    tenantId && !sentinel ? "done"
+    : sentinel ? "warn"
+    : draft ? "ready"
+    : "idle";
 
   useEffect(() => {
     if (!step?.draft && !tenantId) call({ action: "draft" });
@@ -289,7 +293,7 @@ function TenantStep({
   }, []);
 
   return (
-    <StepShell num={1} title="Tenant" status={status}>
+    <StepShell num={1} title="Tenant + Vapi number" status={status}>
       {!draft && !tenantId && <p className="text-xs text-gray-400">Loading draft…</p>}
       {draft && (
         <div className="space-y-2 text-sm">
@@ -297,27 +301,40 @@ function TenantStep({
           <Field label="Slug" value={draft.slug} mono />
           <Field label="Greeting" value={draft.greeting_message} multiline />
           <Field label="Voice ID" value={draft.voice_id} mono small />
+          <Field label="Preferred area code" value={draft.area_code ?? "(any)"} mono />
+          {prospectPhone && draft.area_code && (
+            <p className="text-[10px] text-gray-400 -mt-1">Derived from prospect phone {prospectPhone}. Chat to override.</p>
+          )}
+        </div>
+      )}
+      {tenantId && !sentinel && currentTenantPhone && (
+        <p className="text-sm font-mono text-emerald-700">✓ {currentTenantPhone}</p>
+      )}
+      {sentinel && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs">
+          <p className="font-semibold text-amber-800 mb-0.5">Number not yet provisioned</p>
+          <p className="text-amber-700">This tenant was created under the old two-step flow. Click Commit to buy the Vapi number now.</p>
         </div>
       )}
       {err && <p className="text-xs text-red-600">{err}</p>}
       <div className="flex items-center gap-2 pt-1">
-        {tenantId ? (
-          <span className="text-xs text-emerald-700 font-medium">✓ Tenant created ({tenantId.slice(0, 8)}…)</span>
+        {tenantId && !sentinel ? (
+          <span className="text-xs text-emerald-700 font-medium">✓ Tenant + number ready ({tenantId.slice(0, 8)}…)</span>
         ) : (
           <button
             onClick={() => call({ action: "commit" })}
             disabled={busy || !draft}
             className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40"
           >
-            {busy ? "Creating…" : "Create tenant"}
+            {busy ? "Buying number + creating…" : sentinel ? "Buy number now" : "Commit (buy number + create tenant)"}
           </button>
         )}
       </div>
-      {!tenantId && (
+      {(!tenantId || sentinel) && (
         <ChatBox
           history={step?.chat ?? []}
           busy={busy}
-          placeholder={`e.g. "use slug ${prospectName.toLowerCase().split(/\s+/)[0]}-spa"`}
+          placeholder={`e.g. "use slug ${prospectName.toLowerCase().split(/\s+/)[0]}-spa" or "try 415"`}
           onTurn={async (message) => { await call({ action: "chat", message }); }}
         />
       )}
@@ -325,82 +342,7 @@ function TenantStep({
   );
 }
 
-/* ─── 2. Number ─── */
-function NumberStep({
-  endpoint, step, tenantReady, prospectPhone, currentTenantPhone, onChange,
-}: {
-  endpoint: string;
-  step?: StepState<NumberDraft>;
-  tenantReady: boolean;
-  prospectPhone: string | null;
-  currentTenantPhone: string | null;
-  onChange: () => void;
-}) {
-  const { busy, err, call } = useStepActions(endpoint, onChange);
-  const draft = step?.draft;
-  const status: StepStatus =
-    draft?.status === "provisioned" ? "done"
-    : draft?.status === "failed" ? "warn"
-    : tenantReady && draft ? "ready"
-    : "idle";
-
-  useEffect(() => {
-    if (tenantReady && !step?.draft) call({ action: "draft" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantReady]);
-
-  return (
-    <StepShell num={2} title="Vapi phone number" status={status}>
-      {!tenantReady && <p className="text-xs text-amber-600">Activate the tenant first.</p>}
-      {tenantReady && !draft && <p className="text-xs text-gray-400">Loading draft…</p>}
-      {draft && (
-        <div className="space-y-1.5 text-sm">
-          <Field label="Preferred area code" value={draft.area_code ?? "(any)"} mono />
-          {prospectPhone && draft.area_code && (
-            <p className="text-[10px] text-gray-400">Derived from prospect phone {prospectPhone}.</p>
-          )}
-          {draft.status === "provisioned" && draft.phone_number && (
-            <p className="text-sm font-mono text-emerald-700">✓ {draft.phone_number}</p>
-          )}
-          {draft.status === "failed" && (
-            <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs">
-              <p className="font-semibold text-amber-800 mb-0.5">Number pending</p>
-              <p className="text-amber-700">{draft.last_error}</p>
-              <p className="text-amber-600 mt-1">You can keep going with knowledge + email; come back and click Retry.</p>
-            </div>
-          )}
-          {currentTenantPhone && currentTenantPhone !== draft.phone_number && (
-            <p className="text-[10px] text-gray-400">Tenant currently linked to {currentTenantPhone}.</p>
-          )}
-        </div>
-      )}
-      {err && <p className="text-xs text-red-600">{err}</p>}
-      <div className="flex items-center gap-2 pt-1">
-        {draft?.status === "provisioned" ? (
-          <span className="text-xs text-emerald-700 font-medium">✓ Provisioned</span>
-        ) : (
-          <button
-            onClick={() => call({ action: "commit" })}
-            disabled={busy || !draft || !tenantReady}
-            className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40"
-          >
-            {busy ? "Buying…" : draft?.status === "failed" ? "Retry" : "Provision number"}
-          </button>
-        )}
-      </div>
-      {tenantReady && draft?.status !== "provisioned" && (
-        <ChatBox
-          history={step?.chat ?? []}
-          busy={busy}
-          placeholder='e.g. "try 415" or "go LA local"'
-          onTurn={async (message) => { await call({ action: "chat", message }); }}
-        />
-      )}
-    </StepShell>
-  );
-}
-
-/* ─── 3. Knowledge ─── */
+/* ─── 2. Knowledge ─── */
 function KnowledgeStep({
   endpoint, step, tenantReady, onChange,
 }: {
@@ -431,7 +373,7 @@ function KnowledgeStep({
   for (const c of chunks) byCategory[c.category] = (byCategory[c.category] ?? 0) + 1;
 
   return (
-    <StepShell num={3} title="Knowledge base" status={status}>
+    <StepShell num={2} title="Knowledge base" status={status}>
       {!tenantReady && <p className="text-xs text-amber-600">Activate the tenant first.</p>}
       {tenantReady && !draft && <p className="text-xs text-gray-400">Loading chunks…</p>}
       {draft && (
@@ -507,7 +449,7 @@ function KnowledgeStep({
   );
 }
 
-/* ─── 4. Email ─── */
+/* ─── 3. Email ─── */
 function EmailStep({
   endpoint, step, recipient, ownerName, demoNumberReady, onChange,
 }: {
@@ -533,7 +475,7 @@ function EmailStep({
   }, []);
 
   return (
-    <StepShell num={4} title="Owner outreach email" status={status}>
+    <StepShell num={3} title="Owner outreach email" status={status}>
       {!demoNumberReady && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
           Number not yet provisioned — the draft will skip the call CTA. You can re-draft once the number is ready.
