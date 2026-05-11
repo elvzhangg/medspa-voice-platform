@@ -26,6 +26,14 @@ interface Tenant {
   vapi_phone_number_id: string | null;
 }
 
+interface DiagnosisFinding { ok: boolean; label: string; detail?: string }
+interface Diagnosis {
+  expected_webhook: string;
+  findings: DiagnosisFinding[];
+  healthy: boolean;
+  vapi_error?: string | null;
+}
+
 function fmtDuration(s: number | null): string {
   if (s == null) return "—";
   const m = Math.floor(s / 60);
@@ -45,6 +53,38 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [fixing, setFixing] = useState(false);
+  const [fixMsg, setFixMsg] = useState<string | null>(null);
+
+  async function diagnose() {
+    setDiagnosing(true);
+    setFixMsg(null);
+    const res = await fetch(`/api/admin/crm/${id}/diagnose-number`, { cache: "no-store" });
+    const data = await res.json();
+    setDiagnosing(false);
+    if (!res.ok) {
+      setFixMsg(`Diagnose failed: ${data.error ?? "unknown"}`);
+      return;
+    }
+    setDiagnosis(data);
+  }
+
+  async function autoFix() {
+    if (!confirm("Re-patch the Vapi number's webhook to point at this app and clear any assistant override?")) return;
+    setFixing(true);
+    setFixMsg(null);
+    const res = await fetch(`/api/admin/crm/${id}/diagnose-number`, { method: "PATCH" });
+    const data = await res.json();
+    setFixing(false);
+    if (!res.ok) {
+      setFixMsg(`Fix failed: ${data.error ?? "unknown"}`);
+      return;
+    }
+    setFixMsg(`Patched. serverUrl now: ${data.patched_to}. Try calling again.`);
+    await diagnose();
+  }
 
   async function load() {
     const res = await fetch(`/api/admin/crm/${id}/calls`, { cache: "no-store" });
@@ -96,14 +136,62 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Calls to {prospect.business_name}</h1>
         {tenant?.phone_number && (
-          <p className="text-sm text-gray-500 mt-1">
-            Demo number: <span className="font-mono text-gray-800">{tenant.phone_number}</span>
-            {tenant.phone_number.startsWith("pending:") && (
-              <span className="ml-2 text-amber-600 text-xs">(not yet provisioned)</span>
+          <div className="mt-1 flex items-center gap-3 flex-wrap">
+            <p className="text-sm text-gray-500">
+              Demo number: <span className="font-mono text-gray-800">{tenant.phone_number}</span>
+              {tenant.phone_number.startsWith("pending:") && (
+                <span className="ml-2 text-amber-600 text-xs">(not yet provisioned)</span>
+              )}
+            </p>
+            {prospect.tenant_id && (
+              <button
+                onClick={diagnose}
+                disabled={diagnosing}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+              >
+                {diagnosing ? "Diagnosing…" : "🔧 Diagnose call routing"}
+              </button>
             )}
-          </p>
+          </div>
         )}
       </div>
+
+      {diagnosis && (
+        <div className={`rounded-xl border p-4 ${diagnosis.healthy ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+          <div className="flex items-center justify-between mb-2">
+            <p className={`text-sm font-semibold ${diagnosis.healthy ? "text-emerald-800" : "text-amber-800"}`}>
+              {diagnosis.healthy ? "✓ Call routing looks healthy" : "⚠ Call routing has issues"}
+            </p>
+            {!diagnosis.healthy && (
+              <button
+                onClick={autoFix}
+                disabled={fixing}
+                className="text-xs font-semibold bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 disabled:opacity-50"
+              >
+                {fixing ? "Fixing…" : "Auto-fix (re-patch webhook)"}
+              </button>
+            )}
+          </div>
+          {diagnosis.vapi_error && (
+            <p className="text-xs text-red-700 mb-2">Vapi API error: {diagnosis.vapi_error}</p>
+          )}
+          <ul className="space-y-1">
+            {diagnosis.findings.map((f, i) => (
+              <li key={i} className="text-xs flex items-start gap-2">
+                <span className={f.ok ? "text-emerald-600" : "text-red-600"}>{f.ok ? "✓" : "✗"}</span>
+                <span className="text-gray-800">
+                  <span className="font-medium">{f.label}</span>
+                  {f.detail && <span className="text-gray-500 font-mono ml-2">{f.detail}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-gray-500 mt-2">Expected webhook: <span className="font-mono">{diagnosis.expected_webhook}</span></p>
+        </div>
+      )}
+      {fixMsg && (
+        <p className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded p-2">{fixMsg}</p>
+      )}
 
       {!prospect.tenant_id && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
