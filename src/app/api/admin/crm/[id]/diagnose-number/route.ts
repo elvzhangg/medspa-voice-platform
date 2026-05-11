@@ -74,6 +74,35 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           : `mismatch — got "${serverUrl}", expected "${EXPECTED_WEBHOOK}"`
         : "n/a",
     });
+
+    // Ping the actual URL — this is the check that catches "URL is configured
+    // but the domain doesn't actually serve the app" (e.g. unconfigured custom
+    // domain). Our route only allows POST so a GET should respond 405; any
+    // network-level failure (DNS, timeout, parking page) means the webhook
+    // wouldn't reach us during a real call.
+    if (serverUrl) {
+      let reachable = false;
+      let pingDetail = "";
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const pingRes = await fetch(serverUrl, { method: "GET", signal: ctrl.signal });
+        clearTimeout(timer);
+        // 405 (method not allowed) = route exists, just rejecting GET. That's healthy.
+        // 200 with our app's HTML = wrong route or domain serving something else.
+        // Anything else (404, 5xx, etc.) = the URL is broken.
+        if (pingRes.status === 405) {
+          reachable = true;
+          pingDetail = "✓ 405 (route exists, rejected GET — expected)";
+        } else {
+          pingDetail = `${pingRes.status} ${pingRes.statusText} — expected 405. Domain may not point at the app.`;
+        }
+      } catch (e) {
+        pingDetail = `unreachable: ${(e as Error).message}`;
+      }
+      findings.push({ ok: reachable, label: "Webhook URL actually responds", detail: pingDetail });
+    }
+
     findings.push({
       ok: !assistantId,
       label: "No assistantId override on the number",
