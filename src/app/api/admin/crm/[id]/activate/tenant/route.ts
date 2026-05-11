@@ -13,6 +13,7 @@ import {
   setStep,
   slugify,
 } from "@/lib/crm-activation";
+import { areaCodeForCity } from "@/lib/us-area-codes";
 
 export const runtime = "nodejs";
 // Buying a Vapi number can take ~10s per attempt and we may try several area
@@ -46,12 +47,17 @@ Common requests:
 
 function defaultDraft(prospect: Record<string, unknown>): TenantDraft {
   const name = String(prospect.business_name ?? "Untitled Spa");
+  // Prefer the spa's own phone area code (most "local" feel for the demo
+  // number). Fall back to the city's primary area code if no phone is on
+  // file. Final null lets the Vapi fallback pool handle it.
+  const phoneArea = areaCodeFrom(prospect.phone as string | null);
+  const cityArea = areaCodeForCity(prospect.city as string | null);
   return {
     name,
     slug: slugify(name) || `spa-${String(prospect.id).slice(0, 8)}`,
     greeting_message: `Welcome to ${name}! We're delighted to hear from you. Anything I can help you with today?`,
     voice_id: "EXAVITQu4vr4xnSDxMaL",
-    area_code: areaCodeFrom(prospect.phone as string | null),
+    area_code: phoneArea ?? cityArea,
   };
 }
 

@@ -302,8 +302,13 @@ function TenantStep({
           <Field label="Greeting" value={draft.greeting_message} multiline />
           <Field label="Voice ID" value={draft.voice_id} mono small />
           <Field label="Preferred area code" value={draft.area_code ?? "(any)"} mono />
-          {prospectPhone && draft.area_code && (
-            <p className="text-[10px] text-gray-400 -mt-1">Derived from prospect phone {prospectPhone}. Chat to override.</p>
+          <p className="text-[10px] text-gray-400 -mt-1">
+            {draft.area_code
+              ? "Defaulted from prospect phone or city. Chat to override."
+              : "No phone or known city — Vapi will pick from the fallback pool. Chat to set one."}
+          </p>
+          {prospectPhone && (
+            <p className="text-[10px] text-gray-400 -mt-1">Prospect phone: {prospectPhone}</p>
           )}
         </div>
       )}
