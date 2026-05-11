@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "./supabase";
 
-const VAPI_API_KEY = process.env.VAPI_API_KEY || "a0e0b763-2636-40ea-be74-ac0227ec7be5";
-const WEBHOOK_URL = "https://medspa-voice-platform.vercel.app/api/vapi/webhook";
+const VAPI_API_KEY = process.env.VAPI_API_KEY!;
+const WEBHOOK_URL =
+  (process.env.NEXT_PUBLIC_APP_URL ?? "https://medspa-voice-platform.vercel.app") +
+  "/api/vapi/webhook";
 
 interface ProvisionResult {
   success: boolean;
