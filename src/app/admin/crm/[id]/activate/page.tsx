@@ -474,6 +474,17 @@ function EmailStep({
     : draft ? "ready"
     : "idle";
 
+  // Local edit buffer mirrors the persisted draft. Edits are unsaved until the
+  // user clicks Save (which fires action:edit). The buffer resyncs whenever
+  // the persisted draft changes (e.g. after a chat turn or regenerate).
+  const [editSubject, setEditSubject] = useState(draft?.subject ?? "");
+  const [editBody, setEditBody] = useState(draft?.body ?? "");
+  useEffect(() => {
+    setEditSubject(draft?.subject ?? "");
+    setEditBody(draft?.body ?? "");
+  }, [draft?.subject, draft?.body]);
+  const dirty = !!draft && (editSubject !== draft.subject || editBody !== draft.body);
+
   useEffect(() => {
     if (!step?.draft) call({ action: "draft" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -491,8 +502,50 @@ function EmailStep({
         {ownerName && <span className="text-gray-400"> · {ownerName}</span>}
       </div>
       {!draft && <p className="text-xs text-gray-400">Drafting…</p>}
-      {draft && (
+      {draft && !sent && (
         <div className="space-y-2">
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Subject</p>
+            <input
+              value={editSubject}
+              onChange={(e) => setEditSubject(e.target.value)}
+              disabled={busy}
+              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Body</p>
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              disabled={busy}
+              rows={Math.max(8, editBody.split("\n").length + 1)}
+              className="w-full px-3 py-2 text-xs font-sans text-gray-700 bg-gray-50 border border-gray-200 rounded resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 leading-relaxed"
+            />
+          </div>
+          {dirty && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-amber-600 font-medium">● Unsaved edits</span>
+              <button
+                onClick={() => call({ action: "edit", subject: editSubject, body: editBody })}
+                disabled={busy || !editSubject.trim() || !editBody.trim()}
+                className="px-2 py-1 text-[11px] font-semibold bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40"
+              >
+                {busy ? "Saving…" : "Save edits"}
+              </button>
+              <button
+                onClick={() => { setEditSubject(draft.subject); setEditBody(draft.body); }}
+                disabled={busy}
+                className="px-2 py-1 text-[11px] font-semibold border border-gray-200 text-gray-600 rounded hover:bg-gray-50 disabled:opacity-40"
+              >
+                Discard
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {draft && sent && (
+        <div className="space-y-2 opacity-60">
           <div>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Subject</p>
             <p className="text-sm text-gray-800">{draft.subject}</p>
@@ -514,7 +567,8 @@ function EmailStep({
           <>
             <button
               onClick={() => call({ action: "send" })}
-              disabled={busy || !draft || !recipient}
+              disabled={busy || !draft || !recipient || dirty}
+              title={dirty ? "Save your edits first" : undefined}
               className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40"
             >
               {busy ? "Sending…" : "Send email"}
@@ -523,7 +577,7 @@ function EmailStep({
               onClick={() => call({ action: "regenerate" })}
               disabled={busy}
               className="px-3 py-1.5 text-xs font-semibold border border-gray-200 text-gray-600 rounded hover:bg-gray-50 disabled:opacity-40"
-              title="Regenerate from scratch, discarding chat edits"
+              title="Regenerate from scratch, discarding chat + manual edits"
             >
               Regenerate
             </button>

@@ -113,8 +113,10 @@ Respond with JSON only: {"subject": "...", "body": "..."}.`;
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "draft" | "chat" | "send" | "regenerate";
+    action?: "draft" | "chat" | "send" | "regenerate" | "edit";
     message?: string;
+    subject?: string;
+    body?: string;
   };
   const action = body.action;
   if (!action) return NextResponse.json({ error: "action required" }, { status: 400 });
@@ -181,6 +183,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
     await saveActivationState(id, setStep(state, "email", updated));
     return NextResponse.json({ step: updated, reply });
+  }
+
+  if (action === "edit") {
+    // Direct manual edit — bypasses Claude. Subsequent chat turns will revise
+    // from the edited draft, so manual tweaks won't get clobbered unless the
+    // user explicitly asks the agent to rewrite.
+    if (!step.draft) return NextResponse.json({ error: "no draft to edit" }, { status: 400 });
+    if (step.sent_at) return NextResponse.json({ error: "already sent — cannot edit" }, { status: 400 });
+    const subject = String(body.subject ?? "").trim();
+    const bodyText = String(body.body ?? "").trim();
+    if (!subject || !bodyText) return NextResponse.json({ error: "subject and body required" }, { status: 400 });
+    const updated = { ...step, draft: { subject, body: bodyText } };
+    await saveActivationState(id, setStep(state, "email", updated));
+    return NextResponse.json({ step: updated });
   }
 
   if (action === "send") {
