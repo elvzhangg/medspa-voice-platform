@@ -38,6 +38,21 @@ export async function POST(req: NextRequest) {
 
   const type = message.type as string;
 
+  // Temporary diagnostic: persist the raw payload of every incoming webhook
+  // hit to call_logs so we can inspect what Vapi sends (assistant-request,
+  // status-update, debug artifacts, etc). Fire-and-forget so we don't slow
+  // the response — Vapi has tight timeouts for assistant-request.
+  void supabaseAdmin
+    .from("call_logs")
+    .insert({
+      vapi_call_id: `debug-${type ?? "unknown"}-${Date.now()}`,
+      caller_number: `debug-webhook:${type ?? "unknown"}`,
+      summary: JSON.stringify(body).slice(0, 8000),
+    })
+    .then(({ error }) => {
+      if (error) console.error("DEBUG_LOG_ERR:", error.message);
+    });
+
   switch (type) {
     case "assistant-request":
       return handleAssistantRequest(message);
@@ -76,6 +91,20 @@ async function handleAssistantRequest(message: Record<string, unknown>) {
 
   const callerNumber = (call?.customer as Record<string, unknown> | undefined)?.number as string | undefined;
   const assistant = await buildAssistantConfig(tenant, callerNumber);
+
+  // Diagnostic: log a slim version of what we're returning so we can
+  // compare against Vapi's debug artifact. Fire-and-forget.
+  void supabaseAdmin
+    .from("call_logs")
+    .insert({
+      vapi_call_id: `debug-response-${Date.now()}`,
+      caller_number: `debug-webhook:assistant-response`,
+      summary: JSON.stringify({ assistant }).slice(0, 8000),
+    })
+    .then(({ error }) => {
+      if (error) console.error("DEBUG_RESPONSE_LOG_ERR:", error.message);
+    });
+
   return NextResponse.json({ assistant });
 }
 
