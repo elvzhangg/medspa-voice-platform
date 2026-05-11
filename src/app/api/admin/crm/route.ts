@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   let query = supabaseAdmin
     .from("crm_prospects")
     .select(
-      "id, business_name, website, email, phone, city, state, booking_platform, research_confidence, researched_at, crm_stage, crm_promoted_at, created_at"
+      "id, business_name, website, email, phone, city, state, booking_platform, research_confidence, researched_at, crm_stage, crm_promoted_at, created_at, tenant_id, activation_state"
     )
     .eq("crm_stage", stage)
     .order("created_at", { ascending: false })
@@ -47,6 +47,49 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Batch-fetch call counts for activated prospects (those with a tenant_id).
+  // One query, group + earliest-call timestamp computed in JS — beats N+1.
+  const tenantIds = (data ?? [])
+    .map((r) => r.tenant_id as string | null)
+    .filter((id): id is string => !!id);
+
+  const callsByTenant = new Map<string, { count: number; first_call_at: string | null }>();
+  if (tenantIds.length) {
+    const { data: callRows } = await supabaseAdmin
+      .from("call_logs")
+      .select("tenant_id, created_at")
+      .in("tenant_id", tenantIds);
+    for (const row of callRows ?? []) {
+      const tid = row.tenant_id as string;
+      const existing = callsByTenant.get(tid);
+      if (!existing) {
+        callsByTenant.set(tid, { count: 1, first_call_at: row.created_at as string });
+      } else {
+        existing.count += 1;
+        if ((row.created_at as string) < (existing.first_call_at ?? "9999")) {
+          existing.first_call_at = row.created_at as string;
+        }
+      }
+    }
+  }
+
+  // Project email send + call info onto the prospect rows. Strip the heavy
+  // activation_state JSONB before returning so the list payload stays small.
+  type ActivationStateLite = { email?: { sent_at?: string | null; sent_to?: string | null } };
+  const enriched = (data ?? []).map((row) => {
+    const act = (row.activation_state as ActivationStateLite | null) ?? {};
+    const calls = row.tenant_id ? callsByTenant.get(row.tenant_id as string) : null;
+    const { activation_state: _drop, ...rest } = row;
+    void _drop;
+    return {
+      ...rest,
+      email_sent_at: act.email?.sent_at ?? null,
+      email_sent_to: act.email?.sent_to ?? null,
+      call_count: calls?.count ?? 0,
+      first_call_at: calls?.first_call_at ?? null,
+    };
+  });
 
   // Facets are scoped to the stage so dropdowns don't keep shrinking as you
   // narrow filters down.
@@ -78,7 +121,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    prospects: data ?? [],
+    prospects: enriched,
     facets: { states, platforms },
     counts,
   });

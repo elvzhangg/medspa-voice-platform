@@ -19,6 +19,11 @@ interface Prospect {
   crm_stage: Stage;
   crm_promoted_at: string | null;
   created_at: string;
+  tenant_id: string | null;
+  email_sent_at: string | null;
+  email_sent_to: string | null;
+  call_count: number;
+  first_call_at: string | null;
 }
 
 interface Facets {
@@ -611,6 +616,8 @@ export default function CrmPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Platform</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Confidence</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Outreach</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Calls</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Added</th>
               </tr>
             </thead>
@@ -687,6 +694,38 @@ export default function CrmPage() {
                         >
                           {Math.round(p.research_confidence * 100)}%
                         </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {p.email_sent_at ? (
+                        <span
+                          className="font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700"
+                          title={`Sent ${new Date(p.email_sent_at).toLocaleString()}${p.email_sent_to ? ` to ${p.email_sent_to}` : ""}`}
+                        >
+                          ✓ {new Date(p.email_sent_at).toLocaleDateString()}
+                        </span>
+                      ) : p.tenant_id ? (
+                        <span className="text-amber-600 font-medium">drafted</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {p.tenant_id ? (
+                        p.call_count > 0 ? (
+                          <Link
+                            href={`/admin/crm/${p.id}/calls`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                            title={p.first_call_at ? `First call ${new Date(p.first_call_at).toLocaleString()}` : undefined}
+                          >
+                            📞 {p.call_count}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-300">0</span>
+                        )
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}
