@@ -73,6 +73,7 @@ interface Prospect {
   notes: string | null;
   crm_stage: Stage;
   crm_promoted_at: string | null;
+  tenant_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -335,6 +336,15 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
               >
                 Add to CRM
               </button>
+            )}
+            {prospect.crm_stage === "crm" && (
+              <Link
+                href={`/admin/crm/${prospect.id}/activate`}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                title={prospect.tenant_id ? "Continue activation" : "Provision tenant + number + KB + outreach email"}
+              >
+                {prospect.tenant_id ? "Continue activation →" : "Activate →"}
+              </Link>
             )}
             {prospect.crm_stage !== "top_of_funnel" && (
               <button
