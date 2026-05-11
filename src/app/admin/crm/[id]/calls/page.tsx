@@ -135,25 +135,27 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
           <span className="text-gray-600">Calls</span>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Calls to {prospect.business_name}</h1>
-        {tenant?.phone_number && (
-          <div className="mt-1 flex items-center gap-3 flex-wrap">
+        <div className="mt-1 flex items-center gap-3 flex-wrap">
+          {tenant?.phone_number ? (
             <p className="text-sm text-gray-500">
               Demo number: <span className="font-mono text-gray-800">{tenant.phone_number}</span>
               {tenant.phone_number.startsWith("pending:") && (
                 <span className="ml-2 text-amber-600 text-xs">(not yet provisioned)</span>
               )}
             </p>
-            {prospect.tenant_id && (
-              <button
-                onClick={diagnose}
-                disabled={diagnosing}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-              >
-                {diagnosing ? "Diagnosing…" : "🔧 Diagnose call routing"}
-              </button>
-            )}
-          </div>
-        )}
+          ) : prospect.tenant_id ? (
+            <p className="text-sm text-amber-600">Tenant has no phone_number set</p>
+          ) : null}
+          {prospect.tenant_id && (
+            <button
+              onClick={diagnose}
+              disabled={diagnosing}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+            >
+              {diagnosing ? "Diagnosing…" : "🔧 Diagnose call routing"}
+            </button>
+          )}
+        </div>
       </div>
 
       {diagnosis && (
