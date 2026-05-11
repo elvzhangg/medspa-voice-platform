@@ -106,9 +106,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // Column-tolerant insert mirroring demo-provisioner.ts: drop unknown
     // columns one at a time so we don't break on prospect-only fields the
     // local tenants table is missing.
+    // tenants.phone_number is NOT NULL UNIQUE, but in this wizard the number
+    // isn't provisioned until Step 2. Insert a per-prospect sentinel that
+    // Step 2 will overwrite with the real Vapi number. The sentinel is
+    // deliberately not a valid phone format so it can't accidentally collide
+    // with a real number and is easy to spot in logs/admin lists.
     const payload: Record<string, unknown> = {
       name: step.draft.name,
       slug: step.draft.slug,
+      phone_number: `pending:${id}`,
       voice_id: step.draft.voice_id,
       greeting_message: step.draft.greeting_message,
       status: "prospect",
