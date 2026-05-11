@@ -440,8 +440,13 @@ export async function buildAssistantConfig(
     });
   }
 
+  // Vapi enforces a 40-char cap on assistant.name. The full
+  // "{tenant.name} AI Clientele Specialist" form blows past that for any
+  // business name over ~16 chars and Vapi rejects the whole assistant
+  // ("assistant-request-returned-invalid-assistant"), which silently breaks
+  // every call. Just use the business name and truncate.
   return {
-    name: `${tenant.name} AI Clientele Specialist`,
+    name: tenant.name.slice(0, 40),
     model: {
       provider: "openai",
       model: "gpt-4o",
