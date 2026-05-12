@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
+import { normalizeBusinessHours } from "@/lib/normalize-hours";
 import type { Tenant } from "@/types";
 
 export const runtime = "nodejs";
@@ -200,4 +201,72 @@ export async function PATCH(_req: NextRequest, ctx: { params: Promise<{ id: stri
     return NextResponse.json({ error: `Vapi patch failed: ${res.status} ${await res.text()}` }, { status: 502 });
   }
   return NextResponse.json({ ok: true, patched_to: EXPECTED_WEBHOOK });
+}
+
+// POST /api/admin/crm/[id]/diagnose-number — backfill assistant data
+// (normalized hours + staff roster) onto an already-activated tenant. Use
+// this for prospects activated before we added these steps to the activation
+// commit. Safe to run repeatedly: hours overwrite, staff are skipped if a
+// row with the same name already exists for the tenant.
+interface BackfillProvider { name?: string; title?: string; specialties?: string[]; bio?: string }
+
+export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const { data: prospect } = await supabaseAdmin
+    .from("crm_prospects")
+    .select("id, tenant_id, business_hours, providers")
+    .eq("id", id)
+    .maybeSingle();
+  if (!prospect?.tenant_id) return NextResponse.json({ error: "Not activated" }, { status: 400 });
+
+  // 1. Normalize + write business_hours.
+  const normalized = normalizeBusinessHours(prospect.business_hours);
+  let hoursWritten = false;
+  if (normalized) {
+    const { error } = await supabaseAdmin
+      .from("tenants")
+      .update({ business_hours: normalized, updated_at: new Date().toISOString() })
+      .eq("id", prospect.tenant_id);
+    hoursWritten = !error;
+  }
+
+  // 2. Seed staff. Skip names that already exist for this tenant so re-runs
+  //    don't duplicate.
+  const { data: existingStaff } = await supabaseAdmin
+    .from("staff")
+    .select("name")
+    .eq("tenant_id", prospect.tenant_id);
+  const have = new Set((existingStaff ?? []).map((r) => String(r.name).toLowerCase()));
+
+  let staffInserted = 0;
+  let staffSkipped = 0;
+  if (Array.isArray(prospect.providers)) {
+    for (const raw of prospect.providers as BackfillProvider[]) {
+      const name = raw?.name?.trim();
+      if (!name || have.has(name.toLowerCase())) { staffSkipped += 1; continue; }
+      const row: Record<string, unknown> = {
+        tenant_id: prospect.tenant_id,
+        name,
+        title: raw.title?.trim() || null,
+        specialties: Array.isArray(raw.specialties) ? raw.specialties.filter(Boolean) : [],
+        bio: raw.bio?.trim() || null,
+        active: true,
+      };
+      const { error } = await supabaseAdmin.from("staff").insert(row);
+      if (error) {
+        const { error: e2 } = await supabaseAdmin.from("staff").insert({
+          tenant_id: prospect.tenant_id, name, title: row.title,
+        });
+        if (e2) { staffSkipped += 1; continue; }
+      }
+      staffInserted += 1;
+      have.add(name.toLowerCase());
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    hours: { written: hoursWritten, normalized },
+    staff: { inserted: staffInserted, skipped: staffSkipped },
+  });
 }

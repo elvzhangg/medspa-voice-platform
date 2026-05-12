@@ -86,6 +86,23 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
     await diagnose();
   }
 
+  async function backfill() {
+    if (!confirm("Backfill normalized business_hours and staff roster from the prospect's research data onto this tenant?")) return;
+    setFixing(true);
+    setFixMsg(null);
+    const res = await fetch(`/api/admin/crm/${id}/diagnose-number`, { method: "POST" });
+    const data = await res.json();
+    setFixing(false);
+    if (!res.ok) {
+      setFixMsg(`Backfill failed: ${data.error ?? "unknown"}`);
+      return;
+    }
+    setFixMsg(
+      `Backfill done. Hours written: ${data.hours.written ? "yes" : "no"}; ` +
+      `staff inserted: ${data.staff.inserted}, skipped: ${data.staff.skipped}.`
+    );
+  }
+
   async function load() {
     const res = await fetch(`/api/admin/crm/${id}/calls`, { cache: "no-store" });
     if (!res.ok) {
@@ -164,18 +181,28 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
             <p className={`text-sm font-semibold ${diagnosis.healthy ? "text-emerald-800" : "text-amber-800"}`}>
               {diagnosis.healthy ? "✓ Call routing looks healthy" : "⚠ Call routing has issues"}
             </p>
-            <button
-              onClick={autoFix}
-              disabled={fixing}
-              className={`text-xs font-semibold px-3 py-1 rounded disabled:opacity-50 ${
-                diagnosis.healthy
-                  ? "border border-gray-300 text-gray-700 hover:bg-white"
-                  : "bg-amber-600 text-white hover:bg-amber-700"
-              }`}
-              title="Re-PATCH the Vapi number's webhook to point at this app and clear any assistant override"
-            >
-              {fixing ? "Fixing…" : diagnosis.healthy ? "Re-patch webhook anyway" : "Auto-fix (re-patch webhook)"}
-            </button>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={backfill}
+                disabled={fixing}
+                className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-white disabled:opacity-50"
+                title="Re-seed tenants.business_hours (normalized) and staff roster from the prospect's research data"
+              >
+                {fixing ? "Working…" : "Backfill hours + staff"}
+              </button>
+              <button
+                onClick={autoFix}
+                disabled={fixing}
+                className={`text-xs font-semibold px-3 py-1 rounded disabled:opacity-50 ${
+                  diagnosis.healthy
+                    ? "border border-gray-300 text-gray-700 hover:bg-white"
+                    : "bg-amber-600 text-white hover:bg-amber-700"
+                }`}
+                title="Re-PATCH the Vapi number's webhook to point at this app and clear any assistant override"
+              >
+                {fixing ? "Fixing…" : diagnosis.healthy ? "Re-patch webhook anyway" : "Auto-fix (re-patch webhook)"}
+              </button>
+            </div>
           </div>
           {diagnosis.vapi_error && (
             <p className="text-xs text-red-700 mb-2">Vapi API error: {diagnosis.vapi_error}</p>

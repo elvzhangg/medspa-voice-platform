@@ -14,6 +14,52 @@ import {
   slugify,
 } from "@/lib/crm-activation";
 import { areaCodeForCity } from "@/lib/us-area-codes";
+import { normalizeBusinessHours } from "@/lib/normalize-hours";
+
+interface ProspectProvider {
+  name?: string;
+  title?: string;
+  specialties?: string[];
+  bio?: string;
+}
+
+// Insert a staff row per researched provider so the assistant's provider
+// roster prompt block is non-empty and the AI can introduce the team
+// instead of punting to "have someone reach out". Best-effort — bad rows
+// are skipped and don't fail the whole activation.
+async function seedStaffFromProviders(
+  supabase: typeof supabaseAdmin,
+  tenantId: string,
+  providers: unknown
+): Promise<{ inserted: number; skipped: number }> {
+  if (!Array.isArray(providers)) return { inserted: 0, skipped: 0 };
+  let inserted = 0;
+  let skipped = 0;
+  for (const raw of providers as ProspectProvider[]) {
+    const name = raw?.name?.trim();
+    if (!name) { skipped += 1; continue; }
+    const row: Record<string, unknown> = {
+      tenant_id: tenantId,
+      name,
+      title: raw.title?.trim() || null,
+      specialties: Array.isArray(raw.specialties) ? raw.specialties.filter(Boolean) : [],
+      bio: raw.bio?.trim() || null,
+      active: true,
+    };
+    const { error } = await supabase.from("staff").insert(row);
+    if (error) {
+      // Column may be missing on older schemas — try with the minimal fields.
+      const { error: e2 } = await supabase.from("staff").insert({
+        tenant_id: tenantId,
+        name,
+        title: row.title,
+      });
+      if (e2) { skipped += 1; continue; }
+    }
+    inserted += 1;
+  }
+  return { inserted, skipped };
+}
 
 export const runtime = "nodejs";
 // Buying a Vapi number can take ~10s per attempt and we may try several area
@@ -229,6 +275,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: buy.error, attempted_area_codes: buy.attempted }, { status: 502 });
     }
 
+    // Normalize the prospect's loose business_hours JSONB (research agent may
+    // store strings, partial objects, or "Closed") into the strict {open,close}
+    // shape that the assistant's hours block expects. Without this, every day
+    // shows CLOSED and the AI refuses to offer any availability.
+    const normalizedHours = normalizeBusinessHours(prospect.business_hours);
+
     // Column-tolerant insert mirroring demo-provisioner.ts: drop unknown
     // columns one at a time so we don't break on schema drift. If the insert
     // fails for any other reason we release the just-purchased Vapi number
@@ -241,7 +293,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       voice_id: step.draft.voice_id,
       greeting_message: step.draft.greeting_message,
       status: "prospect",
-      business_hours: prospect.business_hours ?? null,
+      business_hours: normalizedHours,
     };
 
     let tenantId: string | null = null;
@@ -277,6 +329,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: `Failed to create tenant (Vapi number released): ${lastErr}` }, { status: 500 });
     }
 
+    // Seed providers from prospect.providers into the staff table so the
+    // assistant's roster prompt is populated. Without this, the AI defers
+    // every "who works there?" / "tell me about your team" question to a
+    // human callback. Failures are non-fatal.
+    const staffSeed = await seedStaffFromProviders(supabaseAdmin, tenantId, prospect.providers);
+
     const updated = { ...step, committed_at: nowIso() };
     await saveActivationState(id, setStep(state, "tenant", updated));
 
@@ -285,7 +343,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .update({ tenant_id: tenantId, updated_at: nowIso() })
       .eq("id", id);
 
-    return NextResponse.json({ tenant_id: tenantId, step: updated, phone_number: buy.number });
+    return NextResponse.json({
+      tenant_id: tenantId,
+      step: updated,
+      phone_number: buy.number,
+      seeded: { staff: staffSeed, hours_normalized: !!normalizedHours },
+    });
   }
 
   return NextResponse.json({ error: "unknown action" }, { status: 400 });
