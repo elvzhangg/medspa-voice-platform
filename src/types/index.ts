@@ -100,6 +100,12 @@ export interface TransientAssistantConfig {
   };
   firstMessage: string;
   endCallMessage: string;
+  // Vapi defaults to ~30s silence timeout, but its voicemail detector can
+  // false-trigger on a thoughtful pause and end the call early. We pin both
+  // explicitly so calls don't get cut.
+  silenceTimeoutSeconds?: number;
+  maxDurationSeconds?: number;
+  voicemailDetection?: { enabled: boolean };
 }
 
 export interface VapiTool {

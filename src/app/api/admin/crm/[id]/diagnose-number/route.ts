@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { data: tenant } = await supabaseAdmin
     .from("tenants")
-    .select("id, name, phone_number, vapi_phone_number_id, voice_id, greeting_message")
+    .select("id, name, phone_number, vapi_phone_number_id, voice_id, greeting_message, business_hours")
     .eq("id", prospect.tenant_id)
     .maybeSingle();
   if (!tenant) return NextResponse.json({ error: "Tenant row missing" }, { status: 500 });
@@ -41,6 +41,44 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   findings.push({ ok: !!tenant.phone_number && !tenant.phone_number.startsWith("pending:"), label: "Tenant phone_number is real", detail: tenant.phone_number ?? "missing" });
   findings.push({ ok: !!tenant.voice_id, label: "Tenant has voice_id (ElevenLabs)", detail: tenant.voice_id ?? "missing" });
   findings.push({ ok: !!tenant.greeting_message, label: "Tenant has greeting_message", detail: tenant.greeting_message ?? "missing" });
+
+  // How many active staff rows are linked to this tenant? If 0, the AI can
+  // never introduce providers — the backfill button surfaces this.
+  const { count: staffCount } = await supabaseAdmin
+    .from("staff")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenant.id)
+    .eq("active", true);
+  const { data: staffNames } = await supabaseAdmin
+    .from("staff")
+    .select("name")
+    .eq("tenant_id", tenant.id)
+    .eq("active", true)
+    .limit(5);
+  const namePreview = (staffNames ?? []).map((r) => r.name).join(", ") || "(none)";
+  findings.push({
+    ok: (staffCount ?? 0) > 0,
+    label: "Tenant has staff seeded",
+    detail: `${staffCount ?? 0} active — ${namePreview}`,
+  });
+
+  // Are tenant.business_hours in the strict {open,close} shape the assistant
+  // builder requires? If a day's value is a string like "9-6", the prompt
+  // will render it as CLOSED.
+  const hours = tenant.business_hours as Record<string, unknown> | null | undefined;
+  let hoursOk = false;
+  let hoursDetail = "missing";
+  if (hours && typeof hours === "object") {
+    const days = Object.entries(hours);
+    const validDays = days.filter(([, v]) => {
+      if (!v || typeof v !== "object") return false;
+      const o = v as Record<string, unknown>;
+      return typeof o.open === "string" && typeof o.close === "string";
+    });
+    hoursOk = validDays.length > 0;
+    hoursDetail = `${validDays.length}/${days.length} days in valid {open,close} format`;
+  }
+  findings.push({ ok: hoursOk, label: "Tenant business_hours are parseable", detail: hoursDetail });
 
   let vapiNumber: Record<string, unknown> | null = null;
   let vapiError: string | null = null;

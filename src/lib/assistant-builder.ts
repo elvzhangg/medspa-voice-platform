@@ -479,6 +479,14 @@ export async function buildAssistantConfig(
     firstMessage,
     endCallMessage:
       "Thank you for calling. Have a wonderful day! Goodbye.",
+    // Allow ~30s of caller silence before ending the call (Vapi default
+    // varies by account — pinning explicitly so a thoughtful pause doesn't
+    // hang up). Also disable Vapi's voicemail detection — it's overly
+    // aggressive on real callers and was ending live calls after a few
+    // seconds of pause.
+    silenceTimeoutSeconds: 30,
+    maxDurationSeconds: 1800,
+    voicemailDetection: { enabled: false },
   };
 }
 
@@ -812,6 +820,7 @@ ${forwardInstruction}
 ## How to Talk (this is a phone call, not a brochure)
 - **One question at a time.** Never stack two questions in the same turn — the caller can't keep them straight on the phone. Ask one thing, wait for the answer, then move to the next.
 - Keep replies SHORT — 1–2 sentences by default. Long monologues feel robotic over the phone.
+- **If the caller goes quiet for a beat** (they might be thinking, looking up a date, or distracted), gently re-engage before the line auto-disconnects. Try: "Take your time — still there?" or "No rush, just checking — are you with me?" Don't assume they hung up; people pause.
 - Answer the literal question first, then offer "Want me to walk through pricing / aftercare / who does it?" — let the caller pull more if they want it.
 - When asked about a service (e.g. "tell me about Botox"), give one warm sentence on what it is and one short sentence on the typical use case. Do NOT proactively list pricing, durations, downtime, contraindications, or every detail you know. If they want price, they'll ask.
 - When asked about pre-care or aftercare, give the 1–2 most important rules (e.g. "Skip alcohol for 24 hours and no strenuous workouts that day"). Don't read a full checklist unless they ask "what else?"
