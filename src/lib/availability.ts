@@ -2,6 +2,60 @@ import { supabaseAdmin } from "./supabase";
 import { format, addMinutes, startOfDay, endOfDay, parseISO } from "date-fns";
 import { loadTenantIntegration } from "./integrations";
 
+// For CRM prospects in "prospect" status (i.e. demo outreach numbers — no
+// real calendar integration, often no staff with working_hours configured),
+// we synthesize plausible-looking slots so the AI sounds smooth instead of
+// saying "we have nothing available". Spread across business hours, skips
+// closed days, slightly varied so the demo doesn't sound robotic.
+const DEMO_SLOT_OFFSETS_MIN = [30, 150, 270, 390, 480]; // ~30min, 2.5h, 4.5h, 6.5h, 8h after open
+const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+interface BusinessHours {
+  open?: string;
+  close?: string;
+}
+
+function parseHHMM(hhmm: string): { h: number; m: number } | null {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return { h: parseInt(m[1], 10), m: parseInt(m[2], 10) };
+}
+
+function generateDemoSlots(
+  tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined,
+  date: string
+): { label: string; startTime: string }[] {
+  if (!tenantHours) return [];
+  const parsed = parseISO(date);
+  if (Number.isNaN(parsed.getTime())) return [];
+  const dayKey = DAY_KEYS[parsed.getDay()];
+  const day = tenantHours[dayKey];
+  if (!day?.open || !day?.close) return [];
+  const open = parseHHMM(day.open);
+  const close = parseHHMM(day.close);
+  if (!open || !close) return [];
+  const openTime = new Date(`${date}T${day.open}:00`);
+  const closeTime = new Date(`${date}T${day.close}:00`);
+  const totalMin = (closeTime.getTime() - openTime.getTime()) / 60_000;
+  if (totalMin <= 60) return [];
+
+  // If date is today, skip slot offsets that are already in the past.
+  const now = new Date();
+  const isToday = format(now, "yyyy-MM-dd") === date;
+
+  const slots: { label: string; startTime: string }[] = [];
+  for (const offset of DEMO_SLOT_OFFSETS_MIN) {
+    if (offset >= totalMin - 30) continue; // keep at least 30 min before close
+    const t = addMinutes(openTime, offset);
+    if (isToday && t.getTime() < now.getTime() + 30 * 60_000) continue;
+    slots.push({
+      label: format(t, "h:mm a"),
+      startTime: t.toISOString(),
+    });
+  }
+  return slots;
+}
+
 /**
  * Cache of ISO startTimes returned by the platform adapter, keyed by
  * (tenantId, date, label). The AI reads back labels like "2:00 PM" to
@@ -29,6 +83,16 @@ export async function getAvailableSlots(
   service?: string,
   provider?: string
 ) {
+  // Load the tenant's status + hours once. Status drives whether we should
+  // synthesize demo slots when nothing real comes back (outreach prospects),
+  // and hours drive both the demo generator and downstream sanity checks.
+  const { data: tenantMeta } = await supabaseAdmin
+    .from("tenants")
+    .select("status, business_hours")
+    .eq("id", tenantId)
+    .maybeSingle();
+  const isProspect = tenantMeta?.status === "prospect";
+
   // If the tenant is in direct_book mode and has a supported adapter,
   // defer to the platform. If the call fails we fall through to the
   // internal calendar-based availability so the AI never freezes.
@@ -48,6 +112,25 @@ export async function getAvailableSlots(
     }
   } catch (err) {
     console.error("DIRECT_BOOK_AVAILABILITY_ERR — falling back to internal:", err);
+  }
+
+  // Demo short-circuit for outreach prospects: no integration, no real
+  // calendar — generate plausible slots from business_hours so the AI can
+  // actually offer times instead of "we have nothing available". Runs only
+  // for tenants in "prospect" status; real customers fall through to the
+  // internal calendar below.
+  if (isProspect) {
+    const demoSlots = generateDemoSlots(
+      tenantMeta?.business_hours as Record<string, BusinessHours | null | undefined> | null | undefined,
+      date
+    );
+    if (demoSlots.length > 0) {
+      slotCache.set(cacheKey(tenantId, date), demoSlots);
+      return demoSlots.map((s) => s.label);
+    }
+    // Demo returned nothing (e.g. day is closed in business_hours) — fall
+    // through to the empty array via internal path so the AI politely tells
+    // the caller we're closed that day.
   }
 
   // 1. Fetch staff members
@@ -125,7 +208,7 @@ export async function getAvailableSlots(
     }
   }
 
-  return Array.from(allAvailableSlots).sort((a,b) => {
+  return Array.from(allAvailableSlots).sort((a, b) => {
     return new Date(`${date} ${a}`).getTime() - new Date(`${date} ${b}`).getTime();
   });
 }
