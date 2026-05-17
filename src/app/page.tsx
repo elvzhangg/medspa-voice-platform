@@ -417,8 +417,7 @@ function Hero() {
           Every call answered. Every client remembered. Every opportunity captured.
         </p>
         <p className="hero-line-2 text-[clamp(16px,1.6vw,20px)] text-sage-200 max-w-[62ch] mx-auto mb-10 leading-relaxed">
-          Meet <span className="gradient-text font-medium" style={{ animation: "gradient-pan 6s ease infinite" }}>Vivienne</span> — she speaks your services fluently, books appointments,
-          and cares for each client the way your best spa would. Around the clock.
+          Meet <span className="gradient-text font-medium" style={{ animation: "gradient-pan 6s ease infinite" }}>Vivienne</span> — your 24/7 AI Clientele Specialist, trained on your spa from day one.
         </p>
 
         <div className="flex justify-center"><HeroCTA /></div>
@@ -619,8 +618,8 @@ function Stats() {
    How It Works
 ═══════════════════════════════════════════════════════════════════ */
 const STEPS = [
-  { num: "01", title: "Tell us about your spa.",              desc: "Share your services, pricing, and the little details that make your spa yours. We listen carefully." },
-  { num: "02", title: "We introduce Vivienne to your world.", desc: "Custom voice. Custom greeting. Fluent in your exact offerings. She becomes a natural part of your team." },
+  { num: "01", title: "Tell us about your spa.",              desc: "Share your services, pricing, and what makes your spa yours." },
+  { num: "02", title: "We introduce Vivienne to your world.", desc: "Custom voice, custom greeting — fluent in your exact offerings from the start." },
   { num: "03", title: "She begins, gracefully.",              desc: "A dedicated number or your existing line — forwarded. Live in under 48 hours. Every call from that moment, cared for." },
 ];
 
@@ -719,27 +718,27 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     label: "Fluency",
     tagline: "The art of every conversation.",
     items: [
-      { icon: <FI><path d="M2 12c1.5-3 3-4.5 4.5-4.5S9 9 10.5 12s3 4.5 4.5 4.5S18 15 19.5 12 21 7.5 22 7.5"/></FI>, title: "Natural Human Voice", desc: "Powered by ElevenLabs — callers can't tell it's AI. Choose from multiple voice profiles that match your brand." },
-      { icon: <FI><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 6.5-6 7.4V18h-2v-1.6C7.5 15.5 5 12.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M10 17v4"/><path d="M14 17v4"/></FI>, title: "Deep Business Knowledge", desc: "Trained on your exact services, pricing, packages, and policies. Answers questions like your best employee would." },
-      { icon: <FI><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></FI>, title: "Appointment Booking", desc: "Collects patient info and schedules appointments directly. Integrates with your existing booking system." },
+      { icon: <FI><path d="M2 12c1.5-3 3-4.5 4.5-4.5S9 9 10.5 12s3 4.5 4.5 4.5S18 15 19.5 12 21 7.5 22 7.5"/></FI>, title: "Natural Human Voice", desc: "Powered by ElevenLabs — indistinguishable from human, in a voice that fits your brand." },
+      { icon: <FI><path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 6.5-6 7.4V18h-2v-1.6C7.5 15.5 5 12.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M10 17v4"/><path d="M14 17v4"/></FI>, title: "Deep Business Knowledge", desc: "Your exact services, pricing, and policies — answered the way your best employee would." },
+      { icon: <FI><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></FI>, title: "Appointment Booking", desc: "Collects patient info and books directly into your existing scheduling system." },
     ],
   },
   {
     label: "Intelligence",
     tagline: "Everything that keeps her sharp.",
     items: [
-      { icon: <FI><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/></FI>, title: "Real-Time Dashboard", desc: "See every call, transcript, and outcome. Track missed calls, peak hours, and conversion rates." },
-      { icon: <FI><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></FI>, title: "Instant Scalability", desc: "Handle 1 call or 1,000 simultaneous calls. No hold times, no voicemail — every caller gets answered." },
-      { icon: <FI><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/><path d="M9 12l2 2 4-4"/></FI>, title: "HIPAA Considerations", desc: "Built with healthcare privacy in mind. No sensitive patient data stored. SOC 2 compliance roadmap." },
+      { icon: <FI><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/></FI>, title: "Real-Time Dashboard", desc: "Every call, transcript, and outcome — with peak hours and conversion rates at a glance." },
+      { icon: <FI><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></FI>, title: "Instant Scalability", desc: "1 call or 1,000 simultaneous — no hold times, no voicemail, no missed opportunities." },
+      { icon: <FI><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/><path d="M9 12l2 2 4-4"/></FI>, title: "HIPAA Considerations", desc: "No sensitive patient data stored — built with healthcare privacy in mind, SOC 2 roadmap underway." },
     ],
   },
   {
     label: "Care, Extended",
     tagline: "Because good service doesn't end when the call does.",
     items: [
-      { icon: <FI><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V7L6 11H4a1 1 0 0 0-1 1z"/><path d="M19 9c1.5 1 1.5 5 0 6"/><path d="M17 7c2.5 1.5 2.5 8.5 0 10"/></FI>, title: "Proactive Outbound Campaigns", desc: "Automatically reach out to patients for reminders, reactivation campaigns, and promotions via AI-powered calls and SMS." },
-      { icon: <FI><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h2"/><path d="M10 15h4"/></FI>, title: "Billing & Payment Support", desc: "AI handles billing questions, shares payment options, and sends payment links — so no revenue slips through the cracks." },
-      { icon: <FI><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M10.5 8h3"/><path d="M9.5 10l2 6"/><path d="M14.5 10l-2 6"/></FI>, title: "Referral Management", desc: "Track referral sources, reward loyal patients automatically, and grow your practice through word-of-mouth." },
+      { icon: <FI><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V7L6 11H4a1 1 0 0 0-1 1z"/><path d="M19 9c1.5 1 1.5 5 0 6"/><path d="M17 7c2.5 1.5 2.5 8.5 0 10"/></FI>, title: "Proactive Outbound Campaigns", desc: "Reminders, reactivation, and promotions — delivered automatically via AI-powered call or SMS." },
+      { icon: <FI><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h2"/><path d="M10 15h4"/></FI>, title: "Billing & Payment Support", desc: "Answers billing questions, shares payment options, and sends payment links — all on the call." },
+      { icon: <FI><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M10.5 8h3"/><path d="M9.5 10l2 6"/><path d="M14.5 10l-2 6"/></FI>, title: "Referral Management", desc: "Track sources, reward loyalists automatically, and grow your practice through word-of-mouth." },
     ],
   },
 ];
@@ -890,7 +889,7 @@ const PLATFORM_CAPS = [
       </FI>
     ),
     title: "Built for med spa precision",
-    desc: "Trained on conversations across injectables, laser, and skincare. Vivienne speaks your services, protocols, and pricing tiers out of the box — no phone-tree scripts.",
+    desc: "Vivienne speaks injectables, laser, and skincare — your protocols and pricing tiers, out of the box.",
   },
   {
     icon: (
@@ -902,7 +901,7 @@ const PLATFORM_CAPS = [
       </FI>
     ),
     title: "Personalize every client call",
-    desc: "Prior visits, preferred providers, last Botox date, numbing preferences, chart notes — Vivienne remembers, so every caller feels recognized from hello.",
+    desc: "Prior visits, preferred providers, last Botox date, numbing preferences — Vivienne remembers, so every caller feels recognized from hello.",
   },
   {
     icon: (
@@ -913,7 +912,7 @@ const PLATFORM_CAPS = [
       </FI>
     ),
     title: "Orchestrate the full journey",
-    desc: "From consult booking to pre-care reminders, rebooking, and membership renewals — Vivienne handles every touchpoint of the client journey, 24/7.",
+    desc: "Consult booking, pre-care reminders, rebooking, renewals — every touchpoint, 24/7.",
   },
 ];
 
@@ -941,12 +940,6 @@ function PlatformShowcase() {
           >
             From the first ring to the <span className="italic">follow-up</span>.
           </h2>
-          <p
-            className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`}
-            style={{ transitionDelay: "160ms" }}
-          >
-            One AI clientele specialist. Every moment of the client journey.
-          </p>
         </div>
 
         <div ref={cards.ref} className="grid md:grid-cols-3 gap-5">
@@ -1032,12 +1025,6 @@ function Integrations() {
           >
             Works with the <span className="italic">tools</span> you already use.
           </h2>
-          <p
-            className={`reveal-up ${head.visible ? "visible" : ""} text-sage-400 mt-4 max-w-xl mx-auto text-lg`}
-            style={{ transitionDelay: "160ms" }}
-          >
-            Deep integration across 10+ booking platforms — Vivienne works beautifully with the platforms your team already loves.
-          </p>
         </div>
 
         <div ref={chips.ref} className="relative">
