@@ -134,8 +134,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Image
                 src="/vauxvoice-logo.png"
                 alt="VauxVoice"
-                width={599}
-                height={103}
+                width={2706}
+                height={457}
                 priority
                 className="h-7 w-auto"
               />
@@ -184,8 +184,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Image
               src="/vauxvoice-logo.png"
               alt="VauxVoice"
-              width={599}
-              height={103}
+              width={2706}
+              height={457}
               priority
               className="h-6 w-auto"
             />

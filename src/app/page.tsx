@@ -240,8 +240,8 @@ function Nav() {
           <Image
             src="/vauxvoice-logo.png"
             alt="VauxVoice"
-            width={599}
-            height={103}
+            width={2706}
+            height={457}
             priority
             className="h-8 md:h-9 w-auto transition-opacity group-hover:opacity-90"
           />
@@ -1220,8 +1220,8 @@ function Footer() {
             <Image
               src="/vauxvoice-logo.png"
               alt="VauxVoice"
-              width={599}
-              height={103}
+              width={2706}
+              height={457}
               className="h-7 w-auto"
             />
           </div>
