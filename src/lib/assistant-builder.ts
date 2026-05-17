@@ -486,7 +486,11 @@ export async function buildAssistantConfig(
     // seconds of pause.
     silenceTimeoutSeconds: 30,
     maxDurationSeconds: 1800,
-    voicemailDetection: { enabled: false },
+    // voicemailDetection is intentionally omitted. Vapi's validator was
+    // tightened in mid-May 2026 — the simple { enabled: false } shape now
+    // throws "unknown value was passed to the validate function", which
+    // rejects the whole assistant and breaks every call. Omitting the field
+    // gives the safe default (off) and stays forward-compatible.
   };
 }
 

@@ -38,22 +38,6 @@ export async function POST(req: NextRequest) {
 
   const type = message.type as string;
 
-  // Temporary diagnostic: persist raw payload of every incoming webhook hit
-  // to call_logs (caller_number=debug-webhook:<type>) so we can inspect Vapi's
-  // status-update / debug artifacts when calls fail silently. Fire-and-forget
-  // so it doesn't slow assistant-request. Remove once the current issue is
-  // diagnosed.
-  void supabaseAdmin
-    .from("call_logs")
-    .insert({
-      vapi_call_id: `debug-${type ?? "unknown"}-${Date.now()}`,
-      caller_number: `debug-webhook:${type ?? "unknown"}`,
-      summary: JSON.stringify(body).slice(0, 8000),
-    })
-    .then(({ error }) => {
-      if (error) console.error("DEBUG_LOG_ERR:", error.message);
-    });
-
   switch (type) {
     case "assistant-request":
       return handleAssistantRequest(message);
