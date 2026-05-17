@@ -5,6 +5,7 @@ import { logProspectEvent } from "@/lib/prospect-events";
 import { computeConfidence, AUTO_RUN_CONFIDENCE_THRESHOLD } from "@/lib/prospect-confidence";
 import { provisionDemoForProspect } from "@/lib/demo-provisioner";
 import { draftEmailForProspect } from "@/lib/email-drafter";
+import { drainMessages } from "@/lib/agent-message-queue";
 
 function normalizeWebsite(website: string): string {
   return website
@@ -26,9 +27,9 @@ function normalizeWebsite(website: string): string {
 async function safeInsertProspect(
   row: Record<string, unknown>
 ): Promise<{ id: string | null; droppedColumns: string[]; error?: string }> {
-  let toInsert = { ...row };
+  const toInsert = { ...row };
   const dropped: string[] = [];
-  for (let attempt = 0; attempt < 15; attempt++) {
+  for (let attempt = 0; attempt < 25; attempt++) {
     const { data, error } = await supabaseAdmin
       .from("outreach_prospects")
       .insert(toInsert)
@@ -38,12 +39,48 @@ async function safeInsertProspect(
 
     if (!error) return { id: null, droppedColumns: dropped, error: "Unknown insert error" };
 
-    const missingColMatch = error.message.match(/column "?([a-z_][a-z0-9_]*)"?\s+of relation/i);
-    if (missingColMatch && toInsert[missingColMatch[1]] !== undefined) {
-      const col = missingColMatch[1];
+    // Log the raw shape so we can diagnose unknown error formats from the dev console.
+    console.error("[safeInsertProspect] insert error", {
+      code: (error as { code?: string }).code,
+      message: error.message,
+      details: (error as { details?: string | null }).details,
+      hint: (error as { hint?: string | null }).hint,
+    });
+
+    // Strategy 1 — regex match on known error formats:
+    //   * Postgres 42703:  `column "x" of relation "y" does not exist`
+    //   * PostgREST PGRST204:
+    //       `Could not find the 'x' column of 'y' in the schema cache`
+    //       `Could not find the column "x" in the schema cache`
+    const regexMatch =
+      error.message.match(/column "?([a-z_][a-z0-9_]*)"?\s+of relation/i) ||
+      error.message.match(/Could not find the ['"]?([a-z_][a-z0-9_]*)['"]?\s+column/i) ||
+      error.message.match(/Could not find the column ['"]?([a-z_][a-z0-9_]*)['"]?/i);
+    if (regexMatch && toInsert[regexMatch[1]] !== undefined) {
+      const col = regexMatch[1];
       dropped.push(col);
       delete toInsert[col];
       continue;
+    }
+
+    // Strategy 2 (fallback) — if PostgREST says "schema cache" or returns
+    // PGRST204, scan our payload column names against the error message and
+    // drop any that appear. Catches future error wording changes too.
+    const code = (error as { code?: string }).code;
+    const looksLikeMissingColumn =
+      code === "PGRST204" ||
+      code === "42703" ||
+      /schema cache/i.test(error.message) ||
+      /does not exist/i.test(error.message);
+    if (looksLikeMissingColumn) {
+      const culprit = Object.keys(toInsert).find((col) =>
+        new RegExp(`\\b${col}\\b`).test(error.message)
+      );
+      if (culprit) {
+        dropped.push(culprit);
+        delete toInsert[culprit];
+        continue;
+      }
     }
 
     return { id: null, droppedColumns: dropped, error: error.message };
@@ -446,8 +483,23 @@ Start now.`,
           messages.push({ role: "assistant", content: response.content as unknown as Anthropic.ContentBlockParam[] });
 
           if (response.stop_reason === "end_turn" || toolUses.length === 0) {
-            continueLoop = false;
-            break;
+            // Before exiting, give the operator a chance to keep the run going.
+            const operatorFollowups = drainMessages(campaign_id);
+            if (operatorFollowups.length === 0) {
+              continueLoop = false;
+              break;
+            }
+            const followupContent: Anthropic.ContentBlockParam[] = operatorFollowups.map((m) => ({
+              type: "text" as const,
+              text: `[Operator message]: ${m}`,
+            }));
+            send({
+              type: "step",
+              step_type: "decision",
+              message: `Operator sent ${operatorFollowups.length} message(s) — continuing run`,
+            });
+            messages.push({ role: "user", content: followupContent });
+            continue;
           }
 
           // Process tool calls
@@ -484,6 +536,7 @@ Start now.`,
               // Global dedup by normalized website — if already known, just add to campaign.
               let savedId: string | null = null;
               let wasDedup = false;
+              let droppedColumnsForThisCall: string[] = [];
               if (normalizedWebsite) {
                 const { data: existing } = await supabaseAdmin
                   .from("outreach_prospects")
@@ -571,6 +624,7 @@ Start now.`,
                 }
 
                 savedId = insertResult.id;
+                droppedColumnsForThisCall = insertResult.droppedColumns;
                 await supabaseAdmin
                   .from("prospect_campaign_memberships")
                   .upsert({ prospect_id: savedId, campaign_id });
@@ -609,6 +663,12 @@ Start now.`,
 
               if (savedId) _prospectIds[toolUse.id] = savedId;
 
+              const droppedNote = droppedColumnsForThisCall.length
+                ? {
+                    schema_warning: `The database is missing these columns: ${droppedColumnsForThisCall.join(", ")}. The save still succeeded with the rest of the fields, but in subsequent save_prospect calls in this run, OMIT these fields entirely — they will keep failing until a migration is applied.`,
+                  }
+                : {};
+
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
@@ -616,6 +676,7 @@ Start now.`,
                   prospect_id: savedId,
                   confidence: confidenceBreakdown.score,
                   deduped: wasDedup,
+                  ...droppedNote,
                 }),
               });
 
@@ -712,8 +773,25 @@ Start now.`,
             // we never need to return a tool_result for it
           }
 
-          if (toolResults.length > 0) {
-            messages.push({ role: "user", content: toolResults });
+          // Merge any operator messages that landed during tool execution into
+          // the same user turn as the tool_results. Anthropic requires alternating
+          // roles, so we cannot push a separate user message between turns.
+          const operatorMessages = drainMessages(campaign_id);
+          const userContent: Anthropic.ContentBlockParam[] = [];
+          for (const m of operatorMessages) {
+            userContent.push({ type: "text" as const, text: `[Operator message]: ${m}` });
+          }
+          if (operatorMessages.length > 0) {
+            send({
+              type: "step",
+              step_type: "decision",
+              message: `Operator sent ${operatorMessages.length} message(s) — agent will read on next step`,
+            });
+          }
+          userContent.push(...toolResults);
+
+          if (userContent.length > 0) {
+            messages.push({ role: "user", content: userContent });
           }
         }
 

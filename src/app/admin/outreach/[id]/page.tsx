@@ -50,6 +50,10 @@ interface AgentLogEntry {
   subject?: string;
 }
 
+// Reserved log id range for locally-echoed operator messages, so they don't
+// collide with stream-assigned ids from logIdRef.
+const OPERATOR_LOCAL_ID_BASE = 1_000_000;
+
 const STATUS_OPTIONS = ["new", "researched", "contacted", "demo_scheduled", "demo_tested", "converted", "archived"] as const;
 type ProspectStatus = typeof STATUS_OPTIONS[number];
 
@@ -106,8 +110,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [sending, setSending] = useState(false);
   const [sendResults, setSendResults] = useState<Array<{ business_name: string; status: string }> | null>(null);
   const [previewProspect, setPreviewProspect] = useState<Prospect | null>(null);
+  const [agentInput, setAgentInput] = useState("");
+  const [sendingAgentMsg, setSendingAgentMsg] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const logIdRef = useRef(0);
+  const operatorLocalIdRef = useRef(OPERATOR_LOCAL_ID_BASE);
 
   async function load() {
     const [cRes, pRes] = await Promise.all([
@@ -253,6 +260,37 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   function addLog(event: Omit<AgentLogEntry, "id">) {
     setAgentLogs(prev => [...prev, { ...event, id: ++logIdRef.current }]);
+  }
+
+  async function sendAgentMessage() {
+    const text = agentInput.trim();
+    if (!text || sendingAgentMsg) return;
+    setSendingAgentMsg(true);
+
+    // Echo locally so the operator sees their message land immediately, even
+    // before the agent processes it on the next loop iteration. We also drop
+    // the operator_message echo from the SSE on the floor (handled in addLog
+    // logic) to avoid showing it twice.
+    setAgentLogs(prev => [
+      ...prev,
+      { id: ++operatorLocalIdRef.current, type: "operator_message", text },
+    ]);
+    setAgentInput("");
+
+    try {
+      const res = await fetch("/api/admin/agent/research/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign_id: id, message: text }),
+      });
+      if (!res.ok) {
+        addLog({ type: "error", message: `Failed to send message: ${res.status}` });
+      }
+    } catch (err) {
+      addLog({ type: "error", message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setSendingAgentMsg(false);
+    }
   }
 
   async function sendApproved() {
@@ -401,6 +439,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   );
                 }
+                if (log.type === "operator_message") {
+                  return (
+                    <div key={log.id} className="flex gap-2.5 text-xs text-cyan-200 bg-cyan-950/40 rounded-lg px-3 py-2 border border-cyan-900/50">
+                      <span>💬</span>
+                      <span><strong className="text-cyan-100">You:</strong> {log.text}</span>
+                    </div>
+                  );
+                }
                 if (log.type === "done") {
                   return (
                     <div key={log.id} className="flex gap-2.5 text-xs text-blue-300 bg-blue-950/40 rounded-lg px-3 py-2.5 border border-blue-900/50 mt-3">
@@ -431,6 +477,45 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               </p>
             </div>
           )}
+
+          {/* Talk to the agent. While a run is in progress, the message is
+              queued in memory and picked up at the next loop boundary. When no
+              run is active, the input is shown disabled so the feature is
+              discoverable — operator clicks Run Again first, then chats. */}
+          <div className="border-t border-slate-800 px-5 py-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendAgentMessage();
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={agentInput}
+                onChange={(e) => setAgentInput(e.target.value)}
+                placeholder={
+                  agentRunning
+                    ? "Talk to the agent — e.g. 'skip verification_notes' or 'try a different city'"
+                    : "Click Run Agent / Run Again to start a session, then chat with it here"
+                }
+                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={sendingAgentMsg || !agentRunning}
+              />
+              <button
+                type="submit"
+                disabled={sendingAgentMsg || !agentRunning || !agentInput.trim()}
+                className="px-3.5 py-2 bg-cyan-600 text-white text-xs font-semibold rounded-lg hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingAgentMsg ? "Sending…" : "Send"}
+              </button>
+            </form>
+            <p className="text-[10px] text-slate-600 mt-1.5 leading-relaxed">
+              {agentRunning
+                ? "The agent reads your message at the next iteration boundary (usually within a few seconds)."
+                : "Chat is available while a research run is active."}
+            </p>
+          </div>
 
           {/* Approval section */}
           {agentDone && draftsCount > 0 && (

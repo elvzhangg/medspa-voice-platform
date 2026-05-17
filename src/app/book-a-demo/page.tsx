@@ -79,9 +79,6 @@ export default function BookADemoPage() {
             <Link href="/#features" className="text-gray-600 hover:text-gray-900 transition-colors">
               Features
             </Link>
-            <Link href="/#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Pricing
-            </Link>
           </div>
         </div>
       </nav>
