@@ -114,6 +114,18 @@ function sleep(ms: number) {
 interface BuyOk { id: string; number: string }
 interface BuyErr { error: string; attempted: string[] }
 
+// Vapi rejects phone-number.name when it exceeds 40 chars
+// ("Bad Request: name must be shorter than or equal to 40 characters").
+// Truncate at a word boundary so longer business names still buy cleanly.
+function fitVapiNumberName(businessName: string): string {
+  const full = `CRM - ${businessName.trim()}`;
+  if (full.length <= 40) return full;
+  const room = 40 - 1; // reserve one char for the ellipsis
+  const trimmed = full.slice(0, room).replace(/\s+\S*$/, "");
+  const base = trimmed.length > 0 ? trimmed : full.slice(0, room);
+  return base + "…";
+}
+
 // Tries the preferred area code first, then walks a small geographic fallback
 // pool. Stops on hard errors (auth/quota/rate) so we don't burn the API key.
 async function buyVapiNumber(name: string, preferred: string | null): Promise<BuyOk | BuyErr> {
@@ -124,6 +136,8 @@ async function buyVapiNumber(name: string, preferred: string | null): Promise<Bu
   const seen = new Set<string>();
   const errors: string[] = [];
   let isFirst = true;
+
+  const phoneNumberName = fitVapiNumberName(name);
 
   for (const ac of ordered) {
     if (seen.has(ac)) continue;
@@ -137,7 +151,7 @@ async function buyVapiNumber(name: string, preferred: string | null): Promise<Bu
       body: JSON.stringify({
         provider: "vapi",
         numberDesiredAreaCode: ac,
-        name: `CRM - ${name}`,
+        name: phoneNumberName,
         serverUrl: WEBHOOK_URL,
       }),
     });

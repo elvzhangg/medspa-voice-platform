@@ -169,6 +169,20 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Vapi rejects phone-number.name when it exceeds 40 chars
+// ("Bad Request: name must be shorter than or equal to 40 characters"),
+// which kills the buy and leaves the prospect un-demoable. Truncate the
+// "DEMO - {business}" form at a word boundary so longer business names
+// still produce a valid, readable label.
+function fitPhoneNumberName(businessName: string): string {
+  const full = `DEMO - ${businessName.trim()}`;
+  if (full.length <= 40) return full;
+  const room = 40 - 1; // reserve one char for the ellipsis
+  const trimmed = full.slice(0, room).replace(/\s+\S*$/, "");
+  const base = trimmed.length > 0 ? trimmed : full.slice(0, room);
+  return base + "…";
+}
+
 async function buyPhoneNumber(
   name: string,
   preferredAreaCode: string | null
@@ -180,6 +194,8 @@ async function buyPhoneNumber(
   const seen = new Set<string>();
   const errors: string[] = [];
   let isFirst = true;
+
+  const phoneNumberName = fitPhoneNumberName(name);
 
   for (const ac of ordered) {
     if (seen.has(ac)) continue;
@@ -197,7 +213,7 @@ async function buyPhoneNumber(
       body: JSON.stringify({
         provider: "vapi",
         numberDesiredAreaCode: ac,
-        name: `DEMO - ${name}`,
+        name: phoneNumberName,
         serverUrl: WEBHOOK_URL,
       }),
     });
