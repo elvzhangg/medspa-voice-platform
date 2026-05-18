@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import { logProspectEvent } from "./prospect-events";
 import { normalizeBusinessHours } from "./normalize-hours";
+import { seedStaffFromProviders } from "./staff-seed";
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY!;
 const WEBHOOK_URL =
@@ -331,6 +332,11 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
       `[demo-provisioner] tenant created without columns: ${droppedTenantCols.join(", ")} — run pending migrations`
     );
   }
+
+  // Seed staff from researched providers — without this the provider roster
+  // prompt block stays empty and the AI punts every "who works there?" call
+  // to "our team will be the best to walk you through that".
+  await seedStaffFromProviders(tenant.id, prospect.providers);
 
   // Seed KB (skip gracefully if no OPENAI_API_KEY)
   const chunks = buildKnowledgeChunks(prospect);

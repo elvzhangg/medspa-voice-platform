@@ -10,7 +10,8 @@ export type ProspectEventType =
   | "email_replied"
   | "demo_called"
   | "status_changed"
-  | "note_added";
+  | "note_added"
+  | "url_imported";
 
 export async function logProspectEvent(params: {
   prospect_id: string;

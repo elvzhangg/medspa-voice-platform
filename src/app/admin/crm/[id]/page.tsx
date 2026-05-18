@@ -489,6 +489,8 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
+        <SmartImportPanel prospectId={prospect.id} onSuccess={load} />
+
         {locations.length > 0 && (
           <Subsection title={`Locations (${locations.length})`}>
             <div className="space-y-2">
@@ -507,7 +509,10 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
         )}
 
         {procedures.length > 0 && (
-          <Subsection title={`Procedures (${procedures.length})`}>
+          <Subsection
+            title={`Procedures (${procedures.length})`}
+            action={<ImportUrlButton prospectId={prospect.id} category="procedures" onSuccess={load} />}
+          >
             <div className="space-y-1.5">
               {procedures.map((p, i) => (
                 <div key={i} className="flex items-start justify-between gap-3 text-sm py-1.5 border-b border-gray-50 last:border-0">
@@ -529,7 +534,10 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
         )}
 
         {providers.length > 0 && (
-          <Subsection title={`Providers (${providers.length})`}>
+          <Subsection
+            title={`Providers (${providers.length})`}
+            action={<ImportUrlButton prospectId={prospect.id} category="providers" onSuccess={load} />}
+          >
             <div className="flex flex-wrap gap-2">
               {providers.map((prov, i) => (
                 <div key={i} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5 text-xs">
@@ -548,7 +556,10 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
         )}
 
         {prospect.business_hours && Object.keys(prospect.business_hours).length > 0 && (
-          <Subsection title="Hours">
+          <Subsection
+            title="Hours"
+            action={<ImportUrlButton prospectId={prospect.id} category="hours" onSuccess={load} />}
+          >
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
               {Object.entries(prospect.business_hours).map(([day, val]) => (
                 <div key={day} className="flex justify-between">
@@ -563,7 +574,10 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
         )}
 
         {faqs.length > 0 && (
-          <Subsection title={`FAQs (${faqs.length})`}>
+          <Subsection
+            title={`FAQs (${faqs.length})`}
+            action={<ImportUrlButton prospectId={prospect.id} category="faqs" onSuccess={load} />}
+          >
             <div className="space-y-2">
               {faqs.map((faq, i) => (
                 <details key={i} className="rounded-lg border border-gray-100 px-3 py-2 text-sm group">
@@ -646,12 +660,250 @@ function Panel({ title, subtitle, children }: { title: string; subtitle?: string
   );
 }
 
-function Subsection({ title, children }: { title: string; children: React.ReactNode }) {
+function Subsection({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
     <div>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{title}</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</h3>
+        {action}
+      </div>
       {children}
     </div>
+  );
+}
+
+type ImportCategory = "providers" | "hours" | "procedures" | "faqs" | "policies" | "auto";
+
+const CATEGORY_LABELS: Record<ImportCategory, string> = {
+  auto:       "Anything on the page",
+  providers:  "Providers / team",
+  hours:      "Business hours",
+  procedures: "Services / procedures",
+  faqs:       "FAQs",
+  policies:   "Policies / directions",
+};
+
+function SmartImportPanel({
+  prospectId,
+  onSuccess,
+}: {
+  prospectId: string;
+  onSuccess: () => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [category, setCategory] = useState<ImportCategory>("auto");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setStatus("loading");
+    setMessage("");
+    try {
+      const res = await fetch(`/api/admin/crm/${prospectId}/import-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), category }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("error");
+        setMessage(data.error ?? "Import failed");
+        return;
+      }
+      setStatus("success");
+      if (data.imported) {
+        setMessage(`Imported: ${data.summary}`);
+        setUrl("");
+        onSuccess();
+      } else {
+        setMessage(data.message ?? "Nothing new found on that page");
+      }
+    } catch (err) {
+      setStatus("error");
+      setMessage((err as Error).message);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 to-white p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Smart import</span>
+        <span className="text-[10px] text-gray-400">Paste a URL — we&apos;ll pull what&apos;s missing</span>
+      </div>
+      <form onSubmit={submit} className="flex gap-2">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as ImportCategory)}
+          disabled={status === "loading"}
+          className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          {(Object.entries(CATEGORY_LABELS) as [ImportCategory, string][]).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example-medspa.com/team"
+          disabled={status === "loading"}
+          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={status === "loading" || !url.trim()}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+        >
+          {status === "loading" ? "…" : "Import"}
+        </button>
+      </form>
+      {message && (
+        <p
+          className={`text-xs mt-2 ${
+            status === "error"
+              ? "text-red-600"
+              : status === "success"
+              ? "text-emerald-700"
+              : "text-gray-500"
+          }`}
+        >
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ImportUrlButton({
+  prospectId,
+  category,
+  onSuccess,
+}: {
+  prospectId: string;
+  category: ImportCategory;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setStatus("loading");
+    setMessage("");
+    try {
+      const res = await fetch(`/api/admin/crm/${prospectId}/import-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), category }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("error");
+        setMessage(data.error ?? "Import failed");
+        return;
+      }
+      setStatus("success");
+      setMessage(data.imported ? `Imported: ${data.summary}` : data.message ?? "Nothing new found");
+      if (data.imported) {
+        onSuccess();
+        setTimeout(() => {
+          setOpen(false);
+          setUrl("");
+          setStatus("idle");
+          setMessage("");
+        }, 1200);
+      }
+    } catch (err) {
+      setStatus("error");
+      setMessage((err as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[10px] font-medium text-indigo-500 hover:text-indigo-700 uppercase tracking-wide px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors"
+        title="Import data from a URL"
+      >
+        + Import URL
+      </button>
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
+          onClick={() => status !== "loading" && setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Import {category === "auto" ? "data" : category} from URL
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Paste a link to a page on the med spa&apos;s website. We&apos;ll fetch it and merge any{" "}
+              {category === "auto" ? "info" : category} into this prospect (existing data is kept).
+            </p>
+            <form onSubmit={submit}>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example-medspa.com/team"
+                required
+                disabled={status === "loading"}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                autoFocus
+              />
+              {message && (
+                <p
+                  className={`text-xs mt-2 ${
+                    status === "error"
+                      ? "text-red-600"
+                      : status === "success"
+                      ? "text-emerald-600"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {message}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  disabled={status === "loading"}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={status === "loading" || !url.trim()}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40"
+                >
+                  {status === "loading" ? "Importing…" : "Import"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

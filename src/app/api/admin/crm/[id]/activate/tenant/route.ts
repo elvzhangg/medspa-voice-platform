@@ -15,51 +15,11 @@ import {
 } from "@/lib/crm-activation";
 import { areaCodeForCity } from "@/lib/us-area-codes";
 import { normalizeBusinessHours } from "@/lib/normalize-hours";
+import { seedStaffFromProviders } from "@/lib/staff-seed";
 
-interface ProspectProvider {
-  name?: string;
-  title?: string;
-  specialties?: string[];
-  bio?: string;
-}
-
-// Insert a staff row per researched provider so the assistant's provider
-// roster prompt block is non-empty and the AI can introduce the team
-// instead of punting to "have someone reach out". Best-effort — bad rows
-// are skipped and don't fail the whole activation.
-async function seedStaffFromProviders(
-  supabase: typeof supabaseAdmin,
-  tenantId: string,
-  providers: unknown
-): Promise<{ inserted: number; skipped: number }> {
-  if (!Array.isArray(providers)) return { inserted: 0, skipped: 0 };
-  let inserted = 0;
-  let skipped = 0;
-  for (const raw of providers as ProspectProvider[]) {
-    const name = raw?.name?.trim();
-    if (!name) { skipped += 1; continue; }
-    const row: Record<string, unknown> = {
-      tenant_id: tenantId,
-      name,
-      title: raw.title?.trim() || null,
-      specialties: Array.isArray(raw.specialties) ? raw.specialties.filter(Boolean) : [],
-      bio: raw.bio?.trim() || null,
-      active: true,
-    };
-    const { error } = await supabase.from("staff").insert(row);
-    if (error) {
-      // Column may be missing on older schemas — try with the minimal fields.
-      const { error: e2 } = await supabase.from("staff").insert({
-        tenant_id: tenantId,
-        name,
-        title: row.title,
-      });
-      if (e2) { skipped += 1; continue; }
-    }
-    inserted += 1;
-  }
-  return { inserted, skipped };
-}
+// seedStaffFromProviders is shared with the demo-provisioner — see
+// src/lib/staff-seed.ts. Activation and demo provisioning now seed the
+// same way so every tenant has a non-empty staff roster.
 
 export const runtime = "nodejs";
 // Buying a Vapi number can take ~10s per attempt and we may try several area
@@ -347,7 +307,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // assistant's roster prompt is populated. Without this, the AI defers
     // every "who works there?" / "tell me about your team" question to a
     // human callback. Failures are non-fatal.
-    const staffSeed = await seedStaffFromProviders(supabaseAdmin, tenantId, prospect.providers);
+    const staffSeed = await seedStaffFromProviders(tenantId, prospect.providers);
 
     const updated = { ...step, committed_at: nowIso() };
     await saveActivationState(id, setStep(state, "tenant", updated));
