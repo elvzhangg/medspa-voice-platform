@@ -87,7 +87,7 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function backfill() {
-    if (!confirm("Backfill normalized business_hours and staff roster from the prospect's research data onto this tenant?")) return;
+    if (!confirm("Backfill hours, staff, booking-forward to prospect's phone, and the demo-mode KB context onto this tenant?")) return;
     setFixing(true);
     setFixMsg(null);
     const res = await fetch(`/api/admin/crm/${id}/diagnose-number`, { method: "POST" });
@@ -97,10 +97,21 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
       setFixMsg(`Backfill failed: ${data.error ?? "unknown"}`);
       return;
     }
-    setFixMsg(
-      `Backfill done. Hours written: ${data.hours.written ? "yes" : "no"}; ` +
-      `staff inserted: ${data.staff.inserted}, skipped: ${data.staff.skipped}.`
-    );
+    const parts: string[] = [
+      `hours ${data.hours?.written ? "written" : "skipped"}`,
+      `staff +${data.staff?.inserted ?? 0} (${data.staff?.skipped ?? 0} skipped)`,
+      data.booking_forward?.configured
+        ? `booking-forward → ${data.booking_forward.phone}`
+        : data.booking_forward?.already_set
+        ? "booking-forward already set"
+        : "booking-forward skipped (no phone)",
+      data.demo_kb?.inserted
+        ? "demo KB added"
+        : data.demo_kb?.already_present
+        ? "demo KB already present"
+        : "demo KB skipped",
+    ];
+    setFixMsg(`Backfill done. ${parts.join("; ")}.`);
   }
 
   async function load() {

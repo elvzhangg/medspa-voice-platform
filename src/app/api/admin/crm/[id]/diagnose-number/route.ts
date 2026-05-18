@@ -2,7 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildAssistantConfig } from "@/lib/assistant-builder";
 import { normalizeBusinessHours } from "@/lib/normalize-hours";
+import { seedStaffFromProviders } from "@/lib/staff-seed";
 import type { Tenant } from "@/types";
+
+// Twilio requires E.164 (+15551234567). Same helper as demo-provisioner —
+// duplicated rather than imported to keep this route self-contained.
+function toE164(phone?: string | null): string | null {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
+
+const DEMO_KB_TITLE = "About this preview experience";
+const DEMO_KB_CONTENT = [
+  "This phone line is a preview experience set up while the spa owner evaluates VauxVoice as their AI Clientele Specialist.",
+  "All information you have access to — services, providers, hours, FAQs — was researched from the spa's own website and public sources.",
+  "If a caller asks about something not covered in your knowledge base (a specific refund policy, an insurance question, a custom package, a niche treatment), do NOT invent details. Say warmly that you want to make sure you give them accurate information, and offer to have someone from the team follow up.",
+  "If a caller directly and explicitly asks whether you're a real person, an AI, or a demo: answer honestly. You're an AI Clientele Specialist. Don't volunteer this otherwise — most callers don't care, and leading with it breaks rapport.",
+  "Never claim to be human. Never pretend you can't check the calendar when you can. Never promise things you can't actually do (driving directions live, complex medical advice, prescriptions).",
+].join("\n\n");
 
 export const runtime = "nodejs";
 
@@ -242,69 +262,104 @@ export async function PATCH(_req: NextRequest, ctx: { params: Promise<{ id: stri
 }
 
 // POST /api/admin/crm/[id]/diagnose-number — backfill assistant data
-// (normalized hours + staff roster) onto an already-activated tenant. Use
-// this for prospects activated before we added these steps to the activation
-// commit. Safe to run repeatedly: hours overwrite, staff are skipped if a
-// row with the same name already exists for the tenant.
-interface BackfillProvider { name?: string; title?: string; specialties?: string[]; bio?: string }
-
+// onto an already-activated tenant. Use this for prospects activated
+// before we added each piece to the activation/demo-provisioner. Safe to
+// run repeatedly: every step is idempotent or skip-if-already-set.
+//
+// Backfills:
+//   1. Normalized business_hours
+//   2. Staff roster (skips existing names)
+//   3. Booking-forward to prospect's own phone (so they get the SMS when
+//      they call their own demo and "book")
+//   4. Demo-mode KB chunk (skips if already present)
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const { data: prospect } = await supabaseAdmin
     .from("crm_prospects")
-    .select("id, tenant_id, business_hours, providers")
+    .select("id, tenant_id, business_hours, providers, phone")
     .eq("id", id)
     .maybeSingle();
   if (!prospect?.tenant_id) return NextResponse.json({ error: "Not activated" }, { status: 400 });
 
+  // Load current tenant so we know what's already set vs. what we need to
+  // fill in. Avoids overwriting a tenant-owned forward phone with the
+  // prospect's website-listed number after the spa connects their own.
+  const { data: currentTenant } = await supabaseAdmin
+    .from("tenants")
+    .select("booking_forward_enabled, booking_forward_phones")
+    .eq("id", prospect.tenant_id)
+    .maybeSingle();
+
+  const tenantUpdates: Record<string, unknown> = {};
+
   // 1. Normalize + write business_hours.
   const normalized = normalizeBusinessHours(prospect.business_hours);
-  let hoursWritten = false;
-  if (normalized) {
-    const { error } = await supabaseAdmin
-      .from("tenants")
-      .update({ business_hours: normalized, updated_at: new Date().toISOString() })
-      .eq("id", prospect.tenant_id);
-    hoursWritten = !error;
+  if (normalized) tenantUpdates.business_hours = normalized;
+
+  // 3. Booking-forward backfill. Only set if not already configured — the
+  //    spa may have customized this after activation and we don't want to
+  //    overwrite an intentional choice.
+  const forwardPhone = toE164(prospect.phone as string | null | undefined);
+  const existingPhones = (currentTenant?.booking_forward_phones as string[] | null) ?? [];
+  let forwardConfigured = false;
+  if (forwardPhone && existingPhones.length === 0) {
+    tenantUpdates.booking_forward_enabled = true;
+    tenantUpdates.booking_forward_phones = [forwardPhone];
+    forwardConfigured = true;
   }
 
-  // 2. Seed staff. Skip names that already exist for this tenant so re-runs
-  //    don't duplicate.
-  const { data: existingStaff } = await supabaseAdmin
-    .from("staff")
-    .select("name")
-    .eq("tenant_id", prospect.tenant_id);
-  const have = new Set((existingStaff ?? []).map((r) => String(r.name).toLowerCase()));
+  let tenantUpdateOk = false;
+  if (Object.keys(tenantUpdates).length > 0) {
+    tenantUpdates.updated_at = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("tenants")
+      .update(tenantUpdates)
+      .eq("id", prospect.tenant_id);
+    tenantUpdateOk = !error;
+  }
 
-  let staffInserted = 0;
-  let staffSkipped = 0;
-  if (Array.isArray(prospect.providers)) {
-    for (const raw of prospect.providers as BackfillProvider[]) {
-      const name = raw?.name?.trim();
-      if (!name || have.has(name.toLowerCase())) { staffSkipped += 1; continue; }
-      const row: Record<string, unknown> = {
+  // 2. Seed staff via shared helper (idempotent by name).
+  const staff = await seedStaffFromProviders(prospect.tenant_id, prospect.providers);
+
+  // 4. Demo-mode KB chunk. Insert only if a chunk with that title doesn't
+  //    already exist on the tenant — keeps re-runs from piling up duplicates.
+  let kbInserted = false;
+  const { data: existingKb } = await supabaseAdmin
+    .from("knowledge_base_documents")
+    .select("id")
+    .eq("tenant_id", prospect.tenant_id)
+    .eq("title", DEMO_KB_TITLE)
+    .limit(1);
+  if ((existingKb ?? []).length === 0 && process.env.OPENAI_API_KEY) {
+    try {
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const embRes = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: DEMO_KB_CONTENT,
+      });
+      const { error } = await supabaseAdmin.from("knowledge_base_documents").insert({
         tenant_id: prospect.tenant_id,
-        name,
-        title: raw.title?.trim() || null,
-        specialties: Array.isArray(raw.specialties) ? raw.specialties.filter(Boolean) : [],
-        bio: raw.bio?.trim() || null,
-        active: true,
-      };
-      const { error } = await supabaseAdmin.from("staff").insert(row);
-      if (error) {
-        const { error: e2 } = await supabaseAdmin.from("staff").insert({
-          tenant_id: prospect.tenant_id, name, title: row.title,
-        });
-        if (e2) { staffSkipped += 1; continue; }
-      }
-      staffInserted += 1;
-      have.add(name.toLowerCase());
+        title: DEMO_KB_TITLE,
+        content: DEMO_KB_CONTENT,
+        category: "general",
+        embedding: embRes.data[0].embedding,
+      });
+      kbInserted = !error;
+    } catch (err) {
+      console.error("[diagnose-number backfill] KB embed failed:", err);
     }
   }
 
   return NextResponse.json({
     ok: true,
-    hours: { written: hoursWritten, normalized },
-    staff: { inserted: staffInserted, skipped: staffSkipped },
+    hours: { written: !!normalized && tenantUpdateOk, normalized },
+    staff,
+    booking_forward: {
+      configured: forwardConfigured,
+      phone: forwardPhone,
+      already_set: existingPhones.length > 0,
+    },
+    demo_kb: { inserted: kbInserted, already_present: (existingKb ?? []).length > 0 },
   });
 }
