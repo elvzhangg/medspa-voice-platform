@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "./supabase";
 import { logProspectEvent } from "./prospect-events";
+import { normalizeBusinessHours } from "./normalize-hours";
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY!;
 const WEBHOOK_URL =
@@ -288,7 +289,10 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
     voice_id: "EXAVITQu4vr4xnSDxMaL",
     greeting_message: greeting,
     status: "prospect",
-    business_hours: prospect.business_hours ?? null,
+    // Normalize even though the research agent's tightened schema should
+    // already produce canonical {open, close} shape — covers any legacy
+    // outreach_prospects rows researched before the schema change.
+    business_hours: normalizeBusinessHours(prospect.business_hours) ?? null,
     directions_parking_info: prospect.directions_parking_info ?? null,
     system_prompt_override: prospect.system_prompt_override ?? null,
     booking_config: prospect.booking_config ?? null,
