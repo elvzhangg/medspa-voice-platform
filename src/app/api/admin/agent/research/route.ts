@@ -184,8 +184,23 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         },
         business_hours: {
           type: "object",
-          description: "Operating hours keyed by day name (monday, tuesday, ...). Values can be { open, close } or a display string like '9am–6pm' or 'Closed'.",
-          additionalProperties: true,
+          description:
+            "Operating hours, one entry per day. Each day MUST be either { open: 'HH:MM', close: 'HH:MM' } in 24-hour format, or null when closed. Convert any display strings on the website (e.g. '9 AM - 6 PM' → {open:'09:00', close:'18:00'}, '10am–7pm' → {open:'10:00', close:'19:00'}, 'Closed' → null). Omit a day entirely only if the website doesn't mention it.",
+          properties: Object.fromEntries(
+            ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map((d) => [
+              d,
+              {
+                type: ["object", "null"],
+                properties: {
+                  open:  { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+                  close: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+                },
+                required: ["open", "close"],
+                additionalProperties: false,
+              },
+            ])
+          ),
+          additionalProperties: false,
         },
         directions_parking_info: {
           type: "string",
@@ -422,7 +437,7 @@ If still_operating is false OR address can't be confirmed by at least one extern
 
 - procedures[]: list each distinct service as its own entry with source_url. Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
 - providers[]: each staff member on the Team page, with source_url to that page.
-- business_hours: keyed by day (monday..sunday). Use display strings like "9am–6pm" or "Closed" — don't invent values.
+- business_hours: keyed by day name (monday..sunday). Each day must be { open: "HH:MM", close: "HH:MM" } in 24-hour format, OR null for closed days. Convert what's shown on the website: "9 AM - 6 PM" becomes { open: "09:00", close: "18:00" }; "10am–7pm" becomes { open: "10:00", close: "19:00" }; "Closed" becomes null. Omit a day entirely only if the website doesn't mention it.
 - owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
 - directions_parking_info: lifted from Contact / Location / Visit pages.
 - booking_config: cancellation, deposit, late-arrival, payment methods, financing — usually on a dedicated Policies or FAQ page.
