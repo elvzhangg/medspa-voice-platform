@@ -21,15 +21,38 @@ function parseHHMM(hhmm: string): { h: number; m: number } | null {
   return { h: parseInt(m[1], 10), m: parseInt(m[2], 10) };
 }
 
+// Safe fallback so a demo tenant whose business_hours were never set (or
+// failed to normalize at activation time) still gets plausible-sounding
+// slots. Without this, every call to the demo number ends in
+// "no availability" — which makes the AI sound broken instead of selling.
+const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
+  monday:    { open: "09:00", close: "18:00" },
+  tuesday:   { open: "09:00", close: "18:00" },
+  wednesday: { open: "09:00", close: "18:00" },
+  thursday:  { open: "09:00", close: "18:00" },
+  friday:    { open: "09:00", close: "18:00" },
+  saturday:  { open: "10:00", close: "17:00" },
+  sunday:    null,
+};
+
+function hasUsableHours(
+  tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined
+): boolean {
+  if (!tenantHours) return false;
+  return Object.values(tenantHours).some(
+    (d) => d && typeof d.open === "string" && typeof d.close === "string"
+  );
+}
+
 function generateDemoSlots(
   tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined,
   date: string
 ): { label: string; startTime: string }[] {
-  if (!tenantHours) return [];
+  const hours = hasUsableHours(tenantHours) ? tenantHours! : DEFAULT_DEMO_HOURS;
   const parsed = parseISO(date);
   if (Number.isNaN(parsed.getTime())) return [];
   const dayKey = DAY_KEYS[parsed.getDay()];
-  const day = tenantHours[dayKey];
+  const day = hours[dayKey];
   if (!day?.open || !day?.close) return [];
   const open = parseHHMM(day.open);
   const close = parseHHMM(day.close);
