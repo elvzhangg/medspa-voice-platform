@@ -39,13 +39,26 @@ export const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
   sunday:    null,
 };
 
+// "Usable" means complete enough to trust as real configured data rather
+// than partial research scraping. A prospect tenant whose business_hours
+// shows only one day set (e.g. { sunday: { open, close } } and nothing
+// else) used to slip through as "usable" — the prompt then rendered
+// Mon-Sat as CLOSED and the AI offered Sunday as the next available day,
+// which was wildly off for a clinic that's actually closed Sundays.
+// Require at least 5 days configured (with open/close pair OR explicit
+// null for closed) before we trust it; anything less falls back to the
+// generic demo defaults.
 export function hasUsableHours(
   tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined
 ): boolean {
   if (!tenantHours) return false;
-  return Object.values(tenantHours).some(
-    (d) => d && typeof d.open === "string" && typeof d.close === "string"
-  );
+  const days = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+  const configured = days.filter((d) => {
+    const v = tenantHours[d];
+    if (v === null) return true; // explicitly closed
+    return !!(v && typeof v.open === "string" && typeof v.close === "string");
+  });
+  return configured.length >= 5;
 }
 
 function generateDemoSlots(
