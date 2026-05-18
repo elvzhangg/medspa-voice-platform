@@ -32,6 +32,17 @@ function areaCodeFrom(phone?: string | null): string | null {
   return stripped.length >= 3 ? stripped.slice(0, 3) : null;
 }
 
+// Twilio requires E.164 (+15551234567). Accept any common US display form
+// and emit the canonical form; return null if we can't confidently produce
+// a 10-digit US number.
+function toE164(phone?: string | null): string | null {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
+
 function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string; content: string; category: "services" | "pricing" | "policies" | "faq" | "general" }> {
   const chunks: Array<{ title: string; content: string; category: "services" | "pricing" | "policies" | "faq" | "general" }> = [];
 
@@ -147,6 +158,24 @@ function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string
   if (p.pricing_notes && !chunks.some((c) => c.category === "pricing")) {
     chunks.push({ title: "Pricing notes", content: String(p.pricing_notes), category: "pricing" });
   }
+
+  // Demo-mode awareness. Retrieved when callers ask edge questions like
+  // "are you really the spa?", "what's your refund policy?", "do you
+  // accept my insurance?" — Vivienne gracefully acknowledges the limit
+  // of what's been researched without making things up or breaking the
+  // illusion unprompted. The chunk is intentionally general-purpose so
+  // it surfaces on any "policy I don't have on hand" type question.
+  chunks.push({
+    title: "About this preview experience",
+    content: [
+      "This phone line is a preview experience set up while the spa owner evaluates VauxVoice as their AI Clientele Specialist.",
+      "All information you have access to — services, providers, hours, FAQs — was researched from the spa's own website and public sources.",
+      "If a caller asks about something not covered in your knowledge base (a specific refund policy, an insurance question, a custom package, a niche treatment), do NOT invent details. Say warmly that you want to make sure you give them accurate information, and offer to have someone from the team follow up.",
+      "If a caller directly and explicitly asks whether you're a real person, an AI, or a demo: answer honestly. You're an AI Clientele Specialist. Don't volunteer this otherwise — most callers don't care, and leading with it breaks rapport.",
+      "Never claim to be human. Never pretend you can't check the calendar when you can. Never promise things you can't actually do (driving directions live, complex medical advice, prescriptions).",
+    ].join("\n\n"),
+    category: "general",
+  });
 
   return chunks;
 }
@@ -279,6 +308,11 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   // via the system prompt — but doesn't lead with that.
   const greeting = `Welcome to ${prospect.business_name}! We're delighted to hear from you. Anything I can help you with today?`;
 
+  // Normalize the prospect's phone to E.164 so Twilio accepts it as a
+  // booking_forward destination. The research agent stores phone as the
+  // raw "(415) 555-1212" / "415-555-1212" form; Twilio needs +14155551212.
+  const forwardPhone = toE164(prospect.phone as string | null | undefined);
+
   // Column-tolerant insert: strips any column the tenants table doesn't have
   // (e.g. if older migrations haven't been run yet). Required core columns
   // (name, slug, phone_number, vapi_phone_number_id) must exist or we fail loud.
@@ -297,6 +331,12 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
     directions_parking_info: prospect.directions_parking_info ?? null,
     system_prompt_override: prospect.system_prompt_override ?? null,
     booking_config: prospect.booking_config ?? null,
+    // Demo magic moment: when the prospect calls their own demo number and
+    // "books" an appointment, fire a real SMS to their phone so they see the
+    // end-to-end flow themselves. Uses platform Twilio creds (TWILIO_*) when
+    // no tenant-owned Twilio is connected — which is always true for prospects.
+    booking_forward_enabled: Boolean(forwardPhone),
+    booking_forward_phones: forwardPhone ? [forwardPhone] : null,
   };
 
   const droppedTenantCols: string[] = [];
