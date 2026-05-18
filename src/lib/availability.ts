@@ -25,7 +25,11 @@ function parseHHMM(hhmm: string): { h: number; m: number } | null {
 // failed to normalize at activation time) still gets plausible-sounding
 // slots. Without this, every call to the demo number ends in
 // "no availability" — which makes the AI sound broken instead of selling.
-const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
+// Exported so the prompt builder (buildBusinessHoursBlock) can use the
+// same defaults — otherwise the AI's prompt and the slot tool drift
+// (e.g. prompt says nothing about Sunday, tool says Sunday closed, AI
+// hallucinates Sunday as next available).
+export const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
   monday:    { open: "09:00", close: "18:00" },
   tuesday:   { open: "09:00", close: "18:00" },
   wednesday: { open: "09:00", close: "18:00" },
@@ -35,7 +39,7 @@ const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
   sunday:    null,
 };
 
-function hasUsableHours(
+export function hasUsableHours(
   tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined
 ): boolean {
   if (!tenantHours) return false;

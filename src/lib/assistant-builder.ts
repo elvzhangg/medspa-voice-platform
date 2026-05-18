@@ -3,6 +3,7 @@ import { searchKnowledgeBase, formatKBContext } from "./knowledge-base";
 import { lookupCaller, buildCallerContext, ClientProfile } from "./client-intelligence";
 import { isProfileStale, syncClientFromPlatformBackground } from "./client-sync";
 import { supabaseAdmin } from "./supabase";
+import { DEFAULT_DEMO_HOURS, hasUsableHours } from "./availability";
 
 const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_LABELS: Record<string, string> = {
@@ -147,8 +148,23 @@ When callers ask how long an appointment takes, answer using these durations dir
  * being open.
  */
 function buildBusinessHoursBlock(tenant: Tenant): string {
-  const hours = tenant.business_hours;
-  if (!hours || typeof hours !== "object") return "";
+  // For prospect (demo) tenants whose business_hours never got set or
+  // failed to normalize, use the same default hours that getAvailableSlots
+  // falls back to. Otherwise the prompt is silent on hours while the slot
+  // tool quietly returns Mon-Sat times — the AI then hallucinates day
+  // availability (e.g. offering "Sunday" as next available when Sun is
+  // closed in the slot tool's defaults).
+  const rawHours = tenant.business_hours as
+    | Record<string, { open?: string; close?: string } | null | undefined>
+    | null
+    | undefined;
+  const isProspect = (tenant as Tenant & { status?: string }).status === "prospect";
+  const hours = hasUsableHours(rawHours)
+    ? rawHours!
+    : isProspect
+    ? DEFAULT_DEMO_HOURS
+    : null;
+  if (!hours) return "";
 
   const lines: string[] = [];
   for (const day of DAY_ORDER) {
