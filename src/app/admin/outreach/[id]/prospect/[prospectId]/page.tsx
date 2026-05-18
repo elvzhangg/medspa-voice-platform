@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import OpsChat from "./OpsChat";
+import EmailChat from "./EmailChat";
 
 interface Prospect {
   id: string;
@@ -163,6 +164,7 @@ export default function ProspectDetailPage({
   const [sendingNow, setSendingNow] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [opsChatOpen, setOpsChatOpen] = useState(false);
+  const [emailChatOpen, setEmailChatOpen] = useState(false);
 
   async function load() {
     try {
@@ -755,7 +757,7 @@ export default function ProspectDetailPage({
                   <Field label="To">
                     {prospect.owner_email ?? prospect.email ?? <span className="text-amber-600">No address</span>}
                   </Field>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center flex-wrap">
                     <button
                       onClick={toggleApproval}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -771,6 +773,13 @@ export default function ProspectDetailPage({
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100"
                     >
                       Preview
+                    </button>
+                    <button
+                      onClick={() => setEmailChatOpen(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                      title="Chat with the email editor to revise"
+                    >
+                      Chat to revise
                     </button>
                   </div>
                 </div>
@@ -790,13 +799,21 @@ export default function ProspectDetailPage({
                   Generate a personalized outreach email using this prospect&apos;s structured profile
                   {prospect.demo_tenant_id ? " and demo number." : ". Provision the demo first for a stronger CTA."}
                 </p>
-                <button
-                  onClick={draftEmail}
-                  disabled={draftingEmail}
-                  className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40"
-                >
-                  {draftingEmail ? "Drafting…" : "Draft Email"}
-                </button>
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={draftEmail}
+                    disabled={draftingEmail}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40"
+                  >
+                    {draftingEmail ? "Drafting…" : "Draft Email"}
+                  </button>
+                  <button
+                    onClick={() => setEmailChatOpen(true)}
+                    className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-lg text-xs font-semibold hover:bg-indigo-50"
+                  >
+                    Chat to write
+                  </button>
+                </div>
               </div>
             )}
           </Panel>
@@ -832,6 +849,15 @@ export default function ProspectDetailPage({
         prospectId={prospect.id}
         open={opsChatOpen}
         onClose={() => setOpsChatOpen(false)}
+        onDataChanged={load}
+      />
+
+      <EmailChat
+        prospectId={prospect.id}
+        open={emailChatOpen}
+        currentSubject={prospect.email_draft_subject}
+        currentBody={prospect.email_draft_body}
+        onClose={() => setEmailChatOpen(false)}
         onDataChanged={load}
       />
 

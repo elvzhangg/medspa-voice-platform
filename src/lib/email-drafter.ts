@@ -15,7 +15,7 @@ export interface DraftResult {
   raw?: string;
 }
 
-function buildProspectBrief(p: Record<string, unknown>): string {
+export function buildProspectBrief(p: Record<string, unknown>): string {
   const parts: string[] = [];
   parts.push(`Business: ${p.business_name}`);
   if (p.city || p.state) parts.push(`Location: ${[p.city, p.state].filter(Boolean).join(", ")}`);
@@ -48,6 +48,33 @@ function buildProspectBrief(p: Record<string, unknown>): string {
   return parts.join("\n");
 }
 
+export function buildEmailSystemPrompt(
+  prospect: Record<string, unknown>,
+  opts: { free_trial_hint?: boolean } = {}
+): string {
+  const platform =
+    prospect.booking_platform && prospect.booking_platform !== "Unknown"
+      ? String(prospect.booking_platform)
+      : "your existing booking system";
+  return `You are the lead growth writer at VauxVoice — an AI voice receptionist platform built specifically for med spas. Your job: draft a single outbound email that feels human, specific, and respectful of the reader's time.
+
+You are writing ONE email to ONE specific prospect. Use the brief to personalize it. Your email will be read by a med spa owner or manager.
+
+Constraints:
+- Plain text only (no HTML, no markdown)
+- Under 180 words
+- No cheesy subject lines, no "Quick question" clichés
+- Reference at least one concrete detail from the brief (a specific procedure, provider, booking platform, or location) to prove this isn't a mass blast
+- The main call-to-action is: **"Call the demo number to hear your own AI Clientele Specialist speak."** Make that number stand out on its own line.
+- Secondary CTA: reply to this email to book a 15-min walkthrough
+${opts.free_trial_hint ? `- You may mention that we're offering a free trial window for early customers — keep it light, don't anchor on pricing` : `- Do NOT mention pricing, plans, or discounts. Keep pricing conversations for a live call.`}
+- Sign off as "The VauxVoice team" (no fake names)
+
+VauxVoice in one line: An AI Clientele Specialist that answers every call 24/7, books into ${platform}, and never misses a lead — trained specifically on your spa's services, providers, and hours.
+
+Return two fields: subject (under 55 chars, specific, lowercase-style OK) and body (plain text).`;
+}
+
 export async function draftEmailForProspect(
   prospect_id: string,
   opts: { free_trial_hint?: boolean } = {}
@@ -65,24 +92,7 @@ export async function draftEmailForProspect(
   const recipientLine = recipientName ? `Hi ${recipientName},` : "Hi there,";
 
   const brief = buildProspectBrief(prospect);
-
-  const systemPrompt = `You are the lead growth writer at VauxVoice — an AI voice receptionist platform built specifically for med spas. Your job: draft a single outbound email that feels human, specific, and respectful of the reader's time.
-
-You are writing ONE email to ONE specific prospect. Use the brief to personalize it. Your email will be read by a med spa owner or manager.
-
-Constraints:
-- Plain text only (no HTML, no markdown)
-- Under 180 words
-- No cheesy subject lines, no "Quick question" clichés
-- Reference at least one concrete detail from the brief (a specific procedure, provider, booking platform, or location) to prove this isn't a mass blast
-- The main call-to-action is: **"Call the demo number to hear your own AI Clientele Specialist speak."** Make that number stand out on its own line.
-- Secondary CTA: reply to this email to book a 15-min walkthrough
-${opts.free_trial_hint ? `- You may mention that we're offering a free trial window for early customers — keep it light, don't anchor on pricing` : `- Do NOT mention pricing, plans, or discounts. Keep pricing conversations for a live call.`}
-- Sign off as "The VauxVoice team" (no fake names)
-
-VauxVoice in one line: An AI Clientele Specialist that answers every call 24/7, books into ${prospect.booking_platform && prospect.booking_platform !== "Unknown" ? prospect.booking_platform : "your existing booking system"}, and never misses a lead — trained specifically on your spa's services, providers, and hours.
-
-Return two fields: subject (under 55 chars, specific, lowercase-style OK) and body (plain text).`;
+  const systemPrompt = buildEmailSystemPrompt(prospect, opts);
 
   const userPrompt = `Prospect brief:
 ${brief}
