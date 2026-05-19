@@ -8,14 +8,14 @@ export const maxDuration = 60;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
-type Category = "providers" | "hours" | "procedures" | "faqs" | "policies" | "auto";
+type Category = "providers" | "hours" | "procedures" | "specials" | "faqs" | "policies" | "auto";
 
 interface Body {
   url?: string;
   category?: Category;
 }
 
-const VALID_CATEGORIES: Category[] = ["providers", "hours", "procedures", "faqs", "policies", "auto"];
+const VALID_CATEGORIES: Category[] = ["providers", "hours", "procedures", "specials", "faqs", "policies", "auto"];
 
 // Quick HTML-to-text strip — keeps text content, drops scripts/styles/markup.
 // Not a real DOM parser; good enough for feeding text to Claude.
@@ -84,6 +84,21 @@ function buildExtractTool(category: Category): Anthropic.Tool {
       required: ["name"],
     },
   };
+  const specialsShape = {
+    type: "array" as const,
+    items: {
+      type: "object",
+      properties: {
+        name:          { type: "string" },
+        description:   { type: "string" },
+        discount:      { type: "string" },
+        valid_through: { type: "string" },
+        eligibility:   { type: "string" },
+        source_url:    { type: "string" },
+      },
+      required: ["name"],
+    },
+  };
   const faqsShape = {
     type: "array" as const,
     items: {
@@ -99,10 +114,11 @@ function buildExtractTool(category: Category): Anthropic.Tool {
 
   // For "auto" the model picks any fields the page contains.
   const fields = category === "auto"
-    ? { providers: providersShape, business_hours: hoursShape, procedures: proceduresShape, faqs: faqsShape, directions_parking_info: { type: "string" as const }, pricing_notes: { type: "string" as const } }
+    ? { providers: providersShape, business_hours: hoursShape, procedures: proceduresShape, specials: specialsShape, faqs: faqsShape, directions_parking_info: { type: "string" as const }, pricing_notes: { type: "string" as const } }
     : category === "providers" ? { providers: providersShape }
     : category === "hours"     ? { business_hours: hoursShape }
     : category === "procedures" ? { procedures: proceduresShape }
+    : category === "specials"  ? { specials: specialsShape }
     : category === "faqs"      ? { faqs: faqsShape }
     : /* policies */             { directions_parking_info: { type: "string" as const }, pricing_notes: { type: "string" as const } };
 
@@ -158,6 +174,7 @@ async function mergeIntoProspect(
 
   mergeArray("providers",  (x) => String(x.name ?? ""));
   mergeArray("procedures", (x) => String(x.name ?? ""));
+  mergeArray("specials",   (x) => String(x.name ?? ""));
   mergeArray("faqs",       (x) => String(x.question ?? ""));
 
   // Hours: merge per day — incoming day overrides only if the existing one

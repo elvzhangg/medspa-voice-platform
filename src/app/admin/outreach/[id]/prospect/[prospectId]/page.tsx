@@ -38,9 +38,10 @@ interface Prospect {
   owner_title: string | null;
   locations: Array<{ label?: string; address?: string; phone?: string; hours?: string }> | null;
   procedures: Array<{ name: string; description?: string; duration_min?: number; price?: string | number; notes?: string; source_url?: string }> | null;
+  specials: Array<{ name: string; description?: string; discount?: string; valid_through?: string; eligibility?: string; source_url?: string }> | null;
   pricing: Record<string, Array<{ item: string; price: string | number; notes?: string }>> | Array<{ item: string; price: string | number }> | null;
   providers: Array<{ name: string; title?: string; specialties?: string[]; bio?: string; source_url?: string }> | null;
-  business_hours: Record<string, { open: string; close: string } | string> | null;
+  business_hours: Record<string, { open: string; close: string } | string | null> | null;
   directions_parking_info: string | null;
   booking_config: {
     cancellation_policy?: string;
@@ -303,8 +304,9 @@ export default function ProspectDetailPage({
   if (loading) return <p className="text-sm text-gray-400">Loading prospect…</p>;
   if (error || !prospect) return <p className="text-sm text-red-500">{error ?? "Prospect not found."}</p>;
 
-  const procedures = prospect.procedures ?? [];
-  const providers = prospect.providers ?? [];
+  const procedures = (prospect.procedures ?? []).filter((p) => p != null && typeof p === "object");
+  const specials = (prospect.specials ?? []).filter((s) => s != null && typeof s === "object");
+  const providers = (prospect.providers ?? []).filter((p) => p != null && typeof p === "object");
   const locations = prospect.locations ?? [];
   const hasStructuredPricing = Array.isArray(prospect.pricing)
     ? prospect.pricing.length > 0
@@ -542,6 +544,36 @@ export default function ProspectDetailPage({
               </Subsection>
             )}
 
+            {/* Specials */}
+            {specials.length > 0 && (
+              <Subsection title={`Specials (${specials.length})`}>
+                <div className="space-y-2">
+                  {specials.map((s, i) => (
+                    <div key={i} className="rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 flex items-center gap-1.5">
+                            {s.name}
+                            {s.source_url && <SourceLink url={s.source_url} />}
+                          </p>
+                          {s.description && <p className="text-xs text-gray-600 mt-0.5">{s.description}</p>}
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-gray-500">
+                            {s.eligibility && <span>👤 {s.eligibility}</span>}
+                            {s.valid_through && <span>⏱ {s.valid_through}</span>}
+                          </div>
+                        </div>
+                        {s.discount && (
+                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold uppercase tracking-wide">
+                            {s.discount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Subsection>
+            )}
+
             {/* Providers */}
             {providers.length > 0 && (
               <Subsection title={`Providers (${providers.length})`}>
@@ -570,7 +602,11 @@ export default function ProspectDetailPage({
                     <div key={day} className="flex justify-between">
                       <span className="capitalize text-gray-500">{day}</span>
                       <span className="text-gray-800 font-mono">
-                        {typeof val === "string" ? val : `${val.open}–${val.close}`}
+                        {val == null
+                          ? "Closed"
+                          : typeof val === "string"
+                          ? val
+                          : `${val.open ?? ""}–${val.close ?? ""}`}
                       </span>
                     </div>
                   ))}

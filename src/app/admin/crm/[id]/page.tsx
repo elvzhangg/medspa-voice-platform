@@ -13,6 +13,14 @@ interface Procedure {
   notes?: string;
   source_url?: string;
 }
+interface Special {
+  name: string;
+  description?: string;
+  discount?: string;
+  valid_through?: string;
+  eligibility?: string;
+  source_url?: string;
+}
 interface Provider {
   name: string;
   title?: string;
@@ -60,6 +68,7 @@ interface Prospect {
   owner_title: string | null;
   locations: LocationEntry[] | null;
   procedures: Procedure[] | null;
+  specials: Special[] | null;
   providers: Provider[] | null;
   business_hours: Record<string, { open?: string; close?: string } | string | null> | null;
   faqs: FaqEntry[] | null;
@@ -257,6 +266,7 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
   // smart-import. Without this any null array element crashes the render
   // when we access .name / .specialties on it.
   const procedures = (prospect.procedures ?? []).filter((p): p is Procedure => p != null && typeof p === "object");
+  const specials = (prospect.specials ?? []).filter((s): s is Special => s != null && typeof s === "object");
   const providers = (prospect.providers ?? []).filter((p): p is Provider => p != null && typeof p === "object");
   const locations = (prospect.locations ?? []).filter((l): l is LocationEntry => l != null && typeof l === "object");
   const faqs = (prospect.faqs ?? []).filter((f): f is FaqEntry => f != null && typeof f === "object");
@@ -536,6 +546,38 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
           </Subsection>
         )}
 
+        {specials.length > 0 && (
+          <Subsection
+            title={`Specials (${specials.length})`}
+            action={<ImportUrlButton prospectId={prospect.id} category="specials" onSuccess={load} />}
+          >
+            <div className="space-y-2">
+              {specials.map((s, i) => (
+                <div key={i} className="rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 flex items-center gap-1.5">
+                        {s.name}
+                        {s.source_url && <SourceLink url={s.source_url} />}
+                      </p>
+                      {s.description && <p className="text-xs text-gray-600 mt-0.5">{s.description}</p>}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-gray-500">
+                        {s.eligibility && <span>👤 {s.eligibility}</span>}
+                        {s.valid_through && <span>⏱ {s.valid_through}</span>}
+                      </div>
+                    </div>
+                    {s.discount && (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold uppercase tracking-wide">
+                        {s.discount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Subsection>
+        )}
+
         {providers.length > 0 && (
           <Subsection
             title={`Providers (${providers.length})`}
@@ -687,13 +729,14 @@ function Subsection({
   );
 }
 
-type ImportCategory = "providers" | "hours" | "procedures" | "faqs" | "policies" | "auto";
+type ImportCategory = "providers" | "hours" | "procedures" | "specials" | "faqs" | "policies" | "auto";
 
 const CATEGORY_LABELS: Record<ImportCategory, string> = {
   auto:       "Anything on the page",
   providers:  "Providers / team",
   hours:      "Business hours",
   procedures: "Services / procedures",
+  specials:   "Specials / promotions",
   faqs:       "FAQs",
   policies:   "Policies / directions",
 };

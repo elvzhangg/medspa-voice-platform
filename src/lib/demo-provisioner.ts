@@ -9,6 +9,7 @@ const WEBHOOK_URL =
   "/api/vapi/webhook";
 
 interface Procedure { name: string; description?: string; duration_min?: number; price?: string | number; notes?: string }
+interface Special { name: string; description?: string; discount?: string; valid_through?: string; eligibility?: string }
 interface Provider { name: string; title?: string; specialties?: string[]; bio?: string }
 interface HoursValue { open?: string; close?: string }
 
@@ -138,6 +139,26 @@ function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string
         title: `Procedure — ${proc.name}`,
         content: lines.join("\n"),
         category: proc.price != null ? "pricing" : "services",
+      });
+    }
+  }
+
+  // Current specials/promotions — one chunk per offer so the RAG search
+  // matches when a caller asks about deals, discounts, packages, or
+  // membership perks. Vivienne can quote the discount and eligibility
+  // verbatim from the spa's own marketing.
+  if (Array.isArray(p.specials)) {
+    for (const s of p.specials as Special[]) {
+      if (!s?.name) continue;
+      const lines: string[] = [`Current special: ${s.name}`];
+      if (s.discount) lines.push(`Offer: ${s.discount}`);
+      if (s.description) lines.push(s.description);
+      if (s.eligibility) lines.push(`Who qualifies: ${s.eligibility}`);
+      if (s.valid_through) lines.push(`Valid: ${s.valid_through}`);
+      chunks.push({
+        title: `Special — ${s.name}`,
+        content: lines.join("\n"),
+        category: "pricing",
       });
     }
   }

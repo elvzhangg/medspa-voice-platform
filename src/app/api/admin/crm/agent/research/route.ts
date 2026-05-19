@@ -90,6 +90,22 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
             required: ["name"],
           },
         },
+        specials: {
+          type: "array",
+          description: "Current limited-time offers, promotions, packages, member perks, or first-visit discounts the spa advertises. Pulled from a 'Specials' / 'Promotions' / 'Offers' / 'Memberships' page. Each MUST include source_url. Skip expired offers.",
+          items: {
+            type: "object",
+            properties: {
+              name:          { type: "string" },
+              description:   { type: "string" },
+              discount:      { type: "string", description: "Headline value: '20% off', '$199 (reg $299)', 'BOGO'." },
+              valid_through: { type: "string", description: "Expiration if stated. Free text — 'through May 31', 'while supplies last'." },
+              eligibility:   { type: "string", description: "'new clients only', 'members only', 'first visit', etc." },
+              source_url:    { type: "string" },
+            },
+            required: ["name", "source_url"],
+          },
+        },
         providers: {
           type: "array",
           description: "Staff members. Each MUST include source_url to the team/about page.",

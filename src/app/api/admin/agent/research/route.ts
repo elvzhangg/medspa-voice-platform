@@ -167,6 +167,22 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
             required: ["name"],
           },
         },
+        specials: {
+          type: "array",
+          description: "Limited-time offers, promotions, packages, member perks, or first-visit discounts the spa currently advertises. Pulled from a 'Specials' / 'Promotions' / 'Offers' / 'Memberships' page on their site. Each MUST include a source_url.",
+          items: {
+            type: "object",
+            properties: {
+              name:          { type: "string", description: "Headline of the offer, e.g. '20% off first HydraFacial' or 'May Botox Special'." },
+              description:   { type: "string", description: "Short detail explaining the offer, what's included, what treatments it applies to." },
+              discount:      { type: "string", description: "The headline value: '20% off', '$199 (reg $299)', 'BOGO', 'Buy 3 get 1 free'." },
+              valid_through: { type: "string", description: "Expiration if stated. Free text — 'through May 31', 'while supplies last', 'limited time'." },
+              eligibility:   { type: "string", description: "Restrictions if any: 'new clients only', 'members only', 'first visit'." },
+              source_url:    { type: "string", description: "URL where this special was found. REQUIRED — never invent specials." },
+            },
+            required: ["name", "source_url"],
+          },
+        },
         providers: {
           type: "array",
           description: "Medical/aesthetic providers on staff. Each MUST include a source_url pointing to the team/about page where you found them.",
@@ -436,6 +452,7 @@ If still_operating is false OR address can't be confirmed by at least one extern
 ## Field-by-field guidance
 
 - procedures[]: list each distinct service as its own entry with source_url. Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
+- specials[]: check the spa's "Specials", "Promotions", "Offers", "Deals", or "Memberships" page (if they have one). Capture each current promotion as its own row — name + discount + valid_through + source_url. Skip expired offers. If they don't advertise specials, leave the field empty — never invent.
 - providers[]: each staff member on the Team page, with source_url to that page.
 - business_hours: keyed by day name (monday..sunday). Each day must be { open: "HH:MM", close: "HH:MM" } in 24-hour format, OR null for closed days. Convert what's shown on the website: "9 AM - 6 PM" becomes { open: "09:00", close: "18:00" }; "10am–7pm" becomes { open: "10:00", close: "19:00" }; "Closed" becomes null. Omit a day entirely only if the website doesn't mention it.
 - owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
