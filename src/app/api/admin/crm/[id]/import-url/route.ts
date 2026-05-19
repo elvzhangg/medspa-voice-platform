@@ -290,12 +290,44 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
   }
 
-  const { error: updateErr } = await supabaseAdmin
-    .from(table)
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (updateErr) {
-    return NextResponse.json({ error: `Update failed: ${updateErr.message}` }, { status: 500 });
+  // Column-tolerant update — crm_prospects and outreach_prospects have
+  // slightly different schemas (e.g. crm_prospects has no `sources`). Drop
+  // any column the table doesn't know about and retry, up to a few times.
+  // Same pattern as safeInsertProspect in the research route.
+  const updatePayload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
+  const droppedCols: string[] = [];
+  let updateOk = false;
+  let lastErr = "";
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { error: updateErr } = await supabaseAdmin
+      .from(table)
+      .update(updatePayload)
+      .eq("id", id);
+    if (!updateErr) { updateOk = true; break; }
+    lastErr = updateErr.message;
+
+    // Detect "missing column" errors in either Postgres (42703) or PostgREST
+    // (PGRST204 / "schema cache" wording) and drop the offending column.
+    const code = (updateErr as { code?: string }).code;
+    const regexMatch =
+      updateErr.message.match(/column "?([a-z_][a-z0-9_]*)"?\s+of relation/i) ||
+      updateErr.message.match(/Could not find the ['"]?([a-z_][a-z0-9_]*)['"]?\s+column/i) ||
+      updateErr.message.match(/Could not find the column ['"]?([a-z_][a-z0-9_]*)['"]?/i);
+    let culprit = regexMatch?.[1];
+    if (!culprit && (code === "PGRST204" || code === "42703" || /schema cache/i.test(updateErr.message))) {
+      culprit = Object.keys(updatePayload).find((c) => new RegExp(`\\b${c}\\b`).test(updateErr.message));
+    }
+    if (culprit && updatePayload[culprit] !== undefined) {
+      droppedCols.push(culprit);
+      delete updatePayload[culprit];
+      // Also drop from `updates` so the response reports honestly what landed.
+      if (culprit in updates) delete (updates as Record<string, unknown>)[culprit];
+      continue;
+    }
+    break;
+  }
+  if (!updateOk) {
+    return NextResponse.json({ error: `Update failed: ${lastErr}` }, { status: 500 });
   }
 
   await logProspectEvent({
