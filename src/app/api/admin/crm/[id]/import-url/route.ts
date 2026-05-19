@@ -128,10 +128,20 @@ async function mergeIntoProspect(
   const summary: string[] = [];
 
   // Arrays: dedupe by .name (providers/procedures) or .question (faqs).
+  // Drop null/non-object entries on BOTH sides — the prospect row may
+  // already contain malformed items from earlier research runs, and the
+  // model may occasionally emit null array elements. Render code in the
+  // CRM UI assumes objects, so a single null entry crashes the whole page.
   function mergeArray(field: string, keyFn: (x: Record<string, unknown>) => string) {
-    const incoming = Array.isArray(extracted[field]) ? extracted[field] as Record<string, unknown>[] : null;
-    if (!incoming || incoming.length === 0) return;
-    const existing = Array.isArray(prospect[field]) ? prospect[field] as Record<string, unknown>[] : [];
+    const incomingRaw = Array.isArray(extracted[field]) ? extracted[field] as unknown[] : null;
+    if (!incomingRaw || incomingRaw.length === 0) return;
+    const incoming = incomingRaw.filter(
+      (x): x is Record<string, unknown> => x != null && typeof x === "object"
+    );
+    const existingRaw = Array.isArray(prospect[field]) ? prospect[field] as unknown[] : [];
+    const existing = existingRaw.filter(
+      (x): x is Record<string, unknown> => x != null && typeof x === "object"
+    );
     const have = new Set(existing.map(keyFn).map((s) => s.toLowerCase()));
     const newOnes = incoming
       .map((item) => ({ ...item, source_url: item.source_url || sourceUrl }))

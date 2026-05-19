@@ -61,7 +61,7 @@ interface Prospect {
   locations: LocationEntry[] | null;
   procedures: Procedure[] | null;
   providers: Provider[] | null;
-  business_hours: Record<string, { open?: string; close?: string } | string> | null;
+  business_hours: Record<string, { open?: string; close?: string } | string | null> | null;
   faqs: FaqEntry[] | null;
   services_summary: string | null;
   pricing_notes: string | null;
@@ -253,10 +253,13 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
   if (loading) return <p className="text-sm text-gray-400">Loading…</p>;
   if (error || !prospect) return <p className="text-sm text-red-500">{error ?? "Not found"}</p>;
 
-  const procedures = prospect.procedures ?? [];
-  const providers = prospect.providers ?? [];
-  const locations = prospect.locations ?? [];
-  const faqs = prospect.faqs ?? [];
+  // Filter out null/non-object entries that may sneak in from research /
+  // smart-import. Without this any null array element crashes the render
+  // when we access .name / .specialties on it.
+  const procedures = (prospect.procedures ?? []).filter((p): p is Procedure => p != null && typeof p === "object");
+  const providers = (prospect.providers ?? []).filter((p): p is Provider => p != null && typeof p === "object");
+  const locations = (prospect.locations ?? []).filter((l): l is LocationEntry => l != null && typeof l === "object");
+  const faqs = (prospect.faqs ?? []).filter((f): f is FaqEntry => f != null && typeof f === "object");
   const sources = prospect.research_sources ?? [];
 
   const stageOptions: Stage[] = (["top_of_funnel", "crm", "rejected"] as Stage[]).filter(
@@ -565,7 +568,11 @@ export default function CrmProspectPage({ params }: { params: Promise<{ id: stri
                 <div key={day} className="flex justify-between">
                   <span className="capitalize text-gray-500">{day}</span>
                   <span className="text-gray-800 font-mono">
-                    {typeof val === "string" ? val : `${val.open ?? ""}–${val.close ?? ""}`}
+                    {val == null
+                      ? "Closed"
+                      : typeof val === "string"
+                      ? val
+                      : `${val.open ?? ""}–${val.close ?? ""}`}
                   </span>
                 </div>
               ))}
