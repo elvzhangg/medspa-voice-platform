@@ -364,10 +364,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     payload: { url, category, fields: Object.keys(updates).filter((k) => k !== "sources") },
   }).catch(() => {});
 
+  // Surface any columns we silently dropped — these are fields the model
+  // extracted that the prospect table doesn't have. Operator sees them in
+  // the response so a missing migration doesn't look like a successful
+  // import that wrote nothing.
+  const finalSummary = summary.join(", ");
+  const warnings: string[] = [];
+  if (droppedCols.length > 0) {
+    warnings.push(
+      `Skipped fields (column missing — run pending migration): ${droppedCols.join(", ")}`
+    );
+  }
+
   return NextResponse.json({
     ok: true,
-    imported: true,
-    summary: summary.join(", "),
+    imported: Object.keys(updates).length > 0,
+    summary: finalSummary || "Nothing landed — see warnings",
     fields: Object.keys(updates).filter((k) => k !== "sources"),
+    warnings,
+    dropped_columns: droppedCols,
   });
 }

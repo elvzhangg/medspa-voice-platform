@@ -770,12 +770,17 @@ function SmartImportPanel({
         setMessage(data.error ?? "Import failed");
         return;
       }
-      setStatus("success");
+      const warning = (data.warnings ?? []).join(" · ");
       if (data.imported) {
-        setMessage(`Imported: ${data.summary}`);
+        setStatus(warning ? "error" : "success");
+        setMessage(warning ? `Imported: ${data.summary}. ⚠ ${warning}` : `Imported: ${data.summary}`);
         setUrl("");
         onSuccess();
+      } else if (warning) {
+        setStatus("error");
+        setMessage(`Nothing landed. ⚠ ${warning}`);
       } else {
+        setStatus("success");
         setMessage(data.message ?? "Nothing new found on that page");
       }
     } catch (err) {
@@ -865,9 +870,10 @@ function ImportUrlButton({
         setMessage(data.error ?? "Import failed");
         return;
       }
-      setStatus("success");
-      setMessage(data.imported ? `Imported: ${data.summary}` : data.message ?? "Nothing new found");
-      if (data.imported) {
+      const warning = (data.warnings ?? []).join(" · ");
+      if (data.imported && !warning) {
+        setStatus("success");
+        setMessage(`Imported: ${data.summary}`);
         onSuccess();
         setTimeout(() => {
           setOpen(false);
@@ -875,6 +881,13 @@ function ImportUrlButton({
           setStatus("idle");
           setMessage("");
         }, 1200);
+      } else if (warning) {
+        setStatus("error");
+        setMessage(`⚠ ${warning}`);
+        if (data.imported) onSuccess();
+      } else {
+        setStatus("success");
+        setMessage(data.message ?? "Nothing new found");
       }
     } catch (err) {
       setStatus("error");
