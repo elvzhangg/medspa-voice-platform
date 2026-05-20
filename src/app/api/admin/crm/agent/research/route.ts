@@ -124,12 +124,12 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         business_hours: {
           type: "object",
           description:
-            "Operating hours, one entry per day. Each day MUST be either { open: 'HH:MM', close: 'HH:MM' } in 24-hour format, or null when closed. Convert any display strings on the website (e.g. '9 AM - 6 PM' → {open:'09:00', close:'18:00'}, '10am–7pm' → {open:'10:00', close:'19:00'}, 'Closed' → null). Omit a day entirely only if the website doesn't mention it.",
+            "Operating hours, one entry per day. Each day is one of: (a) { open: 'HH:MM', close: 'HH:MM' } in 24-hour format for regular open hours, (b) null when fully closed, OR (c) a short free-text string for non-standard arrangements like 'By appointment only', 'Half day until 1pm', 'Walk-ins welcome 10-12'. Convert '9 AM - 6 PM' → {open:'09:00', close:'18:00'}, 'Closed' → null, 'By appointment only' → the literal string 'By appointment only'. Omit a day entirely only if the website doesn't mention it.",
           properties: Object.fromEntries(
             ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map((d) => [
               d,
               {
-                type: ["object", "null"],
+                type: ["object", "null", "string"],
                 properties: {
                   open:  { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
                   close: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },

@@ -201,12 +201,12 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         business_hours: {
           type: "object",
           description:
-            "Operating hours, one entry per day. Each day MUST be either { open: 'HH:MM', close: 'HH:MM' } in 24-hour format, or null when closed. Convert any display strings on the website (e.g. '9 AM - 6 PM' → {open:'09:00', close:'18:00'}, '10am–7pm' → {open:'10:00', close:'19:00'}, 'Closed' → null). Omit a day entirely only if the website doesn't mention it.",
+            "Operating hours, one entry per day. Each day is one of: (a) { open: 'HH:MM', close: 'HH:MM' } in 24-hour format for regular open hours, (b) null when fully closed, OR (c) a short free-text string for non-standard arrangements like 'By appointment only', 'Half day until 1pm', 'Walk-ins welcome 10-12'. Convert '9 AM - 6 PM' → {open:'09:00', close:'18:00'}, 'Closed' → null, 'By appointment only' → the literal string 'By appointment only'. Omit a day entirely only if the website doesn't mention it.",
           properties: Object.fromEntries(
             ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].map((d) => [
               d,
               {
-                type: ["object", "null"],
+                type: ["object", "null", "string"],
                 properties: {
                   open:  { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
                   close: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
@@ -454,7 +454,7 @@ If still_operating is false OR address can't be confirmed by at least one extern
 - procedures[]: list each distinct service as its own entry with source_url. Botox, fillers, laser hair removal, IPL, microneedling, hydrafacials, body contouring, etc. each get their own row.
 - specials[]: check the spa's "Specials", "Promotions", "Offers", "Deals", or "Memberships" page (if they have one). Capture each current promotion as its own row — name + discount + valid_through + source_url. Skip expired offers. If they don't advertise specials, leave the field empty — never invent.
 - providers[]: each staff member on the Team page, with source_url to that page.
-- business_hours: keyed by day name (monday..sunday). Each day must be { open: "HH:MM", close: "HH:MM" } in 24-hour format, OR null for closed days. Convert what's shown on the website: "9 AM - 6 PM" becomes { open: "09:00", close: "18:00" }; "10am–7pm" becomes { open: "10:00", close: "19:00" }; "Closed" becomes null. Omit a day entirely only if the website doesn't mention it.
+- business_hours: keyed by day name (monday..sunday). Each day is one of: { open: "HH:MM", close: "HH:MM" } in 24-hour, OR null for fully closed, OR a short string for non-standard cases ("By appointment only", "Half day until 1pm", "Walk-ins 10-12"). Convert: "9 AM - 6 PM" → { open: "09:00", close: "18:00" }; "Closed" → null; "By appointment only" → the literal string. The string form is for days that are bookable but don't have regular walk-in hours — important so the AI doesn't tell callers we're closed when we actually accept appointments. Omit a day entirely only if the website doesn't mention it.
 - owner_name / owner_email: look for "Medical Director", "Founder", "Owner" on About pages. Distinguish from generic info@ emails — the direct owner email, if stated, is far more valuable for outreach.
 - directions_parking_info: lifted from Contact / Location / Visit pages.
 - booking_config: cancellation, deposit, late-arrival, payment methods, financing — usually on a dedicated Policies or FAQ page.

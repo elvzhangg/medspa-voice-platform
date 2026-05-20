@@ -155,7 +155,7 @@ function buildBusinessHoursBlock(tenant: Tenant): string {
   // availability (e.g. offering "Sunday" as next available when Sun is
   // closed in the slot tool's defaults).
   const rawHours = tenant.business_hours as
-    | Record<string, { open?: string; close?: string } | null | undefined>
+    | Record<string, { open?: string; close?: string } | string | null | undefined>
     | null
     | undefined;
   const isProspect = (tenant as Tenant & { status?: string }).status === "prospect";
@@ -168,8 +168,10 @@ function buildBusinessHoursBlock(tenant: Tenant): string {
 
   const lines: string[] = [];
   for (const day of DAY_ORDER) {
-    const block = (hours as Record<string, { open?: string; close?: string } | null | undefined>)[day];
-    if (block?.open && block?.close) {
+    const block = (hours as Record<string, { open?: string; close?: string } | string | null | undefined>)[day];
+    if (typeof block === "string" && block.trim()) {
+      lines.push(`- ${DAY_LABELS[day]}: ${block.trim()}`);
+    } else if (block && typeof block === "object" && block.open && block.close) {
       lines.push(`- ${DAY_LABELS[day]}: ${block.open}–${block.close}`);
     } else {
       lines.push(`- ${DAY_LABELS[day]}: CLOSED`);
@@ -180,7 +182,7 @@ function buildBusinessHoursBlock(tenant: Tenant): string {
 ## Clinic Hours
 ${lines.join("\n")}
 
-Use these to sanity-check any time the caller proposes. If they ask for a slot on a day we're CLOSED, say so plainly and offer the next open day. If they ask for a time outside the open hours on a day we're open, push to the closest in-hours alternative. Never offer or book a time the clinic isn't open.
+Use these to sanity-check any time the caller proposes. If they ask for a slot on a day we're CLOSED, say so plainly and offer the next open day. If they ask for a time outside the open hours on a day we're open, push to the closest in-hours alternative. Never offer or book a time the clinic isn't open. If a day shows free-text (e.g. "By appointment only") instead of regular hours, the clinic IS bookable that day but doesn't take walk-ins — you can still offer slots and book; just acknowledge that day is appointment-only when relevant.
 `;
 }
 

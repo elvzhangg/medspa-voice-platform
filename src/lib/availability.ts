@@ -49,27 +49,35 @@ export const DEFAULT_DEMO_HOURS: Record<string, BusinessHours | null> = {
 // null for closed) before we trust it; anything less falls back to the
 // generic demo defaults.
 export function hasUsableHours(
-  tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined
+  tenantHours: Record<string, BusinessHours | string | null | undefined> | null | undefined
 ): boolean {
   if (!tenantHours) return false;
   const days = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const configured = days.filter((d) => {
     const v = tenantHours[d];
     if (v === null) return true; // explicitly closed
-    return !!(v && typeof v.open === "string" && typeof v.close === "string");
+    if (typeof v === "string" && v.trim()) return true; // non-standard (e.g. "By appointment only") — still bookable
+    return !!(v && typeof v === "object" && typeof (v as BusinessHours).open === "string" && typeof (v as BusinessHours).close === "string");
   });
   return configured.length >= 5;
 }
 
 function generateDemoSlots(
-  tenantHours: Record<string, BusinessHours | null | undefined> | null | undefined,
+  tenantHours: Record<string, BusinessHours | string | null | undefined> | null | undefined,
   date: string
 ): { label: string; startTime: string }[] {
   const hours = hasUsableHours(tenantHours) ? tenantHours! : DEFAULT_DEMO_HOURS;
   const parsed = parseISO(date);
   if (Number.isNaN(parsed.getTime())) return [];
   const dayKey = DAY_KEYS[parsed.getDay()];
-  const day = hours[dayKey];
+  const dayRaw = hours[dayKey];
+  // Day is a free-text string ("By appointment only", "Half day", etc.)
+  // — bookable but no regular range. Fall back to default hours so the
+  // AI can still offer slots; it'll mention the appointment-only context
+  // from the prompt's Clinic Hours block.
+  const day = typeof dayRaw === "string"
+    ? DEFAULT_DEMO_HOURS[dayKey] ?? null
+    : (dayRaw as BusinessHours | null | undefined);
   if (!day?.open || !day?.close) return [];
   const open = parseHHMM(day.open);
   const close = parseHHMM(day.close);
@@ -161,7 +169,7 @@ export async function getAvailableSlots(
   // internal calendar below.
   if (isProspect) {
     const demoSlots = generateDemoSlots(
-      tenantMeta?.business_hours as Record<string, BusinessHours | null | undefined> | null | undefined,
+      tenantMeta?.business_hours as Record<string, BusinessHours | string | null | undefined> | null | undefined,
       date
     );
     if (demoSlots.length > 0) {

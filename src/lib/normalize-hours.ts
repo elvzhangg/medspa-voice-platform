@@ -4,7 +4,11 @@
 // that tenants.business_hours + assistant-builder.buildBusinessHoursBlock
 // expects. Anything we can't confidently parse becomes null for that day.
 
-export type DayHours = { open: string; close: string } | null;
+// DayHours includes a string form for non-standard arrangements that don't
+// fit a 9-to-5 range — "By appointment only", "Walk-ins 10-12 only", etc.
+// These are bookable days that need to be preserved verbatim for the AI
+// prompt rather than coerced into either {open,close} or "closed".
+export type DayHours = { open: string; close: string } | string | null;
 export type NormalizedHours = Partial<Record<
   "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
   DayHours
@@ -61,11 +65,15 @@ function parseHoursString(raw: string): DayHours {
   }
   // Split on any dash / "to" separator. en-dash, em-dash, hyphen, "to".
   const parts = s.split(/\s*[-–—]\s*|\s+to\s+/i);
-  if (parts.length !== 2) return null;
-  const open = parseTimeToken(parts[0]);
-  const close = parseTimeToken(parts[1]);
-  if (!open || !close) return null;
-  return { open, close };
+  if (parts.length === 2) {
+    const open = parseTimeToken(parts[0]);
+    const close = parseTimeToken(parts[1]);
+    if (open && close) return { open, close };
+  }
+  // Couldn't parse as a range and not "closed" — preserve as a free-text
+  // hours note (e.g. "By appointment only", "Half day", "Walk-ins only").
+  // The AI prompt renders these verbatim so callers get accurate context.
+  return s;
 }
 
 function normalizeDayValue(value: unknown): DayHours {
@@ -106,7 +114,9 @@ export function normalizeBusinessHours(input: unknown): NormalizedHours | null {
     const dayKey = ABBREV_TO_DAY[key.trim().toLowerCase()];
     if (!dayKey) continue;
     const parsed = normalizeDayValue(value);
-    if (parsed) {
+    // Accept any non-undefined result — null means "explicitly closed",
+    // a string means "non-standard but bookable", an object is regular hours.
+    if (parsed !== undefined) {
       out[dayKey] = parsed;
       any = true;
     }
