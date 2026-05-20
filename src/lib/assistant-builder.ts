@@ -311,6 +311,18 @@ export async function buildAssistantConfig(
     {
       type: "function",
       function: {
+        name: "get_caller_bookings",
+        description: "Look up the CALLER's own upcoming and recent past appointments at this clinic. Call this when the caller asks 'what did I book?', 'when is my next appointment?', 'did I have something scheduled?', or wants to reschedule/cancel a specific past booking. Returns up to the 5 most recent bookings (past and upcoming) tied to the caller's phone number. If the caller asks about someone else's booking, do NOT use this tool — politely say you can only look up their own.",
+        parameters: {
+          type: "object",
+          properties: {},
+        },
+      },
+      server: { url: serverUrl },
+    },
+    {
+      type: "function",
+      function: {
         name: "book_appointment",
         description: "Submit an appointment request for a slot that has ALREADY been verified as available via get_available_slots. This locks the slot, notifies staff, and triggers the customer SMS confirmation. Do NOT call this until get_available_slots has returned the chosen slot as available.",
         parameters: {

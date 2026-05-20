@@ -407,6 +407,93 @@ async function handleToolCalls(body: Record<string, unknown>, message: Record<st
           break;
         }
 
+        case "get_caller_bookings": {
+          if (!tenant) {
+            result = "I'm sorry, I can't check your appointments right now.";
+            break;
+          }
+          const phoneRaw = (call?.customer as { number?: string } | undefined)?.number;
+          if (!phoneRaw) {
+            result = "I can't see the number you're calling from — could you tell me your name and what date you booked, and I'll look it up another way?";
+            break;
+          }
+          // Strip non-digits for fuzzy matching — DB has mixed formats
+          // (E.164, 10-digit, (xxx) xxx-xxxx). Match against the last 10 digits.
+          const digits = phoneRaw.replace(/\D/g, "");
+          const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+
+          // Query both tables; calendar_events for real bookings,
+          // booking_requests for demo / not-yet-confirmed.
+          const [eventsRes, requestsRes] = await Promise.all([
+            supabaseAdmin
+              .from("calendar_events")
+              .select("start_time, service_type, customer_name, customer_phone, status")
+              .eq("tenant_id", tenant.id)
+              .neq("status", "cancelled")
+              .order("start_time", { ascending: false })
+              .limit(20),
+            supabaseAdmin
+              .from("booking_requests")
+              .select("preferred_date, preferred_time, service, customer_name, customer_phone, status, created_at")
+              .eq("tenant_id", tenant.id)
+              .neq("status", "cancelled")
+              .order("created_at", { ascending: false })
+              .limit(20),
+          ]);
+
+          interface Hit { when: string; service: string; status: string; source: "calendar" | "request"; sortKey: number }
+          const hits: Hit[] = [];
+
+          for (const ev of eventsRes.data ?? []) {
+            const evDigits = String(ev.customer_phone ?? "").replace(/\D/g, "").slice(-10);
+            if (evDigits !== last10) continue;
+            const dt = new Date(ev.start_time);
+            hits.push({
+              when: dt.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }),
+              service: ev.service_type || "appointment",
+              status: ev.status || "confirmed",
+              source: "calendar",
+              sortKey: dt.getTime(),
+            });
+          }
+          for (const br of requestsRes.data ?? []) {
+            const brDigits = String(br.customer_phone ?? "").replace(/\D/g, "").slice(-10);
+            if (brDigits !== last10) continue;
+            const dateStr = br.preferred_date
+              ? new Date(`${br.preferred_date}T${br.preferred_time ?? "12:00:00"}`).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
+              : "(flexible date)";
+            hits.push({
+              when: dateStr,
+              service: br.service || "appointment",
+              status: br.status || "pending",
+              source: "request",
+              sortKey: br.preferred_date ? new Date(`${br.preferred_date}T${br.preferred_time ?? "12:00:00"}`).getTime() : new Date(br.created_at).getTime(),
+            });
+          }
+
+          if (hits.length === 0) {
+            result = "I don't see any appointments on file under this number. Would you like to book one now?";
+            break;
+          }
+
+          // Sort by when (upcoming first when there are future ones), keep top 5
+          const now = Date.now();
+          hits.sort((a, b) => {
+            const aFuture = a.sortKey >= now;
+            const bFuture = b.sortKey >= now;
+            if (aFuture !== bFuture) return aFuture ? -1 : 1;
+            return aFuture ? a.sortKey - b.sortKey : b.sortKey - a.sortKey;
+          });
+          const top = hits.slice(0, 5);
+
+          const lines = top.map((h) => {
+            const tense = h.sortKey >= now ? "upcoming" : "past";
+            return `- ${h.when} — ${h.service} (${tense}, ${h.status})`;
+          });
+          result = `Bookings on file for this number:\n${lines.join("\n")}\n\nSummarize these in plain English for the caller. Mention upcoming ones first. Don't read out the dashes or "past/upcoming" labels verbatim — speak naturally.`;
+          break;
+        }
+
         case "log_referral": {
           if (tenant) {
             const { referred_by_name, new_patient_name, new_patient_phone } = toolCall.parameters as Record<string, string>;
