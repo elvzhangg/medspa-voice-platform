@@ -2,8 +2,8 @@ import { supabaseAdmin } from "./supabase";
 import { logProspectEvent } from "./prospect-events";
 import { normalizeBusinessHours } from "./normalize-hours";
 import { seedStaffFromProviders } from "./staff-seed";
+import { provisionBYOTwilioNumber, releaseTwilioNumber, releaseVapiNumber } from "./twilio-provision";
 
-const VAPI_API_KEY = process.env.VAPI_API_KEY!;
 const WEBHOOK_URL =
   (process.env.NEXT_PUBLIC_APP_URL ?? "https://medspa-voice-platform.vercel.app") +
   "/api/vapi/webhook";
@@ -201,93 +201,10 @@ function buildKnowledgeChunks(p: Record<string, unknown>): Array<{ title: string
   return chunks;
 }
 
-// Small, geographically diverse fallback pool. Vapi rate-limits aggressively
-// per-API-key — keep attempts <10 per click. The prospect's actual area code
-// is tried FIRST (set by the caller); these are only used if that fails.
-const FALLBACK_AREA_CODES = [
-  "628", // SF Bay
-  "213", // Los Angeles
-  "646", // New York
-  "305", // Miami
-  "713", // Houston
-  "404", // Atlanta
-  "312", // Chicago
-];
-
-const MAX_AREA_CODE_ATTEMPTS = 8;
-const DELAY_BETWEEN_ATTEMPTS_MS = 200;
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Vapi rejects phone-number.name when it exceeds 40 chars
-// ("Bad Request: name must be shorter than or equal to 40 characters"),
-// which kills the buy and leaves the prospect un-demoable. Truncate the
-// "DEMO - {business}" form at a word boundary so longer business names
-// still produce a valid, readable label.
-function fitPhoneNumberName(businessName: string): string {
-  const full = `DEMO - ${businessName.trim()}`;
-  if (full.length <= 40) return full;
-  const room = 40 - 1; // reserve one char for the ellipsis
-  const trimmed = full.slice(0, room).replace(/\s+\S*$/, "");
-  const base = trimmed.length > 0 ? trimmed : full.slice(0, room);
-  return base + "…";
-}
-
-async function buyPhoneNumber(
-  name: string,
-  preferredAreaCode: string | null
-): Promise<{ id: string; number: string } | { error: string }> {
-  const ordered = [preferredAreaCode, ...FALLBACK_AREA_CODES]
-    .filter(Boolean)
-    .slice(0, MAX_AREA_CODE_ATTEMPTS) as string[];
-
-  const seen = new Set<string>();
-  const errors: string[] = [];
-  let isFirst = true;
-
-  const phoneNumberName = fitPhoneNumberName(name);
-
-  for (const ac of ordered) {
-    if (seen.has(ac)) continue;
-    seen.add(ac);
-
-    // Be polite to Vapi — small delay between attempts
-    if (!isFirst) await sleep(DELAY_BETWEEN_ATTEMPTS_MS);
-    isFirst = false;
-
-    // Modern Vapi endpoint: POST /phone-number with provider:"vapi"
-    // (the legacy /phone-number/buy endpoint is deprecated as of late 2025 with 410 Gone)
-    const res = await fetch("https://api.vapi.ai/phone-number", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${VAPI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "vapi",
-        numberDesiredAreaCode: ac,
-        name: phoneNumberName,
-        serverUrl: WEBHOOK_URL,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return { id: data.id, number: data.number };
-    }
-    const errText = await res.text().catch(() => "");
-    errors.push(`area ${ac}: ${res.status} ${errText.slice(0, 200)}`);
-
-    if (res.status === 401 || res.status === 402 || res.status === 403 || res.status === 429) {
-      console.error("[demo-provisioner] Vapi hard error, stopping retries", errors);
-      return { error: `Vapi rejected: ${res.status} ${errText.slice(0, 300)}` };
-    }
-  }
-
-  console.error("[demo-provisioner] No Vapi numbers available", errors);
-  const first = errors[0] ?? "Unknown Vapi error";
-  return {
-    error: `No Vapi numbers available across ${seen.size} area codes. First error — ${first}`,
-  };
-}
+// Number buying lives in lib/twilio-provision.ts now. We buy from our own
+// Twilio account and import into Vapi so the same number does inbound voice
+// AND outbound SMS — the prospect gets a real SMS confirmation when they
+// "book" via the demo, all from one consistent number.
 
 /**
  * Idempotent demo provisioning. Returns the existing demo if one is already linked.
@@ -318,9 +235,21 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
   }
 
   const preferredArea = areaCodeFrom(prospect.phone) ?? areaCodeFrom(prospect.assigned_demo_number);
-  const buyResult = await buyPhoneNumber(prospect.business_name, preferredArea);
-  if ("error" in buyResult) return { ok: false, error: buyResult.error };
-  const phone = buyResult;
+  const provisioned = await provisionBYOTwilioNumber({
+    preferredAreaCode: preferredArea,
+    labelPrefix: "DEMO",
+    businessName: prospect.business_name,
+    serverUrl: WEBHOOK_URL,
+  });
+  if ("error" in provisioned) return { ok: false, error: provisioned.error };
+  // phoneNumber is E.164 from Twilio; twilioSid is the IncomingPhoneNumber
+  // SID we'll need to DELETE the number on cleanup/migration. vapiPhoneNumberId
+  // is what we hand back to Vapi's API for inbound-call routing changes.
+  const phone = {
+    id: provisioned.vapiPhoneNumberId,
+    number: provisioned.phoneNumber,
+    twilioSid: provisioned.twilioSid,
+  };
 
   const slugBase = `demo-${slugify(prospect.business_name)}-${prospect_id.slice(0, 8)}`;
   // Customer-facing greeting — warm, no AI self-id, no persona name (kept generic
@@ -342,6 +271,11 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
     slug: slugBase,
     phone_number: phone.number,
     vapi_phone_number_id: phone.id,
+    // BYO Twilio: same number is registered in our Twilio account too,
+    // so booking.ts can send SMS FROM it using platform Twilio creds.
+    // twilio_phone_sid is the IncomingPhoneNumber SID we'll DELETE on cleanup.
+    twilio_phone_number: phone.number,
+    twilio_phone_sid: phone.twilioSid,
     voice_id: "EXAVITQu4vr4xnSDxMaL",
     greeting_message: greeting,
     status: "prospect",
@@ -386,7 +320,13 @@ export async function provisionDemoForProspect(prospect_id: string): Promise<Pro
     break;
   }
 
-  if (!tenant) return { ok: false, error: `Failed to create demo tenant: ${lastErr}` };
+  if (!tenant) {
+    // Tenant insert failed after we already bought a number — release both
+    // the Twilio number and Vapi registration so they don't sit billing.
+    await releaseVapiNumber(phone.id);
+    await releaseTwilioNumber(phone.twilioSid);
+    return { ok: false, error: `Failed to create demo tenant: ${lastErr}` };
+  }
 
   if (droppedTenantCols.length) {
     console.warn(

@@ -16,6 +16,7 @@ import {
 import { areaCodeForCity } from "@/lib/us-area-codes";
 import { normalizeBusinessHours } from "@/lib/normalize-hours";
 import { seedStaffFromProviders } from "@/lib/staff-seed";
+import { provisionBYOTwilioNumber, releaseVapiNumber as releaseVapiByoNumber, releaseTwilioNumber } from "@/lib/twilio-provision";
 
 // seedStaffFromProviders is shared with the demo-provisioner — see
 // src/lib/staff-seed.ts. Activation and demo provisioning now seed the
@@ -26,14 +27,12 @@ export const runtime = "nodejs";
 // codes — give the commit step plenty of headroom.
 export const maxDuration = 120;
 
-const VAPI_API_KEY = process.env.VAPI_API_KEY!;
 const WEBHOOK_URL =
   (process.env.NEXT_PUBLIC_APP_URL ?? "https://medspa-voice-platform.vercel.app") +
   "/api/vapi/webhook";
 
-const FALLBACK_AREA_CODES = ["628", "213", "646", "305", "713", "404", "312"];
-const MAX_AREA_CODE_ATTEMPTS = 8;
-const DELAY_BETWEEN_ATTEMPTS_MS = 200;
+// Area-code fallback pool and retry pacing now live in lib/twilio-provision.ts
+// so demo + activation share one implementation.
 
 const SYSTEM_PROMPT = `You are helping an admin set up a new tenant in the VauxVoice platform from a researched CRM prospect (a med spa). On commit, the system will buy a Vapi phone number AND create the tenant in one step. The draft has these fields:
 
@@ -67,82 +66,41 @@ function defaultDraft(prospect: Record<string, unknown>): TenantDraft {
   };
 }
 
-function sleep(ms: number) {
+// sleep helper kept in case other code in this file needs it down the line
+function _sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-interface BuyOk { id: string; number: string }
+interface BuyOk { id: string; number: string; twilioSid: string }
 interface BuyErr { error: string; attempted: string[] }
 
-// Vapi rejects phone-number.name when it exceeds 40 chars
-// ("Bad Request: name must be shorter than or equal to 40 characters").
-// Truncate at a word boundary so longer business names still buy cleanly.
-function fitVapiNumberName(businessName: string): string {
-  const full = `CRM - ${businessName.trim()}`;
-  if (full.length <= 40) return full;
-  const room = 40 - 1; // reserve one char for the ellipsis
-  const trimmed = full.slice(0, room).replace(/\s+\S*$/, "");
-  const base = trimmed.length > 0 ? trimmed : full.slice(0, room);
-  return base + "…";
-}
-
-// Tries the preferred area code first, then walks a small geographic fallback
-// pool. Stops on hard errors (auth/quota/rate) so we don't burn the API key.
+// Number buying now goes through lib/twilio-provision.ts (BYO Twilio flow):
+// we buy from our own Twilio account first, then import into Vapi for inbound
+// voice. The same number is used for outbound SMS via booking.ts. This thin
+// wrapper preserves the BuyOk/BuyErr shape the rest of this file expects.
 async function buyVapiNumber(name: string, preferred: string | null): Promise<BuyOk | BuyErr> {
-  const ordered = [preferred, ...FALLBACK_AREA_CODES]
-    .filter(Boolean)
-    .slice(0, MAX_AREA_CODE_ATTEMPTS) as string[];
-
-  const seen = new Set<string>();
-  const errors: string[] = [];
-  let isFirst = true;
-
-  const phoneNumberName = fitVapiNumberName(name);
-
-  for (const ac of ordered) {
-    if (seen.has(ac)) continue;
-    seen.add(ac);
-    if (!isFirst) await sleep(DELAY_BETWEEN_ATTEMPTS_MS);
-    isFirst = false;
-
-    const res = await fetch("https://api.vapi.ai/phone-number", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${VAPI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "vapi",
-        numberDesiredAreaCode: ac,
-        name: phoneNumberName,
-        serverUrl: WEBHOOK_URL,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return { id: data.id, number: data.number };
-    }
-    const errText = await res.text().catch(() => "");
-    errors.push(`area ${ac}: ${res.status} ${errText.slice(0, 200)}`);
-    if (res.status === 401 || res.status === 402 || res.status === 403 || res.status === 429) {
-      return { error: `Vapi rejected: ${res.status} ${errText.slice(0, 300)}`, attempted: [...seen] };
-    }
+  const result = await provisionBYOTwilioNumber({
+    preferredAreaCode: preferred,
+    labelPrefix: "CRM",
+    businessName: name,
+    serverUrl: WEBHOOK_URL,
+  });
+  if ("error" in result) {
+    return { error: result.error, attempted: result.attemptedAreaCodes };
   }
-  const first = errors[0] ?? "Unknown Vapi error";
   return {
-    error: `No Vapi numbers available across ${seen.size} area codes. First — ${first}`,
-    attempted: [...seen],
+    id: result.vapiPhoneNumberId,
+    number: result.phoneNumber,
+    twilioSid: result.twilioSid,
   };
 }
 
-// Best-effort release of an orphaned Vapi number (e.g. tenant insert failed
-// after we already paid for the number). Logs on failure but doesn't block.
-async function releaseVapiNumber(phoneNumberId: string): Promise<void> {
-  try {
-    await fetch(`https://api.vapi.ai/phone-number/${phoneNumberId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${VAPI_API_KEY}` },
-    });
-  } catch (e) {
-    console.error("[activation] failed to release orphaned Vapi number", phoneNumberId, e);
-  }
+// Best-effort cleanup when tenant insert fails after a successful buy.
+// Releases BOTH the Vapi import AND the underlying Twilio number so we
+// don't pay for an orphan.
+async function releaseVapiNumber(phoneNumberId: string, twilioSid?: string): Promise<void> {
+  await releaseVapiByoNumber(phoneNumberId);
+  if (twilioSid) await releaseTwilioNumber(twilioSid);
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -231,10 +189,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       if ("error" in buy) return NextResponse.json({ error: buy.error }, { status: 502 });
       const { error: patchErr } = await supabaseAdmin
         .from("tenants")
-        .update({ phone_number: buy.number, vapi_phone_number_id: buy.id, updated_at: nowIso() })
+        .update({
+          phone_number: buy.number,
+          vapi_phone_number_id: buy.id,
+          twilio_phone_number: buy.number,
+          twilio_phone_sid: buy.twilioSid,
+          updated_at: nowIso(),
+        })
         .eq("id", prospect.tenant_id);
       if (patchErr) {
-        await releaseVapiNumber(buy.id);
+        await releaseVapiNumber(buy.id, buy.twilioSid);
         return NextResponse.json({ error: `Patched buy failed: ${patchErr.message}` }, { status: 500 });
       }
       const updated = { ...step, committed_at: nowIso() };
@@ -264,6 +228,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       slug: step.draft.slug,
       phone_number: buy.number,
       vapi_phone_number_id: buy.id,
+      // Same number now lives in our Twilio account too — booking.ts uses
+      // these for outbound SMS so the spa can text from their AI number.
+      twilio_phone_number: buy.number,
+      twilio_phone_sid: buy.twilioSid,
       voice_id: step.draft.voice_id,
       greeting_message: step.draft.greeting_message,
       status: "prospect",
@@ -299,8 +267,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     if (!tenantId) {
-      await releaseVapiNumber(buy.id);
-      return NextResponse.json({ error: `Failed to create tenant (Vapi number released): ${lastErr}` }, { status: 500 });
+      await releaseVapiNumber(buy.id, buy.twilioSid);
+      return NextResponse.json({ error: `Failed to create tenant (Vapi + Twilio number released): ${lastErr}` }, { status: 500 });
     }
 
     // Seed providers from prospect.providers into the staff table so the

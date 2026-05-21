@@ -86,6 +86,29 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
     await diagnose();
   }
 
+  async function migrateTwilio() {
+    if (
+      !confirm(
+        "This buys a NEW phone number from our Twilio account, points Vivienne at it, and releases the old number. The phone number will CHANGE — any outreach already sent with the current number will hit a dead line. Continue?"
+      )
+    ) return;
+    setFixing(true);
+    setFixMsg(null);
+    const res = await fetch(`/api/admin/crm/${id}/migrate-twilio`, { method: "POST" });
+    const data = await res.json();
+    setFixing(false);
+    if (!res.ok) {
+      setFixMsg(`Migration failed: ${data.error ?? "unknown"}`);
+      return;
+    }
+    if (data.already_byo) {
+      setFixMsg(`Already on BYO Twilio — number ${data.phone_number} does both voice + SMS.`);
+    } else {
+      setFixMsg(`Migrated. Old number ${data.old_number} released; new number ${data.new_number} now handles voice + SMS.`);
+    }
+    await diagnose();
+  }
+
   async function backfill() {
     if (!confirm("Backfill hours, staff, booking-forward to prospect's phone, and the demo-mode KB context onto this tenant?")) return;
     setFixing(true);
@@ -192,7 +215,7 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
             <p className={`text-sm font-semibold ${diagnosis.healthy ? "text-emerald-800" : "text-amber-800"}`}>
               {diagnosis.healthy ? "✓ Call routing looks healthy" : "⚠ Call routing has issues"}
             </p>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
               <button
                 onClick={backfill}
                 disabled={fixing}
@@ -200,6 +223,14 @@ export default function CallsPage({ params }: { params: Promise<{ id: string }> 
                 title="Re-seed tenants.business_hours (normalized) and staff roster from the prospect's research data"
               >
                 {fixing ? "Working…" : "Backfill hours + staff"}
+              </button>
+              <button
+                onClick={migrateTwilio}
+                disabled={fixing}
+                className="text-xs font-semibold px-3 py-1 rounded border border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50"
+                title="Buy a new number from our Twilio account, swap it in, release the old Vapi-managed one. Phone number will CHANGE — only use if outreach hasn't been sent."
+              >
+                {fixing ? "Migrating…" : "Migrate to BYO Twilio"}
               </button>
               <button
                 onClick={autoFix}
