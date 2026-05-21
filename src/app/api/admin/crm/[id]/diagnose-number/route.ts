@@ -62,6 +62,22 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   findings.push({ ok: !!tenant.voice_id, label: "Tenant has voice_id (ElevenLabs)", detail: tenant.voice_id ?? "missing" });
   findings.push({ ok: !!tenant.greeting_message, label: "Tenant has greeting_message", detail: tenant.greeting_message ?? "missing" });
 
+  // Visibility check for the BYO Twilio creds the new provisioning flow
+  // needs. If the deploy doesn't see these env vars, the migrate button
+  // fails with the unhelpful "credentials not configured" error and the
+  // operator has no way to tell whether they're missing, mis-named, or
+  // just on a stale deploy. We show only the masked first 6 chars of the
+  // SID — never the token — so it's safe to display.
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const sidPreview = sid ? `${sid.slice(0, 6)}… (len ${sid.length})` : "missing";
+  const tokenPreview = token ? `set (len ${token.length})` : "missing";
+  findings.push({
+    ok: Boolean(sid && token),
+    label: "Platform Twilio creds visible to runtime",
+    detail: `SID=${sidPreview} · TOKEN=${tokenPreview}`,
+  });
+
   // How many active staff rows are linked to this tenant? If 0, the AI can
   // never introduce providers — the backfill button surfaces this.
   const { count: staffCount } = await supabaseAdmin
