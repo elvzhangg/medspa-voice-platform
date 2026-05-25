@@ -32,20 +32,6 @@ export default function Page() {
           padding: "120px 32px 64px",
         }}
       >
-        {/* Sad face — Chrome's signature glyph */}
-        <div
-          style={{
-            fontSize: 96,
-            color: "#5f6368",
-            lineHeight: 1,
-            marginBottom: 24,
-            fontWeight: 300,
-            letterSpacing: "-0.04em",
-          }}
-        >
-          :(
-        </div>
-
         <h1
           style={{
             fontSize: 26,
