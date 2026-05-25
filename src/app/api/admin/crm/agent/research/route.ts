@@ -16,6 +16,45 @@ function normalizeWebsite(website: string): string {
     .replace(/\/$/, "");
 }
 
+interface SpecialInput {
+  name?: string;
+  description?: string;
+  discount?: string;
+  valid_through?: string;
+  eligibility?: string;
+  source_url?: string;
+}
+
+/**
+ * Defensive filter: even with the prompt telling the model to skip expired
+ * specials, the occasional "ends May 31, 2024" still leaks through on a
+ * stale page. We pull any 4-digit year out of valid_through and drop the
+ * entry when that year is in the past. No year found → keep (could be
+ * "while supplies last" or just a future month/day). Conservative on
+ * purpose — we'd rather show one expired special than silently delete a
+ * good one because of weird formatting.
+ */
+function filterExpiredSpecials(
+  raw: unknown,
+  currentYear: number
+): SpecialInput[] | null {
+  if (!Array.isArray(raw)) return null;
+  const kept: SpecialInput[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const s = item as SpecialInput;
+    const vt = s.valid_through;
+    if (typeof vt === "string") {
+      const yearMatch = vt.match(/\b(20\d{2})\b/);
+      if (yearMatch && Number(yearMatch[1]) < currentYear) {
+        continue; // expired
+      }
+    }
+    kept.push(s);
+  }
+  return kept;
+}
+
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
@@ -224,6 +263,10 @@ export async function POST(req: NextRequest) {
       const send = (obj: object) => controller.enqueue(encode(obj));
 
       try {
+        const now = new Date();
+        const currentYear = now.getUTCFullYear();
+        const todayISO = now.toISOString().slice(0, 10);
+
         send({
           type: "step",
           step_type: "thinking",
@@ -234,6 +277,8 @@ export async function POST(req: NextRequest) {
           {
             role: "user",
             content: `You are a B2B sales research agent for VauxVoice — an AI voice receptionist platform for med spas.
+
+Today's date is ${todayISO}. The current year is ${currentYear}. Use this for any "is this prospect still active" and "is this special still valid" judgments — never rely on a stale year baked into a prior search.
 
 Your mission: Find real med spa prospects in ${regions.join(" and ")} that use ${platforms.join(", ")} booking software. These are ideal customers because they already have online booking infrastructure that VauxVoice can plug into.
 
@@ -256,16 +301,19 @@ Every fact saved MUST be traceable to a real URL you fetched. The schema require
 After collecting data from the spa's own site, do 2–3 cross-source web_searches:
 1. "[business_name] [city] google business" — Google Business Profile
 2. "[business_name] [city] yelp" — Yelp listing
-3. (Optional) "[business_name] [city] reviews 2026" — recent activity
+3. (Optional) "[business_name] [city] reviews ${currentYear}" — recent activity
 
 Populate verification_notes:
 - google_business_profile_url, yelp_url
 - address_confirmed_by: which sources confirmed the address (e.g. ["website", "google", "yelp"])
 - phone_confirmed_by: same for phone
-- still_operating: true only if recent reviews/posts/activity (last ~6 months)
+- still_operating: true only if recent reviews/posts/activity (last ~6 months from ${todayISO})
 - discrepancies: contradictions between sources, or empty array
 
 If still_operating is false OR address can't be confirmed by at least one external source, do NOT save_prospect — log a step explaining why you skipped.
+
+## Specials freshness
+Only include a special in the specials[] array if it's still valid as of ${todayISO}. Skip any offer whose valid_through has already passed (e.g. "through May 31, 2024" when today is past that). Evergreen ones with no expiration ("while supplies last", "ongoing") are fine to include.
 
 ## Hard rules
 - 5–10 high-quality prospects, not a flood of low-confidence ones
@@ -382,6 +430,21 @@ Start now.`,
                 faqs: raw.faqs as Array<{ question?: string; answer?: string }> | undefined,
               });
 
+              // Defensive: drop specials whose valid_through contains a past
+              // year. Belt-and-suspenders on top of the prompt instruction.
+              const filteredSpecials = filterExpiredSpecials(raw.specials, currentYear);
+              if (
+                Array.isArray(raw.specials) &&
+                filteredSpecials &&
+                filteredSpecials.length < raw.specials.length
+              ) {
+                send({
+                  type: "step",
+                  step_type: "decision",
+                  message: `Dropped ${raw.specials.length - filteredSpecials.length} expired special(s) for ${businessName}`,
+                });
+              }
+
               if (!wasDedup) {
                 const { data: inserted, error: insErr } = await supabaseAdmin
                   .from("crm_prospects")
@@ -402,6 +465,7 @@ Start now.`,
                     providers: raw.providers ?? null,
                     business_hours: raw.business_hours ?? null,
                     faqs: raw.faqs ?? null,
+                    specials: filteredSpecials ?? null,
                     research_sources: raw.research_sources ?? null,
                     verification_notes: raw.verification_notes ?? null,
                     research_confidence: confidence.score,
